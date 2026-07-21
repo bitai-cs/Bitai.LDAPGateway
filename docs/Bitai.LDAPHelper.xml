@@ -1,0 +1,1063 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Bitai.LDAPHelper</name>
+    </assembly>
+    <members>
+        <member name="T:Bitai.LDAPHelper.AccountManager">
+            <summary>
+            Provides account-management operations for LDAP/Active Directory entries.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.#ctor(Bitai.LDAPHelper.ClientConfiguration,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.AccountManager"/> class.
+            </summary>
+            <param name="clientConfiguration">Client configuration containing connection, credential, and search settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.AccountManager"/> class.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="searchLimits">LDAP search limits.</param>
+            <param name="domainAccountCredential">Credential used for management operations.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.InitializeMissingMsADUserAccountDN(Bitai.LDAPHelper.DTO.LDAPMsADUserAccount)">
+            <summary>
+            Initializes the account distinguished name when it is missing.
+            </summary>
+            <param name="userAccount">User-account model to normalize.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.CreateUserAccountForMsAD(Bitai.LDAPHelper.DTO.LDAPMsADUserAccount,System.String)">
+            <summary>
+            Create a username in MS Active Directory service
+            https://www.rlmueller.net/Name_Attributes.htm
+            </summary>
+            <param name="newUserAccount"><see cref="T:Bitai.LDAPHelper.DTO.LDAPMsADUserAccount"/></param>
+            <param name="requestLabel">Optional tag to mark the request and/or response.</param>
+            <returns>A Task of <see cref="T:Bitai.LDAPHelper.DTO.LDAPCreateMsADUserAccountResult"/></returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.SetMsADUserAccountPassword(Bitai.LDAPHelper.DTO.EntryAttribute,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Set a password for a username in MS Active Directory service. This method will verify the authenticity of the username by its distinguished name before trying to set the password. If the username is not valid, the operation will not be attempted and an error will be returned.
+            </summary>
+            <param name="identifierAttribute">Identifier attribute used to resolve the user account (sAMAccountName or distinguishedName).</param>
+            <param name="identifierValue">Value of the identifier attribute.</param>
+            <param name="password">New account password.</param>
+            <param name="requestLabel">Optional tag to mark the request and/or response.</param>
+            <param name="postUpdateTestAuthentication">True if the MS AD user account will be tested to verify authentication with the new password. False if the password will simply be assigned and authentication will not be tested.</param>
+            <returns>A task with the password-update operation result.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.DisableMsADUserAccount(Bitai.LDAPHelper.DTO.EntryAttribute,System.String,System.String)">
+            <summary>
+            Disables a username in MS Active Directory. This method validates the target account first.
+            </summary>
+            <param name="identifierAttribute">Identifier attribute used to resolve the user account (sAMAccountName or distinguishedName).</param>
+            <param name="identifierValue">Value of the identifier attribute.</param>
+            <param name="requestLabel">Optional tag to mark the request and/or response.</param>
+            <returns><see cref="T:Bitai.LDAPHelper.DTO.LDAPDisableUserAccountOperationResult"/></returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.AccountManager.RemoveMsADUserAccount(Bitai.LDAPHelper.DTO.EntryAttribute,System.String,System.String)">
+            <summary>
+            Remove a username in MS Active Directory service. This operation will permanently delete the username entry from the directory, so it should be used with caution.
+            </summary>
+            <param name="identifierAttribute">Identifier attribute used to resolve the user account (sAMAccountName or distinguishedName).</param>
+            <param name="identifierValue">Value of the identifier attribute.</param>
+            <param name="requestLabel">Optional tag to mark the request and/or response.</param>
+            <returns><see cref="T:Bitai.LDAPHelper.DTO.LDAPRemoveMsADUserAccountResult"/></returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.Authenticator">
+            <summary>
+            Provides LDAP authentication workflows for domain-account and distinguished-name credentials.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Authenticator.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.Authenticator"/> class.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Authenticator.AuthenticateAsync(Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,System.String)">
+            <summary>
+            Authenticates a domain account and validates that exactly one matching LDAP user exists.
+            </summary>
+            <param name="credential">Credential to authenticate.</param>
+            <param name="searchLimits">Search limits used to locate the account before authentication.</param>
+            <param name="credentialForSearching">Credential used to perform the validation search.</param>
+            <param name="requestLabel">Optional label used to correlate request/response operations.</param>
+            <returns>
+            A result object containing operation status, authentication status, and optional error details.
+            </returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Authenticator.AuthenticateAsync(Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,System.String)">
+            <summary>
+            Authenticates a domain account directly against the LDAP server.
+            </summary>
+            <param name="credential">Credential to authenticate.</param>
+            <param name="requestLabel">Optional label used to correlate request/response operations.</param>
+            <returns>
+            A result object containing operation status, authentication status, and optional error details.
+            </returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Authenticator.AuthenticateAsync(Bitai.LDAPHelper.DTO.LDAPDistinguishedNameCredential,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,System.String)">
+            <summary>
+            Authenticates a distinguished-name account and validates that exactly one matching LDAP user exists.
+            </summary>
+            <param name="credential">Credential to authenticate.</param>
+            <param name="searchLimits">Search limits used to locate the account before authentication.</param>
+            <param name="credentialForSearching">Credential used to perform the validation search.</param>
+            <param name="requestLabel">Optional label used to correlate request/response operations.</param>
+            <returns>
+            A result object containing operation status, authentication status, and optional error details.
+            </returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Authenticator.AuthenticateAsync(Bitai.LDAPHelper.DTO.LDAPDistinguishedNameCredential,System.String)">
+            <summary>
+            Authenticates a distinguished-name account directly against the LDAP server.
+            </summary>
+            <param name="credential">Credential to authenticate.</param>
+            <param name="requestLabel">Optional label used to correlate request/response operations.</param>
+            <returns>
+            A result object containing operation status, authentication status, and optional error details.
+            </returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.BaseHelper">
+            <summary>
+            Base class for LDAP helper services, providing shared connection and mapping utilities.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.BaseHelper.ConnectionInfo">
+            <summary>
+            Gets or sets LDAP server connection settings.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.BaseHelper.DomainAccountCredential">
+            <summary>
+            Gets or sets the credential used for LDAP search/management operations.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.BaseHelper.SearchLimits">
+            <summary>
+            Gets or sets default LDAP search limits.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.BaseHelper.ConnectionFactory">
+            <summary>
+            Gets or sets the LDAP connection factory abstraction.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.#ctor(Bitai.LDAPHelper.ClientConfiguration,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.BaseHelper"/> class.
+            </summary>
+            <param name="clientConfiguration">Client configuration containing connection, credential, and search settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.BaseHelper"/> class.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="searchLimits">LDAP search limits.</param>
+            <param name="domainAccountCredential">Credential used by LDAP operations.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.BaseHelper"/> class used by authentication-only services.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.GetSAMAccountTypeName(System.String)">
+            <summary>
+            Converts a SAM account-type numeric code to a symbolic name.
+            </summary>
+            <param name="index">String representation of the SAM account type numeric value.</param>
+            <returns>A symbolic account type name when known; otherwise the original value.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.GetLdapConnection(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,System.Boolean)">
+            <summary>
+            Creates and optionally binds an LDAP connection using domain-account credentials.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="credential">Domain-account credential used for bind.</param>
+            <param name="bindRequired">Whether bind/authentication is required.</param>
+            <returns>A task with an initialized LDAP connection adapter.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.GetLdapConnection(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.DTO.LDAPDistinguishedNameCredential,System.Boolean)">
+            <summary>
+            Creates and optionally binds an LDAP connection using distinguished-name credentials.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="credential">Distinguished-name credential used for bind.</param>
+            <param name="bindRequired">Whether bind/authentication is required.</param>
+            <returns>A task with an initialized LDAP connection adapter.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.ConvertByteToStringSid(System.Byte[])">
+            <summary>
+            Converts a binary SID value into its canonical string representation.
+            </summary>
+            <param name="sidBytes">Binary SID value.</param>
+            <returns>Canonical SID string (for example, S-1-5-21-...).</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.BaseHelper.GetRequiredAttributeNames(Bitai.LDAPHelper.DTO.RequiredEntryAttributes)">
+            <summary>
+            Resolves the LDAP attribute names to request based on a predefined attribute-set preset.
+            </summary>
+            <param name="requiredEntryAttributes">Preset indicating which attributes should be loaded.</param>
+            <returns>A sequence of attribute names to request in LDAP search operations.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.ClientConfiguration">
+            <summary>
+            Encapsulates LDAP client runtime configuration.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ClientConfiguration.ServerSettings">
+            <summary>
+            Gets or sets LDAP server connection settings.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ClientConfiguration.DomainAccountCredential">
+            <summary>
+            Gets or sets the service account used for LDAP operations.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ClientConfiguration.SearchLimits">
+            <summary>
+            Gets or sets LDAP search limits.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.ClientConfiguration.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.SearchLimits)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="serverSettings"><see cref="T:Bitai.LDAPHelper.ConnectionInfo"/></param>
+            <param name="domainAccountCredentials">Domain account credential used for bind/search operations.</param>
+            <param name="searchLimits"><see cref="T:Bitai.LDAPHelper.SearchLimits"/></param>
+        </member>
+        <member name="T:Bitai.LDAPHelper.ConnectionInfo">
+            <summary>
+            Represents LDAP server connection settings.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.ConnectionInfo.#ctor(System.String,System.Int32,System.Boolean,System.Int16)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.ConnectionInfo"/> class.
+            </summary>
+            <param name="server">LDAP server host name or IP address.</param>
+            <param name="port">LDAP server port.</param>
+            <param name="useSSL">Whether SSL is enabled.</param>
+            <param name="connectionTimeout">Connection timeout in seconds.</param>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ConnectionInfo.Server">
+            <summary>
+            Gets the LDAP server host name or IP address.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ConnectionInfo.ServerPort">
+            <summary>
+            Gets the LDAP server port.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ConnectionInfo.UseSSL">
+            <summary>
+            Gets a value indicating whether SSL is enabled.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.ConnectionInfo.ConnectionTimeout">
+            <summary>
+            Connection timeout in seconds
+            </summary>
+        </member>
+        <member name="T:Bitai.LDAPHelper.DataValidationException">
+            <summary>
+            Represents errors caused by invalid or inconsistent business data supplied to LDAP operations.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.DataValidationException.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.DataValidationException"/> class.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.DataValidationException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.DataValidationException"/> class with a message.
+            </summary>
+            <param name="message">Validation error message.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.DataValidationException.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.DataValidationException"/> class with a message and inner exception.
+            </summary>
+            <param name="message">Validation error message.</param>
+            <param name="innerException">Underlying cause of this exception.</param>
+        </member>
+        <member name="T:Bitai.LDAPHelper.EntryNotFoundException">
+            <summary>
+            Represents errors when a requested LDAP entry cannot be found.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.EntryNotFoundException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.EntryNotFoundException"/> class with a message.
+            </summary>
+            <param name="message">Error message.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.EntryNotFoundException.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.EntryNotFoundException"/> class with a message and inner exception.
+            </summary>
+            <param name="message">Error message.</param>
+            <param name="innerException">Underlying cause of this exception.</param>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapServerDefaultPorts">
+            <summary>
+            LDAP default ports
+            </summary>
+        </member>
+        <member name="F:Bitai.LDAPHelper.LdapServerDefaultPorts.DefaultPort">
+            <summary>
+            Default LDAP port.
+            </summary>
+        </member>
+        <member name="F:Bitai.LDAPHelper.LdapServerDefaultPorts.DefaultSslPort">
+            <summary>
+            Default LDAP-over-SSL port.
+            </summary>
+        </member>
+        <member name="F:Bitai.LDAPHelper.LdapServerDefaultPorts.DefaultGlobalCatalogPort">
+            <summary>
+            Default Global Catalog port.
+            </summary>
+        </member>
+        <member name="F:Bitai.LDAPHelper.LdapServerDefaultPorts.DefaultGlobalCatalogSslPort">
+            <summary>
+            Default Global Catalog SSL port.
+            </summary>
+        </member>
+        <member name="T:Bitai.LDAPHelper.Extensions.IEnumerableLDAPEntryExtensions">
+            <summary>
+            Provides extension methods for LDAP entry collections.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Extensions.IEnumerableLDAPEntryExtensions.SelectAllMemberOfEntriesRecursively(System.Collections.Generic.IEnumerable{Bitai.LDAPHelper.DTO.LDAPEntry})">
+            <summary>
+            Flattens all <c>memberOfEntries</c> hierarchies recursively for every entry in the sequence.
+            </summary>
+            <param name="entries">Source LDAP entries.</param>
+            <returns>A distinct flattened sequence of parent/group entries.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.Extensions.StringExtensions">
+            <summary>
+            Provides LDAP-safe string escaping helpers.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Extensions.StringExtensions.ReplaceParenthesisCharsToScapedChars(System.String)">
+            <summary>
+            Escapes parenthesis characters for LDAP filter usage.
+            </summary>
+            <param name="input">Input text.</param>
+            <returns>Escaped text.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Extensions.StringExtensions.ReplaceAsteriskCharsToScapedChars(System.String)">
+            <summary>
+            Escapes asterisk characters for LDAP filter usage.
+            </summary>
+            <param name="input">Input text.</param>
+            <returns>Escaped text.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Extensions.StringExtensions.ReplaceBackslashCharsToScapedChars(System.String)">
+            <summary>
+            Escapes backslash characters for LDAP filter usage.
+            </summary>
+            <param name="input">Input text.</param>
+            <returns>Escaped text.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Extensions.StringExtensions.ReplaceSpecialCharsToScapedChars(System.String)">
+            <summary>
+            Escapes special LDAP filter characters (backslash, asterisk, parenthesis).
+            </summary>
+            <param name="input">Input text.</param>
+            <returns>Escaped text.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.GroupMembershipValidator">
+            <summary>
+            Validates group membership relationships for directory users.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.GroupMembershipValidator.#ctor(Bitai.LDAPHelper.ClientConfiguration,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.GroupMembershipValidator"/> class.
+            </summary>
+            <param name="clientConfiguration">Client configuration containing connection, credential, and search settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.GroupMembershipValidator.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.GroupMembershipValidator"/> class.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="searchLimits">LDAP search limits.</param>
+            <param name="domainAccountCredential">Credential used to execute LDAP searches.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.GroupMembershipValidator.CheckGroupMembershipAsync(System.String,System.String)">
+            <summary>
+            Determines whether the directory entry identified by the specified 
+            <paramref name="sAMAccountName"/> is a member (directly or indirectly) of the group whose 
+            common name (CN) is specified by <paramref name="parentGroupCN"/>.
+            </summary>
+            <param name="sAMAccountName">The sAMAccountName of the entry to check. Must not be null, empty 
+            or contain '*'. 
+            </param><param name="parentGroupCN">The CN (common name) of the parent group to check membership against. Must not be null, empty or contain '*'.</param>
+            <returns>
+            <see langword="true"/> if the entry is a member (direct or nested) of the specified group; 
+            otherwise <see langword="false"/>.
+            If the entry is not found, <see langword="false"/> is returned.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="sAMAccountName"/> or 
+            <paramref name="parentGroupCN"/> is null or empty.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="sAMAccountName"/> or 
+            <paramref name="parentGroupCN"/> contains the '*' character.</exception>
+            <exception cref="T:System.Exception">Thrown when the underlying LDAP search operation fails. If 
+            available, the original search error object is thrown instead.</exception>
+        </member>
+        <member name="M:Bitai.LDAPHelper.GroupMembershipValidator.GetAllGroupMembershipsAsync(System.String)">
+            <summary>
+            Retrieves all group memberships (common names - CNs) for the directory entry identified by 
+            the specified <paramref name="sAMAccountName"/>. This method performs a parent-entry search 
+            (resolving memberOf relationships) and returns the distinct CN values of all parent/group 
+            entries discovered.
+            </summary>
+            <param name="sAMAccountName">
+            The sAMAccountName of the entry whose group memberships are to be retrieved. This parameter 
+            must not be null or empty and must not contain the '*' character.
+            </param>
+            <returns>
+            An array of group common names (CNs) the specified entry is a member of. If the entry is not 
+            found, an empty string array is returned. The returned CNs are unique and compared 
+            case-insensitively.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="sAMAccountName"/> is null 
+            or empty.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="sAMAccountName"/> contains the '*' character.</exception>
+            <exception cref="T:System.Exception">
+            Thrown when the underlying LDAP search operation fails. If the search result contains an error 
+            object, that original exception object will be thrown instead.
+            </exception>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter">
+            <summary>
+            Adapter for <see cref="T:Novell.Directory.Ldap.LdapAttribute"/>.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter.#ctor(Novell.Directory.Ldap.LdapAttribute)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter"/> class.
+            </summary>
+            <param name="attribute">Wrapped Novell LDAP attribute.</param>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter.ByteValue">
+            <inheritdoc/>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter.StringValue">
+            <inheritdoc/>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter.StringValueArray">
+            <inheritdoc/>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeAdapter.ByteValueArray">
+            <inheritdoc/>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter">
+            <summary>
+            Adapter that wraps a <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/> from the Novell LDAP library and exposes it
+            through the <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapAttributeSetAdapter"/> interface expected by the application.
+            </summary>
+        </member>
+        <member name="F:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter._attributeSet">
+            <summary>
+            The underlying Novell LDAP attribute set being adapted.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.#ctor(Novell.Directory.Ldap.LdapAttributeSet)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter"/> class
+            that wraps the specified <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <param name="attributeSet">
+            The <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/> instance to wrap. Must not be <c>null</c>.
+            </param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.ContainsKey(System.String)">
+            <summary>
+            Determines whether the attribute set contains an attribute with the specified name.
+            </summary>
+            <param name="attributeName">The name of the attribute to locate.</param>
+            <returns><c>true</c> if the attribute set contains an attribute with the specified name; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.GetAttribute(System.String)">
+            <summary>
+            Retrieves an attribute by name from the underlying <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <param name="attributeName">The name of the attribute to retrieve.</param>
+            <returns>
+            An <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapAttributeAdapter"/> that wraps the found <see cref="T:Novell.Directory.Ldap.LdapAttribute"/>,
+            or <c>null</c> if no attribute with the specified name exists.
+            </returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.AddAttribute(System.String,System.String)">
+            <summary>
+            Adds a single-valued string attribute to the underlying <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <param name="name">The attribute name to add.</param>
+            <param name="value">The string value for the attribute.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.AddAttribute(System.String,System.String[])">
+            <summary>
+            Adds a multi-valued string attribute to the underlying <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <param name="name">The attribute name to add.</param>
+            <param name="values">An array of string values for the attribute.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.AddAttribute(System.String,System.Byte[])">
+            <summary>
+            Adds a binary (byte array) attribute to the underlying <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <param name="name">The attribute name to add.</param>
+            <param name="value">The byte array value for the attribute.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter.GetWrappedAttributeSet">
+            <summary>
+            Returns the wrapped <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/> instance.
+            </summary>
+            <returns>The underlying <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/> that this adapter wraps.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter">
+            <summary>
+            Adapter that exposes a Novell.Directory.Ldap.LdapConnection through the project's <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapConnectionAdapter"/> abstraction.
+            </summary>
+            <remarks>
+            This adapter forwards calls to the wrapped <see cref="T:Novell.Directory.Ldap.LdapConnection"/> instance and translates
+            between the project's adapter types and Novell.Directory.Ldap types where necessary.
+            The adapter is responsible for the lifetime of the wrapped connection when disposed.
+            </remarks>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.#ctor(Novell.Directory.Ldap.LdapConnection)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter"/> class.
+            </summary>
+            <param name="ldapConnection">The <see cref="T:Novell.Directory.Ldap.LdapConnection"/> instance to wrap. Must not be <c>null</c>.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="ldapConnection"/> is <c>null</c>.</exception>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.ConnectionTimeout">
+            <summary>
+            Gets or sets the connection timeout (in milliseconds) for operations on the wrapped connection.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.SecureSocketLayer">
+            <summary>
+            Gets or sets a value indicating whether Secure Socket Layer (SSL) is enabled on the wrapped connection.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.IsBound">
+            <summary>
+            Gets a value indicating whether the wrapped connection is currently bound (authenticated).
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.ServerCertificateValidationByPass">
+            <summary>
+            Adds a user-defined server certificate validation delegate that unconditionally accepts the server certificate.
+            </summary>
+            <remarks>
+            Use with caution: this bypasses standard SSL server certificate validation for the wrapped connection instance.
+            It attaches a delegate that returns <c>true</c> for any certificate validation request.
+            </remarks>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.ConnectAsync(System.String,System.Int32)">
+            <summary>
+            Asynchronously connects to the specified LDAP server.
+            </summary>
+            <param name="host">The LDAP server host name or IP address.</param>
+            <param name="port">The LDAP server port number.</param>
+            <returns>A task that represents the asynchronous connect operation.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.BindAsync(System.String,System.String)">
+            <summary>
+            Asynchronously binds (authenticates) the wrapped connection using the supplied distinguished name and password.
+            </summary>
+            <param name="userDN">The distinguished name (DN) of the user to bind as.</param>
+            <param name="password">The password for the user.</param>
+            <returns>A task that represents the asynchronous bind operation.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.SearchAsync(Bitai.LDAPHelper.LdapAdapters.ISearchLimits,System.String,System.String[],System.Boolean)">
+            <summary>
+            Performs an asynchronous LDAP search and returns a search queue adapter.
+            </summary>
+            <param name="searchBase">The base DN from which to start the search.</param>
+            <param name="searchScope">The scope of the search (base, one-level, or subtree) as expected by the Novell API.</param>
+            <param name="searchFilter">The LDAP search filter string.</param>
+            <param name="attributeNames">An array of attribute names to return. Passing <c>null</c> requests all attributes.</param>
+            <param name="typesOnly">Whether to return only attribute types (no values).</param>
+            <param name="constraints">Optional search constraints adapter which will be translated to the Novell constraints type.</param>
+            <returns>A task that produces an <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapSearchQueueAdapter"/> wrapping the resulting <see cref="T:Novell.Directory.Ldap.LdapSearchQueue"/>.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.CreateAttributeSet">
+            <summary>
+            Creates a new <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapAttributeSetAdapter"/> instance wrapping an empty <see cref="T:Novell.Directory.Ldap.LdapAttributeSet"/>.
+            </summary>
+            <returns>An adapter for constructing attribute sets to supply to add/modify operations.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.AddEntryAsync(System.String,Bitai.LDAPHelper.LdapAdapters.ILdapAttributeSetAdapter)">
+            <summary>
+            Adds an LDAP entry with the specified distinguished name and attributes.
+            </summary>
+            <param name="distinguishedName">The distinguished name (DN) of the new entry.</param>
+            <param name="attributes">An attribute set adapter providing attributes for the new entry.</param>
+            <returns>A task that represents the asynchronous add operation.</returns>
+            <exception cref="T:System.InvalidCastException">If <paramref name="attributes"/> is not a <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapAttributeSetAdapter"/> instance.</exception>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.ModifyEntryAsync(System.String,System.Collections.Generic.IEnumerable{Bitai.LDAPHelper.LdapAdapters.ILdapModificationAdapter})">
+            <summary>
+            Modifies an existing LDAP entry using the supplied modifications.
+            </summary>
+            <param name="distinguishedName">The distinguished name (DN) of the entry to modify.</param>
+            <param name="modifications">A collection of modification adapters describing the changes to apply.</param>
+            <returns>A task that represents the asynchronous modify operation.</returns>
+            <exception cref="T:System.InvalidCastException">If any element of <paramref name="modifications"/> is not a <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter"/>.</exception>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.DeleteEntryAsync(System.String)">
+            <summary>
+            Deletes the LDAP entry with the specified distinguished name.
+            </summary>
+            <param name="distinguishedName">The distinguished name (DN) of the entry to delete.</param>
+            <returns>A task that represents the asynchronous delete operation.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.CreateModification(Bitai.LDAPHelper.LdapAdapters.LdapModificationType,System.String,System.Object)">
+            <summary>
+            Creates an <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapModificationAdapter"/> instance representing a single modification operation.
+            </summary>
+            <param name="type">The modification type (Add, Delete, Replace) defined by <see cref="T:Bitai.LDAPHelper.LdapAdapters.LdapModificationType"/>.</param>
+            <param name="attributeName">The name of the attribute to modify.</param>
+            <param name="value">
+            The value to use for the modification. Supported runtime types:
+            <list type="bullet">
+            <item><description><see cref="!:byte[]"/> - binary attribute value</description></item>
+            <item><description><see cref="!:string[]"/> - multi-valued string attribute</description></item>
+            <item><description>other - will be converted to string via <c>ToString()</c></description></item>
+            </list>
+            </param>
+            <returns>An <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapModificationAdapter"/> wrapping the underlying <see cref="T:Novell.Directory.Ldap.LdapModification"/>.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Thrown if <paramref name="type"/> is not one of the supported modification types.</exception>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Disconnect">
+            <summary>
+            Disconnects the wrapped LDAP connection.
+            </summary>
+            <remarks>
+            After calling <see cref="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Disconnect"/>, the connection object may need to be reconnected before reuse.
+            This method does not dispose the wrapped connection; call <see cref="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Dispose"/> to release resources.
+            </remarks>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Dispose">
+            <summary>
+            Releases all resources used by the adapter and the wrapped <see cref="T:Novell.Directory.Ldap.LdapConnection"/>.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Dispose(System.Boolean)">
+            <summary>
+            Protected implementation of the standard disposal pattern.
+            </summary>
+            <param name="disposing">
+            <c>true</c> when called from <see cref="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionAdapter.Dispose"/> to dispose managed resources;
+            <c>false</c> when called from a finalizer.
+            </param>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter">
+            <summary>
+            Factory for creating Novell LDAP connection adapters.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter.CreateConnectionAsync(Bitai.LDAPHelper.LdapAdapters.IConnectionInfo,System.String,System.String,System.Boolean)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapEntryAdapter">
+            <summary>
+            Adapter for <see cref="T:Novell.Directory.Ldap.LdapEntry"/>.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapEntryAdapter.#ctor(Novell.Directory.Ldap.LdapEntry)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapEntryAdapter"/> class.
+            </summary>
+            <param name="entry">Wrapped Novell LDAP entry.</param>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapEntryAdapter.DistinguishedName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapEntryAdapter.GetAttributeSet">
+            <inheritdoc/>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter">
+            <summary>
+            Adapter for <see cref="T:Novell.Directory.Ldap.LdapMessage"/>.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter.#ctor(Novell.Directory.Ldap.LdapMessage)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter"/> class.
+            </summary>
+            <param name="message">Wrapped LDAP message.</param>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter.Entry">
+            <inheritdoc/>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter.IsSearchResult">
+            <inheritdoc/>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapMessageAdapter.IsSearchDone">
+            <inheritdoc/>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter">
+            <summary>
+            Adapter that wraps a <see cref="T:Novell.Directory.Ldap.LdapModification"/> instance and exposes it through the <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapModificationAdapter"/> interface.
+            </summary>
+            <remarks>
+            This adapter provides a lightweight wrapper around Novell.Directory.Ldap's <see cref="T:Novell.Directory.Ldap.LdapModification"/>,
+            translating the native modification operation and attribute into the project's adapter abstractions.
+            </remarks>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter.#ctor(Novell.Directory.Ldap.LdapModification)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter"/> class.
+            </summary>
+            <param name="modification">The <see cref="T:Novell.Directory.Ldap.LdapModification"/> instance to wrap. May be <c>null</c> only if callers handle it; this adapter does not perform null checks.</param>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter.ModificationType">
+            <summary>
+            Gets the modification operation type mapped to the project's <see cref="T:Bitai.LDAPHelper.LdapAdapters.LdapModificationType"/> enumeration.
+            </summary>
+            <remarks>
+            The value is obtained from the wrapped <see cref="P:Novell.Directory.Ldap.LdapModification.Op"/> and cast to <see cref="T:Bitai.LDAPHelper.LdapAdapters.LdapModificationType"/>.
+            </remarks>
+        </member>
+        <member name="P:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter.Attribute">
+            <summary>
+            Gets an <see cref="T:Bitai.LDAPHelper.LdapAdapters.ILdapAttributeAdapter"/> representing the attribute involved in this modification.
+            </summary>
+            <remarks>
+            The returned adapter wraps the underlying <see cref="T:Novell.Directory.Ldap.LdapAttribute"/> instance from the wrapped <see cref="T:Novell.Directory.Ldap.LdapModification"/>.
+            </remarks>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapModificationAdapter.GetWrappedModification">
+            <summary>
+            Returns the underlying <see cref="T:Novell.Directory.Ldap.LdapModification"/> instance wrapped by this adapter.
+            </summary>
+            <returns>The original <see cref="T:Novell.Directory.Ldap.LdapModification"/> object supplied to the adapter.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapSearchQueueAdapter">
+            <summary>
+            Adapter for <see cref="T:Novell.Directory.Ldap.LdapSearchQueue"/>.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapSearchQueueAdapter.#ctor(Novell.Directory.Ldap.LdapSearchQueue)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapSearchQueueAdapter"/> class.
+            </summary>
+            <param name="searchQueue">Wrapped search queue.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapAdapters.Novell.NovellLdapSearchQueueAdapter.GetResponse">
+            <inheritdoc/>
+        </member>
+        <member name="T:Bitai.LDAPHelper.LdapOperationException">
+            <summary>
+            Represents generic LDAP operation failures in helper workflows.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapOperationException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapOperationException"/> class with a message.
+            </summary>
+            <param name="message">Error message.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.LdapOperationException.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.LdapOperationException"/> class with a message and inner exception.
+            </summary>
+            <param name="message">Error message.</param>
+            <param name="innerException">Underlying cause of this exception.</param>
+        </member>
+        <member name="T:Bitai.LDAPHelper.QueryFilters.AttributeFilter">
+            <summary>
+            Represents a single LDAP attribute filter expression.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilter.FilterAttribute">
+            <summary>
+            Gets the target LDAP attribute.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilter.FilterValue">
+            <summary>
+            Gets the filter value.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilter.IsFilterNegated">
+            <summary>
+            Gets a value indicating whether this filter is negated.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilter.Generated">
+            <summary>
+            Gets a value indicating whether the LDAP text has already been generated.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilter.#ctor(Bitai.LDAPHelper.DTO.EntryAttribute,Bitai.LDAPHelper.QueryFilters.FilterValue)">
+            <summary>
+            Initializes a new non-negated attribute filter.
+            </summary>
+            <param name="filterAttribute">Target LDAP attribute.</param>
+            <param name="filterValue">Value for the attribute comparison.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilter.#ctor(System.Boolean,Bitai.LDAPHelper.DTO.EntryAttribute,Bitai.LDAPHelper.QueryFilters.FilterValue)">
+            <summary>
+            Initializes a new attribute filter.
+            </summary>
+            <param name="isFilterNegated">Whether the generated filter is negated.</param>
+            <param name="filterAttribute">Target LDAP attribute.</param>
+            <param name="filterValue">Value for the attribute comparison.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilter.ToString">
+            <summary>
+            Generates the LDAP filter text for this instance.
+            </summary>
+            <returns>LDAP filter expression.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilter.Reset">
+            <summary>
+            Resets generated-state so the filter text is rebuilt on next call.
+            </summary>
+        </member>
+        <member name="T:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner">
+            <summary>
+            Combines multiple LDAP filter components into a single LDAP expression.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.CreateOnlyUsersFilterCombiner">
+            <summary>
+            Creates a filter combiner that targets user entries and excludes computers and groups.
+            </summary>
+            <returns>A composed LDAP filter combiner.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner">
+            <summary>
+            Creates a filter combiner that targets group entries and excludes users and computers.
+            </summary>
+            <returns>A composed LDAP filter combiner.</returns>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.IsCombinerNegated">
+            <summary>
+            Gets or sets a value indicating whether the combined expression is negated.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.ConjunctiveFilters">
+            <summary>
+            Gets or sets a value indicating whether filters are combined conjunctively (AND) or disjunctively (OR).
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.Generated">
+            <summary>
+            Gets a value indicating whether the LDAP text has already been generated.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.#ctor">
+            <summary>
+            Initializes a new non-negated conjunctive combiner.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.#ctor(System.Boolean,System.Boolean)">
+            <summary>
+            Initializes a new combiner.
+            </summary>
+            <param name="isCombinerNegated">Whether the full expression is negated.</param>
+            <param name="conjunctiveFilters"><see langword="true"/> for AND-combination; <see langword="false"/> for OR-combination.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.#ctor(System.Boolean,System.Boolean,System.Collections.Generic.IEnumerable{Bitai.LDAPHelper.QueryFilters.ICombinableFilter})">
+            <summary>
+            Initializes a new combiner with initial filter components.
+            </summary>
+            <param name="isCombinerNegated">Whether the full expression is negated.</param>
+            <param name="conjunctiveFilters"><see langword="true"/> for AND-combination; <see langword="false"/> for OR-combination.</param>
+            <param name="filters">Initial filter components.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.ToString">
+            <summary>
+            Generates LDAP filter text for all contained filter components.
+            </summary>
+            <returns>LDAP filter expression.</returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.AttributeFilterCombiner.Reset">
+            <summary>
+            Resets generated-state so filter text is rebuilt on next call.
+            </summary>
+        </member>
+        <member name="T:Bitai.LDAPHelper.QueryFilters.FilterValue">
+            <summary>
+            Represents a validated LDAP filter value.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.FilterValue.Value">
+            <summary>
+            Gets the raw value used in LDAP filters.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.FilterValue.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.QueryFilters.FilterValue"/> class.
+            </summary>
+            <param name="value">Filter value.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.FilterValue.ToString">
+            <summary>
+            Returns the filter value text.
+            </summary>
+            <returns>The raw filter value.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.QueryFilters.ICombinableFilter">
+            <summary>
+            Defines a filter component that can generate LDAP filter text and be combined with others.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.QueryFilters.ICombinableFilter.Generated">
+            <summary>
+            Gets a value indicating whether the filter text has already been generated.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.ICombinableFilter.Reset">
+            <summary>
+            Resets generated-state so filter text is rebuilt on next <see cref="M:Bitai.LDAPHelper.QueryFilters.ICombinableFilter.ToString"/> call.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.QueryFilters.ICombinableFilter.ToString">
+            <summary>
+            Generates LDAP filter text.
+            </summary>
+            <returns>LDAP filter expression.</returns>
+        </member>
+        <member name="T:Bitai.LDAPHelper.Searcher">
+            <summary>
+            Performs LDAP search operations and maps results into DTO models.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Searcher.#ctor(Bitai.LDAPHelper.ClientConfiguration,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.Searcher"/> class.
+            </summary>
+            <param name="clientConfiguration">Client configuration containing connection, credential, and search settings.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Searcher.#ctor(Bitai.LDAPHelper.ConnectionInfo,Bitai.LDAPHelper.SearchLimits,Bitai.LDAPHelper.DTO.LDAPDomainAccountCredential,Bitai.LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.Searcher"/> class.
+            </summary>
+            <param name="connectionInfo">LDAP server connection settings.</param>
+            <param name="searchLimits">LDAP search limits.</param>
+            <param name="domainAccountCredential">Credential used to execute LDAP searches.</param>
+            <param name="connectionFactory">LDAP connection factory abstraction.</param>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Searcher.SearchEntriesAsync(Bitai.LDAPHelper.QueryFilters.ICombinableFilter,Bitai.LDAPHelper.DTO.RequiredEntryAttributes,System.String)">
+            <summary>
+            Searches for entries matching the provided LDAP filter and loads the requested attributes.
+            </summary>
+            <param name="searchFilterObject">
+            A combinable LDAP filter that identifies the entries to search for. This filter will be converted 
+            to its string representation and used directly in the LDAP search operation.
+            </param>
+            <param name="requiredEntryAttributes">
+            The set of attributes to load for each entry returned in the search result. Use this to limit 
+            attributes loaded for performance (for example, OnlyMemberOf, Few, All, etc.).
+            </param>
+            <param name="requestLabel">
+            Optional label/tag that will be set on the returned LDAPSearchResult and on created LDAPEntry 
+            instances to help callers correlate operations and results.
+            </param>
+            <returns>
+            A task that resolves to an <see cref="T:Bitai.LDAPHelper.DTO.LDAPSearchResult"/> containing the entries found and 
+            any operation message. If an error occurs, the returned LDAPSearchResult will have 
+            IsSuccessfulOperation == false and contain error details.
+            </returns>
+        </member>
+        <member name="M:Bitai.LDAPHelper.Searcher.SearchParentEntriesAsync(Bitai.LDAPHelper.QueryFilters.ICombinableFilter,Bitai.LDAPHelper.DTO.RequiredEntryAttributes,System.String)">
+            <summary>
+            Searches for parent entries (groups or containers) for the entries matched by the provided filter,
+            then loads those parent entries (listed in memberOf attibute) with the requested attributes.
+            </summary>
+            <param name="searchFilter">
+            A combinable LDAP filter that identifies the starting entries whose parent membership (memberOf) 
+            will be traversed. This filter is used only to find the initial set of entries; the method then 
+            resolves their memberOf hierarchy.
+            </param>
+            <param name="requiredEntryAttributes">
+            The set of attributes to load for each parent entry returned in the final result. Use this 
+            to limit attributes loaded for performance (for example, OnlyMemberOf, Few, All, etc.).
+            </param>
+            <param name="requestLabel">
+            Optional label/tag that will be set on the returned LDAPSearchResult and on created LDAPEntry 
+            instances to help callers correlate operations and results.
+            </param>
+            <returns>
+            A task that resolves to an <see cref="T:Bitai.LDAPHelper.DTO.LDAPSearchResult"/> containing the parent entries found 
+            and any operation message. If an error occurs, the returned LDAPSearchResult will have 
+            IsSuccessfulOperation == false and contain error details.
+            </returns>
+            <remarks>
+            The method first performs a partial search requesting only memberOf to discover 
+            group/container relationships. It then traverses parents recursively (using the entry recursion 
+            helper) and performs targeted searches by distinguishedName to load the requested attributes for 
+            each discovered parent. Any LDAP or general exception is captured and returned as an unsuccessful 
+            LDAPSearchResult rather than being thrown.
+            </remarks>
+        </member>
+        <member name="T:Bitai.LDAPHelper.SearchLimits">
+            <summary>
+            Represents LDAP search boundaries and server limits.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.SearchLimits.BaseDN">
+            <summary>
+            The base distinguished name (DN) to search from.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.SearchLimits.LdapSearchScope">
+            <summary>
+            The scope of the search operation, which determines how deep the search will 
+            go in the directory tree.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.SearchLimits.MaxSearchResults">
+            <summary>
+            Maximum number of search results (entries) to be returned for a search operation.
+            A value of 0 means no limit. Default: 1000 
+            The search operation will be terminated with an LdapException.SIZE_LIMIT_EXCEEDED if the number of results exceed the maximum.
+            </summary>
+        </member>
+        <member name="P:Bitai.LDAPHelper.SearchLimits.MaxSearchTimeout">
+            <summary>
+             Maximum number of seconds that the server waits when returning search results. 
+             The search operation will be terminated with an LdapException.TIME_LIMIT_EXCEEDED if the operation exceeds the time limit.
+            </summary>
+        </member>
+        <member name="M:Bitai.LDAPHelper.SearchLimits.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Bitai.LDAPHelper.SearchLimits"/> class.
+            </summary>
+            <param name="baseDN">Base distinguished name to use for searches.</param>
+        </member>
+    </members>
+</doc>
