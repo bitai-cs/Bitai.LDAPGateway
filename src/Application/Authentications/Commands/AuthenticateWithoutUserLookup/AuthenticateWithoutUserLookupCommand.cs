@@ -39,7 +39,7 @@ public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBas
       return ExecuteAsync(
          operationName: "AuthenticateWithoutUserLookup",
          context,
-         () => _ldapGatewayClient.AuthenticateAsync(context, request.Username, request.Password, validateUserExists: false, cancellationToken),
+         () => _ldapGatewayClient.AuthenticateWithoutUserLookupAsync(context, request.Username, request.Password, cancellationToken),
          cancellationToken);
    }
 }

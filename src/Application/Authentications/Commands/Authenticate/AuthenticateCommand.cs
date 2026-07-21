@@ -39,7 +39,7 @@ public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandle
       return ExecuteAsync(
          operationName: "Authenticate",
          context,
-         () => _ldapGatewayClient.AuthenticateAsync(context, request.Username, request.Password, validateUserExists: true, cancellationToken),
+         () => _ldapGatewayClient.AuthenticateAsync(context, request.Username, request.Password, cancellationToken),
          cancellationToken);
    }
 }

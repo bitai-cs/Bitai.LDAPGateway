@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/external_reference/">
+    <Project Path="../Bitai.LDAPHelper/adapters/Bitai.LDAPHelper.LdapAdapters.Novell/Bitai.LDAPHelper.LdapAdapters.Novell.csproj" />
+    <Project Path="../Bitai.LDAPHelper/src/Bitai.LDAPHelper.DTO/Bitai.LDAPHelper.DTO.csproj" />
+    <Project Path="../Bitai.LDAPHelper/src/Bitai.LDAPHelper/Bitai.LDAPHelper.csproj" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Api/">
     <Project Path="src/Api/Bitai.LDAPGateway.Api.csproj" />

@@ -8,8 +8,13 @@ public interface ILdapGatewayClient
       LdapRequestContext context,
       string username,
       string password,
-      bool validateUserExists,
       CancellationToken cancellationToken);
+
+    Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(
+      LdapRequestContext context,
+      string username,
+      string password,      
+      CancellationToken cancellationToken);    
 
    Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
       LdapRequestContext context,

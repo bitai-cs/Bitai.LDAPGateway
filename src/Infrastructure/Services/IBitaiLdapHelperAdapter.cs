@@ -10,10 +10,16 @@ public interface IBitaiLdapHelperAdapter
       CatalogType catalogType,
       string username,
       string password,
-      bool validateUserExists,
       CancellationToken cancellationToken);
 
-   Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
+    Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(
+      string server,
+      CatalogType catalogType,
+      string username,
+      string password,
+      CancellationToken cancellationToken);
+
+    Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
       string server,
       CatalogType catalogType,
       string identifier,
