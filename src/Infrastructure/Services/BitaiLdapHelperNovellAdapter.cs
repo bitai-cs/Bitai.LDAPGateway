@@ -58,7 +58,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
       try
       {
-         var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+         var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{username}:{DateTime.UtcNow:O}";
          var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
          var authenticationResult = await authenticator.AuthenticateAsync(
@@ -133,7 +133,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
       try
       {
-         var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+         var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{username}:${DateTime.UtcNow:O}";
          var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
          var authenticationResult = await authenticator.AuthenticateAsync(
@@ -225,7 +225,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
          return false;
       }
 
-      if (!TryResolvePort(catalogType, selectedPortValue, selectedUseSslValue, out var port))
+      if (!TryResolvePort(catalogType, selectedPortValue, selectedUseSslValue, out var resolvedPortNumber))
       {
          error = $"LDAP port '{selectedPortValue}' is invalid for profile '{ldapServerProfile.ProfileId}' and catalog type '{catalogType}'.";
          return false;
@@ -239,7 +239,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
       connectionInfo = new ConnectionInfo(
          ldapServerProfile.Server,
-         port,
+         resolvedPortNumber,
          selectedUseSslValue,
          (short)ldapServerProfile.ConnectionTimeout);
 
@@ -251,7 +251,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       searchLimits = default!;
       error = string.Empty;
 
-      var baseDn = catalogType == CatalogType.GC
+      var selectedBaseDn = catalogType == CatalogType.GC
          ? ldapServerProfile.BaseDNforGlobalCatalog
          : ldapServerProfile.BaseDN;
 
@@ -261,14 +261,14 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
          return false;
       }
 
-      if (string.IsNullOrWhiteSpace(baseDn))
+      if (string.IsNullOrWhiteSpace(selectedBaseDn))
       {
          var baseDnFieldName = catalogType == CatalogType.GC ? nameof(LdapServerProfileOption.BaseDNforGlobalCatalog) : nameof(LdapServerProfileOption.BaseDN);
          error = $"{baseDnFieldName} is required for profile '{ldapServerProfile.ProfileId}'.";
          return false;
       }
 
-      searchLimits = new SearchLimits(baseDn);
+      searchLimits = new SearchLimits(selectedBaseDn);
       return true;
    }
 
@@ -306,13 +306,13 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       credential = default!;
       error = string.Empty;
 
-      if (!TryResolveDomainAndAccount(ldapServerProfile.DomainAccountName, ldapServerProfile.DefaultDomainName, out var domainName, out var accountName, out error))
+      if (!TryResolveDomainAndAccount(ldapServerProfile.DomainAccountName, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
       {
          error = $"Invalid DomainAccountName for profile '{ldapServerProfile.ProfileId}'. {error}";
          return false;
       }
 
-      credential = new LDAPDomainAccountCredential(domainName, accountName, ldapServerProfile.DomainAccountPassword ?? string.Empty);
+      credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, ldapServerProfile.DomainAccountPassword ?? string.Empty);
       return true;
    }
 
@@ -326,19 +326,19 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       credential = default!;
       error = string.Empty;
 
-      if (!TryResolveDomainAndAccount(username, ldapServerProfile.DefaultDomainName, out var domainName, out var accountName, out error))
+      if (!TryResolveDomainAndAccount(username, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
       {
          return false;
       }
 
-      credential = new LDAPDomainAccountCredential(domainName, accountName, password);
+      credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, password);
       return true;
    }
 
-   private static bool TryResolveDomainAndAccount(string domainAccountName, string defaultDomainName, out string domainName, out string accountName, out string error)
+   private static bool TryResolveDomainAndAccount(string domainAccountName, string defaultDomainName, out string resolvedDomainName, out string resolvedAccountName, out string error)
    {
-      domainName = string.Empty;
-      accountName = string.Empty;
+      resolvedDomainName = string.Empty;
+      resolvedAccountName = string.Empty;
       error = string.Empty;
 
       if (string.IsNullOrWhiteSpace(domainAccountName))
@@ -352,8 +352,8 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
       if (accountSeparatorIndex > -1)
       {
-         domainName = value[..accountSeparatorIndex].Trim();
-         accountName = value[(accountSeparatorIndex + 1)..].Trim();
+         resolvedDomainName = value[..accountSeparatorIndex].Trim();
+         resolvedAccountName = value[(accountSeparatorIndex + 1)..].Trim();
       }
       else
       {
@@ -363,11 +363,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return false;
          }
 
-         domainName = defaultDomainName.Trim();
-         accountName = value;
+         resolvedDomainName = defaultDomainName.Trim();
+         resolvedAccountName = value;
       }
 
-      if (string.IsNullOrWhiteSpace(domainName) || string.IsNullOrWhiteSpace(accountName))
+      if (string.IsNullOrWhiteSpace(resolvedDomainName) || string.IsNullOrWhiteSpace(resolvedAccountName))
       {
          error = "Both domain and account segments must be present.";
          return false;
