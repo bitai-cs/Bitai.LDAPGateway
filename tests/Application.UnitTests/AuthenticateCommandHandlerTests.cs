@@ -16,7 +16,7 @@ public sealed class AuthenticateCommandHandlerTests
       var publisherMock = new Mock<IDomainEventPublisher>();
 
       ldapClientMock
-         .Setup(x => x.AuthenticateAsync(It.IsAny<LdapRequestContext>(), "john", "pwd", true, It.IsAny<CancellationToken>()))
+         .Setup(x => x.AuthenticateAsync(It.IsAny<LdapRequestContext>(), "john", "pwd", It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<AuthenticationResultDto>.Success(new AuthenticationResultDto(true, "john", "ok")));
 
       var handler = new AuthenticateCommandHandler(ldapClientMock.Object, publisherMock.Object);

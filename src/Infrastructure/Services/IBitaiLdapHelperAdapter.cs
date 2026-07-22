@@ -1,12 +1,13 @@
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Infrastructure.Options;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
 public interface IBitaiLdapHelperAdapter
 {
    Task<Result<AuthenticationResultDto>> AuthenticateAsync(
-      string server,
+      LdapServerProfileOption ldapServerProfile,
       CatalogType catalogType,
       string username,
       string password,

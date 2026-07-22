@@ -25,30 +25,30 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
     #region Authentication Methods
     public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapRequestContext context, string username, string password, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<AuthenticationResultDto>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.AuthenticateAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);        
+        return await _adapter.AuthenticateAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);
     }
 
     public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapRequestContext context, string username, string password, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<AuthenticationResultDto>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.AuthenticateWithoutUserLookupAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);        
+        return await _adapter.AuthenticateWithoutUserLookupAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);
     }
     #endregion
 
     public async Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<DirectoryEntryDto>.Failure(profileResult.Error!);
@@ -59,7 +59,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
@@ -70,7 +70,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapRequestContext context, CreateMsAdUserDto request, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<DirectoryEntryDto>.Failure(profileResult.Error!);
@@ -81,7 +81,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result> SetMsAdUserPasswordAsync(LdapRequestContext context, string identifier, string newPassword, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
@@ -92,7 +92,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, string identifier, string? reason, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
@@ -103,7 +103,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, string identifier, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
@@ -114,7 +114,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
@@ -125,7 +125,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<LdapUserDto>>.Failure(profileResult.Error!);
@@ -136,7 +136,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<LdapGroupDto>> GetGroupAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<LdapGroupDto>.Failure(profileResult.Error!);
@@ -147,7 +147,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<LdapGroupDto>>.Failure(profileResult.Error!);
@@ -158,7 +158,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
     {
-        var profileResult = GetProfile(context.ServerProfile);
+        var profileResult = GetLdapServerProfileName(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<LdapGroupDto>>.Failure(profileResult.Error!);
@@ -170,14 +170,24 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region Private Methods
-    private Result<string> GetProfile(string profileId)
+    private Result<string> GetLdapServerProfileName(string profileId)
     {
         var profile = _options.CurrentValue
-           .FirstOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
+           .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
 
         return profile is null
            ? Result<string>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
            : Result<string>.Success(profile.Server);
+    }
+
+    private Result<LdapServerProfileOption> GetLdapServerProfileConfiguration(string profileId)
+    {
+        var profile = _options.CurrentValue
+           .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
+
+        return profile is null
+           ? Result<LdapServerProfileOption>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
+           : Result<LdapServerProfileOption>.Success(profile);
     }
     #endregion
 }

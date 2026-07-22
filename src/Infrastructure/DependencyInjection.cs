@@ -16,7 +16,7 @@ public static class DependencyInjection
          .Validate(options => options.Count > 0, "At least one LDAP server profile must be configured.")
          .ValidateOnStart();
 
-      services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperAdapter>();
+      services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperNovellAdapter>();
       services.AddScoped<ILdapGatewayClient, LdapGatewayClient>();
       services.AddScoped<IServerProfileReadService, LdapServerProfileReadService>();
       services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
