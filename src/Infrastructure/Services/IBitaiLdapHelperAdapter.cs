@@ -13,12 +13,12 @@ public interface IBitaiLdapHelperAdapter
       string password,
       CancellationToken cancellationToken);
 
-    Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(
-      string server,
-      CatalogType catalogType,
-      string username,
-      string password,
-      CancellationToken cancellationToken);
+      Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(
+         LdapServerProfileOption ldapServerProfile,
+         CatalogType catalogType,
+         string username,
+         string password,
+         CancellationToken cancellationToken);
 
     Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
       string server,

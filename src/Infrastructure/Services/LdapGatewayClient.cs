@@ -36,7 +36,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapRequestContext context, string username, string password, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<AuthenticationResultDto>.Failure(profileResult.Error!);

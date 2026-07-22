@@ -102,8 +102,78 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       }
    }
 
-    public Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(string server, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
-      => NotConfigured<AuthenticationResultDto>("AuthenticateWithoutUserLookup");
+    public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
+    {
+      cancellationToken.ThrowIfCancellationRequested();
+
+      if (ldapServerProfile is null)
+      {
+         return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
+      }
+
+      if (string.IsNullOrWhiteSpace(username))
+      {
+         return Result<AuthenticationResultDto>.Failure(Error.Validation("Username is required."));
+      }
+
+      if (string.IsNullOrWhiteSpace(password))
+      {
+         return Result<AuthenticationResultDto>.Failure(Error.Validation("Password is required."));
+      }
+
+      if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+      {
+         return Result<AuthenticationResultDto>.Failure(Error.Validation(connectionError));
+      }
+
+      if (!TryCreateUserCredential(ldapServerProfile, username, password, out var credentialToAuthenticate, out var userCredentialError))
+      {
+         return Result<AuthenticationResultDto>.Failure(Error.Validation(userCredentialError));
+      }
+
+      try
+      {
+         var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+         var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
+
+         var authenticationResult = await authenticator.AuthenticateAsync(
+            credentialToAuthenticate,
+            requestLabel);
+
+         if (!authenticationResult.IsSuccessfulOperation)
+         {
+            _logger.LogError(
+               authenticationResult.ErrorObject,
+               "Bitai.LDAPHelper AuthenticateWithoutUserLookup failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
+               ldapServerProfile.ProfileId,
+               credentialToAuthenticate.DomainAccountName,
+               authenticationResult.OperationMessage);
+
+            return Result<AuthenticationResultDto>.Failure(
+               Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+                  ? "LDAP authentication operation failed."
+                  : authenticationResult.OperationMessage));
+         }
+
+         var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
+         var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+            ? "LDAP authentication operation completed."
+            : authenticationResult.OperationMessage;
+
+         return Result<AuthenticationResultDto>.Success(
+            new AuthenticationResultDto(authenticationResult.IsAuthenticated, authenticatedUsername, message));
+      }
+      catch (Exception ex)
+      {
+         _logger.LogError(
+            ex,
+            "Unhandled exception while authenticating (without lookup) profile {ProfileId} and username {Username}.",
+            ldapServerProfile.ProfileId,
+            username);
+
+         return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
+      }
+    }
 
     public Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
       => NotConfigured<DirectoryEntryDto>("GetDirectoryEntry");
