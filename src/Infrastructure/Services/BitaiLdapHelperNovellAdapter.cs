@@ -219,15 +219,15 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
          return false;
       }
 
-      if (!TryGetCatalogNetworkSettings(ldapServerProfile, catalogType, out var useSsl, out var portValue, out var settingsError))
+      if (!TryGetCatalogNetworkSettings(ldapServerProfile, catalogType, out var selectedUseSslValue, out var selectedPortValue, out var settingsError))
       {
          error = settingsError;
          return false;
       }
 
-      if (!TryResolvePort(portValue, useSsl, out var port))
+      if (!TryResolvePort(catalogType, selectedPortValue, selectedUseSslValue, out var port))
       {
-         error = $"LDAP port '{portValue}' is invalid for profile '{ldapServerProfile.ProfileId}' and catalog type '{catalogType}'.";
+         error = $"LDAP port '{selectedPortValue}' is invalid for profile '{ldapServerProfile.ProfileId}' and catalog type '{catalogType}'.";
          return false;
       }
 
@@ -240,7 +240,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       connectionInfo = new ConnectionInfo(
          ldapServerProfile.Server,
          port,
-         useSsl,
+         selectedUseSslValue,
          (short)ldapServerProfile.ConnectionTimeout);
 
       return true;
@@ -275,12 +275,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
    private static bool TryGetCatalogNetworkSettings(
       LdapServerProfileOption ldapServerProfile,
       CatalogType catalogType,
-      out bool useSsl,
-      out string portValue,
+      out bool selectedUseSslValue,
+      out string selectedPortValue,
       out string error)
    {
-      useSsl = false;
-      portValue = string.Empty;
+      selectedUseSslValue = false;
+      selectedPortValue = string.Empty;
       error = string.Empty;
 
       if (!Enum.IsDefined(typeof(CatalogType), catalogType))
@@ -291,13 +291,13 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
       if (catalogType == CatalogType.GC)
       {
-         useSsl = bool.TryParse(ldapServerProfile.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc;
-         portValue = ldapServerProfile.PortForGlobalCatalog;
+         selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc;
+         selectedPortValue = ldapServerProfile.PortForGlobalCatalog;
          return true;
       }
 
-      useSsl = bool.TryParse(ldapServerProfile.UseSSL, out var useSslLc) && useSslLc;
-      portValue = ldapServerProfile.Port;
+      selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSL, out var useSslLc) && useSslLc;
+      selectedPortValue = ldapServerProfile.Port;
       return true;
    }
 
@@ -376,13 +376,20 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
       return true;
    }
 
-   private static bool TryResolvePort(string portValue, bool useSsl, out int port)
+   private static bool TryResolvePort(CatalogType catalogType, string portValue, bool useSsl, out int port)
    {
       port = 0;
 
+      if (!Enum.IsDefined(typeof(CatalogType), catalogType))
+      {
+         return false;
+      }
+
       if (string.IsNullOrWhiteSpace(portValue) || string.Equals(portValue.Trim(), "Default", StringComparison.OrdinalIgnoreCase))
       {
-         port = useSsl ? 636 : 389;
+         port = catalogType == CatalogType.GC
+            ? useSsl ? 3269 : 3268
+            : useSsl ? 636 : 389;
          return true;
       }
 
