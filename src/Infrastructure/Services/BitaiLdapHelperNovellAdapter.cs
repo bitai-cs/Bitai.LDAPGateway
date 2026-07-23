@@ -17,171 +17,165 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         _logger = logger;
     }
 
-   public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
-   {
-      cancellationToken.ThrowIfCancellationRequested();
+    public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-      if (ldapServerProfile is null)
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
-      }
+        if (ldapServerProfile is null)
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
+        }
 
-      if (string.IsNullOrWhiteSpace(username))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("Username is required."));
-      }
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Username is required."));
+        }
 
-      if (string.IsNullOrWhiteSpace(password))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("Password is required."));
-      }
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Password is required."));
+        }
 
-      if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(connectionError));
-      }
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(connectionError));
+        }
 
-      if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(searchLimitsError));
-      }
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(searchLimitsError));
+        }
 
-      if (!TryCreateSearchCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(credentialError));
-      }
+        if (!TryCreateSearchCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(credentialError));
+        }
 
-      if (!TryCreateUserCredential(ldapServerProfile, username, password, out var credentialToAuthenticate, out var userCredentialError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(userCredentialError));
-      }
+        if (!TryCreateUserCredential(ldapServerProfile, username, password, out var credentialToAuthenticate, out var userCredentialError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(userCredentialError));
+        }
 
-      try
-      {
-         var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{username}:{DateTime.UtcNow:O}";
-         var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
+        try
+        {
+            var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{username}:{DateTime.UtcNow:O}";
+            var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
-         var authenticationResult = await authenticator.AuthenticateAsync(
-            credentialToAuthenticate,
-            searchLimits,
-            credentialForSearching,
-            requestLabel);
+            var authenticationResult = await authenticator.AuthenticateAsync(
+               credentialToAuthenticate,
+               searchLimits,
+               credentialForSearching,
+               requestLabel);
 
-         if (!authenticationResult.IsSuccessfulOperation)
-         {
+            if (!authenticationResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   authenticationResult.ErrorObject,
+                   "Bitai.LDAPHelper Authenticate failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   credentialToAuthenticate.DomainAccountName,
+                   authenticationResult.OperationMessage);
+
+                return Result<AuthenticationResultDto>.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+                      ? "LDAP authentication operation failed."
+                      : authenticationResult.OperationMessage));
+            }
+
+            var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
+            var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+               ? "LDAP authentication operation completed."
+               : authenticationResult.OperationMessage;
+
+            return Result<AuthenticationResultDto>.Success(
+               new AuthenticationResultDto(authenticationResult.IsAuthenticated, authenticatedUsername, message));
+        }
+        catch (Exception ex)
+        {
             _logger.LogError(
-               authenticationResult.ErrorObject,
-               "Bitai.LDAPHelper Authenticate failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
+               ex,
+               "Unhandled exception while authenticating profile {ProfileId} and username {Username}.",
                ldapServerProfile.ProfileId,
-               credentialToAuthenticate.DomainAccountName,
-               authenticationResult.OperationMessage);
+               username);
 
-            return Result<AuthenticationResultDto>.Failure(
-               Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-                  ? "LDAP authentication operation failed."
-                  : authenticationResult.OperationMessage));
-         }
-
-         var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
-         var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-            ? "LDAP authentication operation completed."
-            : authenticationResult.OperationMessage;
-
-         return Result<AuthenticationResultDto>.Success(
-            new AuthenticationResultDto(authenticationResult.IsAuthenticated, authenticatedUsername, message));
-      }
-      catch (Exception ex)
-      {
-         _logger.LogError(
-            ex,
-            "Unhandled exception while authenticating profile {ProfileId} and username {Username}.",
-            ldapServerProfile.ProfileId,
-            username);
-
-         return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
-      }
-   }
+            return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
+        }
+    }
 
     public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
-      cancellationToken.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested();
 
-      if (ldapServerProfile is null)
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
-      }
+        if (ldapServerProfile is null)
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
+        }
 
-      if (string.IsNullOrWhiteSpace(username))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("Username is required."));
-      }
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Username is required."));
+        }
 
-      if (string.IsNullOrWhiteSpace(password))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation("Password is required."));
-      }
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Password is required."));
+        }
 
-      if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(connectionError));
-      }
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(connectionError));
+        }
 
-      if (!TryCreateUserCredential(ldapServerProfile, username, password, out var credentialToAuthenticate, out var userCredentialError))
-      {
-         return Result<AuthenticationResultDto>.Failure(Error.Validation(userCredentialError));
-      }
+        if (!TryCreateUserCredential(ldapServerProfile, username, password, out var credentialToAuthenticate, out var userCredentialError))
+        {
+            return Result<AuthenticationResultDto>.Failure(Error.Validation(userCredentialError));
+        }
 
-      try
-      {
-         var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{username}:${DateTime.UtcNow:O}";
-         var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
+        try
+        {
+            var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{username}:${DateTime.UtcNow:O}";
+            var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
-         var authenticationResult = await authenticator.AuthenticateAsync(
-            credentialToAuthenticate,
-            requestLabel);
+            var authenticationResult = await authenticator.AuthenticateAsync(
+               credentialToAuthenticate,
+               requestLabel);
 
-         if (!authenticationResult.IsSuccessfulOperation)
-         {
+            if (!authenticationResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   authenticationResult.ErrorObject,
+                   "Bitai.LDAPHelper AuthenticateWithoutUserLookup failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   credentialToAuthenticate.DomainAccountName,
+                   authenticationResult.OperationMessage);
+
+                return Result<AuthenticationResultDto>.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+                      ? "LDAP authentication operation failed."
+                      : authenticationResult.OperationMessage));
+            }
+
+            var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
+            var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
+               ? "LDAP authentication operation completed."
+               : authenticationResult.OperationMessage;
+
+            return Result<AuthenticationResultDto>.Success(
+               new AuthenticationResultDto(authenticationResult.IsAuthenticated, authenticatedUsername, message));
+        }
+        catch (Exception ex)
+        {
             _logger.LogError(
-               authenticationResult.ErrorObject,
-               "Bitai.LDAPHelper AuthenticateWithoutUserLookup failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
+               ex,
+               "Unhandled exception while authenticating (without lookup) profile {ProfileId} and username {Username}.",
                ldapServerProfile.ProfileId,
-               credentialToAuthenticate.DomainAccountName,
-               authenticationResult.OperationMessage);
+               username);
 
-            return Result<AuthenticationResultDto>.Failure(
-               Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-                  ? "LDAP authentication operation failed."
-                  : authenticationResult.OperationMessage));
-         }
-
-         var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
-         var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-            ? "LDAP authentication operation completed."
-            : authenticationResult.OperationMessage;
-
-         return Result<AuthenticationResultDto>.Success(
-            new AuthenticationResultDto(authenticationResult.IsAuthenticated, authenticatedUsername, message));
-      }
-      catch (Exception ex)
-      {
-         _logger.LogError(
-            ex,
-            "Unhandled exception while authenticating (without lookup) profile {ProfileId} and username {Username}.",
-            ldapServerProfile.ProfileId,
-            username);
-
-         return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
-      }
+            return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
+        }
     }
 
-    public Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
-      => NotConfigured<DirectoryEntryDto>("GetDirectoryEntry");
-
-    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
-       => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("SearchDirectory");
-
-    public Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(string server, CatalogType catalogType, CreateMsAdUserDto user, CancellationToken cancellationToken)
+    public Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, CreateMsAdUserDto user, CancellationToken cancellationToken)
        => NotConfigured<DirectoryEntryDto>("CreateMsAdUser");
 
     public Task<Result> SetMsAdUserPasswordAsync(string server, CatalogType catalogType, string identifier, string password, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
@@ -192,6 +186,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
     public Task<Result> DeleteMsAdUserAsync(string server, CatalogType catalogType, string identifier, CancellationToken cancellationToken)
        => NotConfigured("DeleteMsAdUser");
+
+    public Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
+      => NotConfigured<DirectoryEntryDto>("GetDirectoryEntry");
+
+    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
+       => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("SearchDirectory");
 
     public Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("GetUserParents");
@@ -208,193 +208,193 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     public Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<LdapGroupDto>>("SearchGroups");
 
-   private static bool TryCreateConnectionInfo(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out ConnectionInfo connectionInfo, out string error)
-   {
-      connectionInfo = default!;
-      error = string.Empty;
+    private static bool TryCreateConnectionInfo(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out ConnectionInfo connectionInfo, out string error)
+    {
+        connectionInfo = default!;
+        error = string.Empty;
 
-      if (string.IsNullOrWhiteSpace(ldapServerProfile.Server))
-      {
-         error = $"LDAP server is missing for profile '{ldapServerProfile.ProfileId}'.";
-         return false;
-      }
-
-      if (!TryGetCatalogNetworkSettings(ldapServerProfile, catalogType, out var selectedUseSslValue, out var selectedPortValue, out var settingsError))
-      {
-         error = settingsError;
-         return false;
-      }
-
-      if (!TryResolvePort(catalogType, selectedPortValue, selectedUseSslValue, out var resolvedPortNumber))
-      {
-         error = $"LDAP port '{selectedPortValue}' is invalid for profile '{ldapServerProfile.ProfileId}' and catalog type '{catalogType}'.";
-         return false;
-      }
-
-      if (ldapServerProfile.ConnectionTimeout <= 0 || ldapServerProfile.ConnectionTimeout > short.MaxValue)
-      {
-         error = $"ConnectionTimeout must be between 1 and {short.MaxValue} seconds for profile '{ldapServerProfile.ProfileId}'.";
-         return false;
-      }
-
-      connectionInfo = new ConnectionInfo(
-         ldapServerProfile.Server,
-         resolvedPortNumber,
-         selectedUseSslValue,
-         (short)ldapServerProfile.ConnectionTimeout);
-
-      return true;
-   }
-
-   private static bool TryCreateSearchLimits(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out SearchLimits searchLimits, out string error)
-   {
-      searchLimits = default!;
-      error = string.Empty;
-
-      var selectedBaseDn = catalogType == CatalogType.GC
-         ? ldapServerProfile.BaseDNforGlobalCatalog
-         : ldapServerProfile.BaseDN;
-
-      if (!Enum.IsDefined(typeof(CatalogType), catalogType))
-      {
-         error = $"Catalog type '{catalogType}' is not supported.";
-         return false;
-      }
-
-      if (string.IsNullOrWhiteSpace(selectedBaseDn))
-      {
-         var baseDnFieldName = catalogType == CatalogType.GC ? nameof(LdapServerProfileOption.BaseDNforGlobalCatalog) : nameof(LdapServerProfileOption.BaseDN);
-         error = $"{baseDnFieldName} is required for profile '{ldapServerProfile.ProfileId}'.";
-         return false;
-      }
-
-      searchLimits = new SearchLimits(selectedBaseDn);
-      return true;
-   }
-
-   private static bool TryGetCatalogNetworkSettings(
-      LdapServerProfileOption ldapServerProfile,
-      CatalogType catalogType,
-      out bool selectedUseSslValue,
-      out string selectedPortValue,
-      out string error)
-   {
-      selectedUseSslValue = false;
-      selectedPortValue = string.Empty;
-      error = string.Empty;
-
-      if (!Enum.IsDefined(typeof(CatalogType), catalogType))
-      {
-         error = $"Catalog type '{catalogType}' is not supported.";
-         return false;
-      }
-
-      if (catalogType == CatalogType.GC)
-      {
-         selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc;
-         selectedPortValue = ldapServerProfile.PortForGlobalCatalog;
-         return true;
-      }
-
-      selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSL, out var useSslLc) && useSslLc;
-      selectedPortValue = ldapServerProfile.Port;
-      return true;
-   }
-
-   private static bool TryCreateSearchCredential(LdapServerProfileOption ldapServerProfile, out LDAPDomainAccountCredential credential, out string error)
-   {
-      credential = default!;
-      error = string.Empty;
-
-      if (!TryResolveDomainAndAccount(ldapServerProfile.DomainAccountName, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
-      {
-         error = $"Invalid DomainAccountName for profile '{ldapServerProfile.ProfileId}'. {error}";
-         return false;
-      }
-
-      credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, ldapServerProfile.DomainAccountPassword ?? string.Empty);
-      return true;
-   }
-
-   private static bool TryCreateUserCredential(
-      LdapServerProfileOption ldapServerProfile,
-      string username,
-      string password,
-      out LDAPDomainAccountCredential credential,
-      out string error)
-   {
-      credential = default!;
-      error = string.Empty;
-
-      if (!TryResolveDomainAndAccount(username, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
-      {
-         return false;
-      }
-
-      credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, password);
-      return true;
-   }
-
-   private static bool TryResolveDomainAndAccount(string domainAccountName, string defaultDomainName, out string resolvedDomainName, out string resolvedAccountName, out string error)
-   {
-      resolvedDomainName = string.Empty;
-      resolvedAccountName = string.Empty;
-      error = string.Empty;
-
-      if (string.IsNullOrWhiteSpace(domainAccountName))
-      {
-         error = "Domain account name is required.";
-         return false;
-      }
-
-      var value = domainAccountName.Trim();
-      var accountSeparatorIndex = value.IndexOf('\\');
-
-      if (accountSeparatorIndex > -1)
-      {
-         resolvedDomainName = value[..accountSeparatorIndex].Trim();
-         resolvedAccountName = value[(accountSeparatorIndex + 1)..].Trim();
-      }
-      else
-      {
-         if (string.IsNullOrWhiteSpace(defaultDomainName))
-         {
-            error = "DefaultDomainName is required when the account does not include a domain prefix.";
+        if (string.IsNullOrWhiteSpace(ldapServerProfile.Server))
+        {
+            error = $"LDAP server is missing for profile '{ldapServerProfile.ProfileId}'.";
             return false;
-         }
+        }
 
-         resolvedDomainName = defaultDomainName.Trim();
-         resolvedAccountName = value;
-      }
+        if (!TryGetCatalogNetworkSettings(ldapServerProfile, catalogType, out var selectedUseSslValue, out var selectedPortValue, out var settingsError))
+        {
+            error = settingsError;
+            return false;
+        }
 
-      if (string.IsNullOrWhiteSpace(resolvedDomainName) || string.IsNullOrWhiteSpace(resolvedAccountName))
-      {
-         error = "Both domain and account segments must be present.";
-         return false;
-      }
+        if (!TryResolvePort(catalogType, selectedPortValue, selectedUseSslValue, out var resolvedPortNumber))
+        {
+            error = $"LDAP port '{selectedPortValue}' is invalid for profile '{ldapServerProfile.ProfileId}' and catalog type '{catalogType}'.";
+            return false;
+        }
 
-      return true;
-   }
+        if (ldapServerProfile.ConnectionTimeout <= 0 || ldapServerProfile.ConnectionTimeout > short.MaxValue)
+        {
+            error = $"ConnectionTimeout must be between 1 and {short.MaxValue} seconds for profile '{ldapServerProfile.ProfileId}'.";
+            return false;
+        }
 
-   private static bool TryResolvePort(CatalogType catalogType, string portValue, bool useSsl, out int port)
-   {
-      port = 0;
+        connectionInfo = new ConnectionInfo(
+           ldapServerProfile.Server,
+           resolvedPortNumber,
+           selectedUseSslValue,
+           (short)ldapServerProfile.ConnectionTimeout);
 
-      if (!Enum.IsDefined(typeof(CatalogType), catalogType))
-      {
-         return false;
-      }
+        return true;
+    }
 
-      if (string.IsNullOrWhiteSpace(portValue) || string.Equals(portValue.Trim(), "Default", StringComparison.OrdinalIgnoreCase))
-      {
-         port = catalogType == CatalogType.GC
-            ? useSsl ? 3269 : 3268
-            : useSsl ? 636 : 389;
-         return true;
-      }
+    private static bool TryCreateSearchLimits(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out SearchLimits searchLimits, out string error)
+    {
+        searchLimits = default!;
+        error = string.Empty;
 
-      return int.TryParse(portValue, out port) && port > 0 && port <= 65535;
-   }
+        var selectedBaseDn = catalogType == CatalogType.GC
+           ? ldapServerProfile.BaseDNforGlobalCatalog
+           : ldapServerProfile.BaseDN;
+
+        if (!Enum.IsDefined(typeof(CatalogType), catalogType))
+        {
+            error = $"Catalog type '{catalogType}' is not supported.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedBaseDn))
+        {
+            var baseDnFieldName = catalogType == CatalogType.GC ? nameof(LdapServerProfileOption.BaseDNforGlobalCatalog) : nameof(LdapServerProfileOption.BaseDN);
+            error = $"{baseDnFieldName} is required for profile '{ldapServerProfile.ProfileId}'.";
+            return false;
+        }
+
+        searchLimits = new SearchLimits(selectedBaseDn);
+        return true;
+    }
+
+    private static bool TryGetCatalogNetworkSettings(
+       LdapServerProfileOption ldapServerProfile,
+       CatalogType catalogType,
+       out bool selectedUseSslValue,
+       out string selectedPortValue,
+       out string error)
+    {
+        selectedUseSslValue = false;
+        selectedPortValue = string.Empty;
+        error = string.Empty;
+
+        if (!Enum.IsDefined(typeof(CatalogType), catalogType))
+        {
+            error = $"Catalog type '{catalogType}' is not supported.";
+            return false;
+        }
+
+        if (catalogType == CatalogType.GC)
+        {
+            selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc;
+            selectedPortValue = ldapServerProfile.PortForGlobalCatalog;
+            return true;
+        }
+
+        selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSL, out var useSslLc) && useSslLc;
+        selectedPortValue = ldapServerProfile.Port;
+        return true;
+    }
+
+    private static bool TryCreateSearchCredential(LdapServerProfileOption ldapServerProfile, out LDAPDomainAccountCredential credential, out string error)
+    {
+        credential = default!;
+        error = string.Empty;
+
+        if (!TryResolveDomainAndAccount(ldapServerProfile.DomainAccountName, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
+        {
+            error = $"Invalid DomainAccountName for profile '{ldapServerProfile.ProfileId}'. {error}";
+            return false;
+        }
+
+        credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, ldapServerProfile.DomainAccountPassword ?? string.Empty);
+        return true;
+    }
+
+    private static bool TryCreateUserCredential(
+       LdapServerProfileOption ldapServerProfile,
+       string username,
+       string password,
+       out LDAPDomainAccountCredential credential,
+       out string error)
+    {
+        credential = default!;
+        error = string.Empty;
+
+        if (!TryResolveDomainAndAccount(username, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
+        {
+            return false;
+        }
+
+        credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, password);
+        return true;
+    }
+
+    private static bool TryResolveDomainAndAccount(string domainAccountName, string defaultDomainName, out string resolvedDomainName, out string resolvedAccountName, out string error)
+    {
+        resolvedDomainName = string.Empty;
+        resolvedAccountName = string.Empty;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(domainAccountName))
+        {
+            error = "Domain account name is required.";
+            return false;
+        }
+
+        var value = domainAccountName.Trim();
+        var accountSeparatorIndex = value.IndexOf('\\');
+
+        if (accountSeparatorIndex > -1)
+        {
+            resolvedDomainName = value[..accountSeparatorIndex].Trim();
+            resolvedAccountName = value[(accountSeparatorIndex + 1)..].Trim();
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(defaultDomainName))
+            {
+                error = "DefaultDomainName is required when the account does not include a domain prefix.";
+                return false;
+            }
+
+            resolvedDomainName = defaultDomainName.Trim();
+            resolvedAccountName = value;
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedDomainName) || string.IsNullOrWhiteSpace(resolvedAccountName))
+        {
+            error = "Both domain and account segments must be present.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryResolvePort(CatalogType catalogType, string portValue, bool useSsl, out int port)
+    {
+        port = 0;
+
+        if (!Enum.IsDefined(typeof(CatalogType), catalogType))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(portValue) || string.Equals(portValue.Trim(), "Default", StringComparison.OrdinalIgnoreCase))
+        {
+            port = catalogType == CatalogType.GC
+               ? useSsl ? 3269 : 3268
+               : useSsl ? 636 : 389;
+            return true;
+        }
+
+        return int.TryParse(portValue, out port) && port > 0 && port <= 65535;
+    }
 
     private Task<Result<T>> NotConfigured<T>(string operation)
     {

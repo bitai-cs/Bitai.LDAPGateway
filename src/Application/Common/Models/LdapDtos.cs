@@ -8,15 +8,51 @@ public sealed record LdapUserDto(string Identifier, string Username, string Disp
 
 public sealed record LdapGroupDto(string Identifier, string Name, string Description);
 
-public sealed record CreateMsAdUserDto(
-   string SamAccountName,
-   string UserPrincipalName,
-   string GivenName,
-   string Surname,
-   string DisplayName,
-   string OrganizationalUnitDn,
-   string InitialPassword,
-   bool Enabled);
+public record CreateMsAdUserDto: Bitai.LDAPHelper.DTO.LDAPMsADUserAccount
+{
+    public CreateMsAdUserDto() : base() { }
+
+    public CreateMsAdUserDto(string distinguishedNameOfContainer)
+        : base(distinguishedNameOfContainer) { }
+
+    public CreateMsAdUserDto(
+        string distinguishedNameOfContainer,
+        string? givenName = null,
+        string? sn = null,
+        string? cn = null,
+        string? name = null,
+        string? displayName = null,
+        string? description = null,
+        string? distinguishedName = null,
+        string[]? objectClass = null,
+        string? samAccountName = null,
+        string? userPrincipalName = null,
+        string? userAccountControl = null,
+        string? department = null,
+        string? telephoneNumber = null,
+        string? mail = null,
+        string? password = null)
+        : base(distinguishedNameOfContainer, givenName, sn, cn, name, displayName, description,
+               distinguishedName, objectClass, samAccountName, userPrincipalName, userAccountControl,
+               department, telephoneNumber, mail, password) { }
+}
+// public sealed record CreateMsAdUserDto(
+//    string DistinguishedName,
+//    string DistinguishedNameOfContainer,
+//    string GivenName,
+//    string Surname,
+//    string CommonName,
+//    string Name,
+//    string DisplayName,
+//    string Description,
+//    string[] ObjectClass,
+//    string SamAccountName,
+//    string UserPrincipalName,
+//    string UserAccountControl,
+//    string Department,
+//    string TelephoneNumber,
+//    string Mail,
+//    string Password);
 
 public sealed record LdapServerProfileDto(
    string ProfileId,

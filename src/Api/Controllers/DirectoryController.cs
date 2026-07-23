@@ -65,14 +65,22 @@ public sealed class DirectoryController : ControllerBase
          new CreateMsAdUserCommand(
             serverProfile,
             catalogType,
-            request.SamAccountName,
-            request.UserPrincipalName,
-            request.GivenName,
-            request.Surname,
-            request.DisplayName,
-            request.OrganizationalUnitDn,
-            request.InitialPassword,
-            request.Enabled),
+            request.distinguishedName,
+            request.distinguishedNameOfContainer,
+            request.givenName,
+            request.sn,
+            request.cn,
+            request.name,
+            request.displayName,
+            request.description,
+            request.objectClass,
+            request.samAccountName,
+            request.userPrincipalName,
+            request.userAccountControl,
+            request.department,
+            request.telephoneNumber,
+            request.mail,
+            request.password),
          cancellationToken);
 
       return this.ToActionResult(result);
@@ -178,14 +186,22 @@ public sealed class DirectoryController : ControllerBase
 }
 
 public sealed record CreateMsAdUserRequest(
-   string SamAccountName,
-   string UserPrincipalName,
-   string GivenName,
-   string Surname,
-   string DisplayName,
-   string OrganizationalUnitDn,
-   string InitialPassword,
-   bool Enabled = true);
+   string distinguishedName,
+   string distinguishedNameOfContainer,
+   string givenName,
+   string sn,
+   string cn,
+   string name,
+   string displayName,
+   string description,
+   string[] objectClass,
+   string samAccountName,
+   string userPrincipalName,
+   string userAccountControl,
+   string department,
+   string telephoneNumber,
+   string mail,
+   string password);
 
 public sealed record SetMsAdUserCredentialRequest(string Password, bool MustChangeAtNextLogon = false);
 
