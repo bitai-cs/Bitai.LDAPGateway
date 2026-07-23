@@ -364,11 +364,164 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
     }
 
-    public Task<Result> DisableMsAdUserAsync(string server, CatalogType catalogType, string identifier, string? reason, CancellationToken cancellationToken)
-       => NotConfigured("DisableMsAdUser");
+    public async Task<Result> DisableMsAdUserAsync(
+       LdapServerProfileOption ldapServerProfile,
+       CatalogType catalogType,
+       string identifier,
+       string? reason,
+       CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-    public Task<Result> DeleteMsAdUserAsync(string server, CatalogType catalogType, string identifier, CancellationToken cancellationToken)
-       => NotConfigured("DeleteMsAdUser");
+        if (ldapServerProfile is null)
+        {
+            return Result.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifier);
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-disable-msad-user:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var accountManager = new AccountManager(
+               connectionInfo,
+               searchLimits,
+               credentialForSearching,
+               new NovellLdapConnectionFactoryAdapter());
+
+            var disableResult = await accountManager
+               .DisableMsADUserAccount(resolvedIdentifierAttribute, identifier, requestLabel)
+               .WaitAsync(cancellationToken);
+
+            if (!disableResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   disableResult.ErrorObject,
+                   "Bitai.LDAPHelper DisableMsAdUser failed for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}, reason {Reason}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   identifier,
+                   resolvedIdentifierAttribute,
+                   reason,
+                   disableResult.OperationMessage);
+
+                return Result.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(disableResult.OperationMessage)
+                      ? "LDAP disable-user operation failed."
+                      : disableResult.OperationMessage));
+            }
+
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+               ex,
+               "Unhandled exception while disabling MS AD user for profile {ProfileId} and identifier {Identifier}. Reason: {Reason}",
+               ldapServerProfile.ProfileId,
+               identifier,
+               reason);
+
+            return Result.Failure(Error.BadGateway($"LDAP disable-user operation failed: {ex.Message}"));
+        }
+    }
+
+    public async Task<Result> DeleteMsAdUserAsync(
+       LdapServerProfileOption ldapServerProfile,
+       CatalogType catalogType,
+       string identifier,
+       CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifier);
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-delete-msad-user:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var accountManager = new AccountManager(
+               connectionInfo,
+               searchLimits,
+               credentialForSearching,
+               new NovellLdapConnectionFactoryAdapter());
+
+            var deleteResult = await accountManager
+               .RemoveMsADUserAccount(resolvedIdentifierAttribute, identifier, requestLabel)
+               .WaitAsync(cancellationToken);
+
+            if (!deleteResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   deleteResult.ErrorObject,
+                   "Bitai.LDAPHelper DeleteMsAdUser failed for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   identifier,
+                   resolvedIdentifierAttribute,
+                   deleteResult.OperationMessage);
+
+                return Result.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(deleteResult.OperationMessage)
+                      ? "LDAP delete-user operation failed."
+                      : deleteResult.OperationMessage));
+            }
+
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+               ex,
+               "Unhandled exception while deleting MS AD user for profile {ProfileId} and identifier {Identifier}.",
+               ldapServerProfile.ProfileId,
+               identifier);
+
+            return Result.Failure(Error.BadGateway($"LDAP delete-user operation failed: {ex.Message}"));
+        }
+    }
     #endregion
 
 
@@ -590,6 +743,21 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             IdentifierAttribute.SAMAccountName => EntryAttribute.sAMAccountName,
             _ => throw new ArgumentOutOfRangeException(nameof(identifierAttribute), $"Unsupported identifier attribute: {identifierAttribute}")
         };
+    }
+
+    private static EntryAttribute ResolveIdentifierAttribute(string identifier)
+    {
+        var value = identifier?.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return EntryAttribute.sAMAccountName;
+        }
+
+        return value.StartsWith("CN=", StringComparison.OrdinalIgnoreCase)
+           || value.Contains(",OU=", StringComparison.OrdinalIgnoreCase)
+           || value.Contains(",DC=", StringComparison.OrdinalIgnoreCase)
+           ? EntryAttribute.distinguishedName
+           : EntryAttribute.sAMAccountName;
     }
 
     private Task<Result<T>> NotConfigured<T>(string operation)

@@ -72,7 +72,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, string identifier, string? reason, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
@@ -83,7 +83,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, string identifier, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
