@@ -100,9 +100,10 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
+       [FromQuery] IdentifierAttribute identifierAttribute,
        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new DeleteMsAdUserCommand(serverProfile, catalogType, identifier), cancellationToken);
+        var result = await _mediator.Send(new DeleteMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier), cancellationToken);
         return this.ToActionResult(result);
     }
     #endregion

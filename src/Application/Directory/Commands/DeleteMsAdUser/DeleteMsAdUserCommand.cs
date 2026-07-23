@@ -10,6 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.DeleteMsAdUser;
 public sealed record DeleteMsAdUserCommand(
    string ServerProfile,
    CatalogType CatalogType,
+   IdentifierAttribute IdentifierAttribute,
    string Identifier) : IRequest<Result>;
 
 public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsAdUserCommand>
@@ -35,7 +36,7 @@ public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase, IRequestHand
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("DeleteMsAdUser", context,
-         () => _ldapGatewayClient.DeleteMsAdUserAsync(context, request.Identifier, cancellationToken),
+         () => _ldapGatewayClient.DeleteMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, cancellationToken),
          cancellationToken);
    }
 }
