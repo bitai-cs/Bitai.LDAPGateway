@@ -367,6 +367,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     public async Task<Result> DisableMsAdUserAsync(
        LdapServerProfileOption ldapServerProfile,
        CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        string? reason,
        CancellationToken cancellationToken)
@@ -398,7 +399,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result.Failure(Error.Validation(credentialError));
         }
 
-        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifier);
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
 
         try
         {
@@ -448,6 +449,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     public async Task<Result> DeleteMsAdUserAsync(
        LdapServerProfileOption ldapServerProfile,
        CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        CancellationToken cancellationToken)
     {
@@ -478,7 +480,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result.Failure(Error.Validation(credentialError));
         }
 
-        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifier);
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
 
         try
         {
@@ -745,20 +747,20 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         };
     }
 
-    private static EntryAttribute ResolveIdentifierAttribute(string identifier)
-    {
-        var value = identifier?.Trim();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return EntryAttribute.sAMAccountName;
-        }
+    // private static EntryAttribute ResolveIdentifierAttribute(string identifier)
+    // {
+    //     var value = identifier?.Trim();
+    //     if (string.IsNullOrWhiteSpace(value))
+    //     {
+    //         return EntryAttribute.sAMAccountName;
+    //     }
 
-        return value.StartsWith("CN=", StringComparison.OrdinalIgnoreCase)
-           || value.Contains(",OU=", StringComparison.OrdinalIgnoreCase)
-           || value.Contains(",DC=", StringComparison.OrdinalIgnoreCase)
-           ? EntryAttribute.distinguishedName
-           : EntryAttribute.sAMAccountName;
-    }
+    //     return value.StartsWith("CN=", StringComparison.OrdinalIgnoreCase)
+    //        || value.Contains(",OU=", StringComparison.OrdinalIgnoreCase)
+    //        || value.Contains(",DC=", StringComparison.OrdinalIgnoreCase)
+    //        ? EntryAttribute.distinguishedName
+    //        : EntryAttribute.sAMAccountName;
+    // }
 
     private Task<Result<T>> NotConfigured<T>(string operation)
     {

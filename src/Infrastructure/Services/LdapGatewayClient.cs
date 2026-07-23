@@ -70,7 +70,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.SetMsAdUserPasswordAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, newPassword, mustChangeAtNextLogon, cancellationToken);
     }
 
-    public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, string identifier, string? reason, CancellationToken cancellationToken)
+    public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, string? reason, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -78,10 +78,10 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
             return Result.Failure(profileResult.Error!);
         }
 
-        return await _adapter.DisableMsAdUserAsync(profileResult.Value!, context.CatalogType, identifier, reason, cancellationToken);
+        return await _adapter.DisableMsAdUserAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, reason, cancellationToken);
     }
 
-    public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, string identifier, CancellationToken cancellationToken)
+    public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -89,7 +89,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
             return Result.Failure(profileResult.Error!);
         }
 
-        return await _adapter.DeleteMsAdUserAsync(profileResult.Value!, context.CatalogType, identifier, cancellationToken);
+        return await _adapter.DeleteMsAdUserAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, cancellationToken);
     }
     #endregion
 

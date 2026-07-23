@@ -87,10 +87,11 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
+       [FromQuery] IdentifierAttribute identifierAttribute,
        [FromBody] DisableMsAdUserRequest request,
        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new DisableMsAdUserCommand(serverProfile, catalogType, identifier, request.Reason), cancellationToken);
+        var result = await _mediator.Send(new DisableMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier, request.Reason), cancellationToken);
         return this.ToActionResult(result);
     }
 

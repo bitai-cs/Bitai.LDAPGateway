@@ -38,6 +38,7 @@ public interface IBitaiLdapHelperAdapter
     Task<Result> DisableMsAdUserAsync(
        LdapServerProfileOption ldapServerProfile,
        CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        string? reason,
        CancellationToken cancellationToken);
@@ -45,6 +46,7 @@ public interface IBitaiLdapHelperAdapter
     Task<Result> DeleteMsAdUserAsync(
        LdapServerProfileOption ldapServerProfile,
        CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        CancellationToken cancellationToken);
 

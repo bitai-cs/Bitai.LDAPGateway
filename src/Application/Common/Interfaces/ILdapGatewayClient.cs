@@ -32,12 +32,14 @@ public interface ILdapGatewayClient
 
     Task<Result> DisableMsAdUserAsync(
        LdapRequestContext context,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        string? reason,
        CancellationToken cancellationToken);
 
     Task<Result> DeleteMsAdUserAsync(
        LdapRequestContext context,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        CancellationToken cancellationToken);
 

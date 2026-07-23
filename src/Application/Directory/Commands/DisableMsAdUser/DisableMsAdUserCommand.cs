@@ -10,6 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.DisableMsAdUser;
 public sealed record DisableMsAdUserCommand(
    string ServerProfile,
    CatalogType CatalogType,
+   IdentifierAttribute IdentifierAttribute,
    string Identifier,
    string? Reason) : IRequest<Result>;
 
@@ -36,7 +37,7 @@ public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase, IRequestHan
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("DisableMsAdUser", context,
-         () => _ldapGatewayClient.DisableMsAdUserAsync(context, request.Identifier, request.Reason, cancellationToken),
+         () => _ldapGatewayClient.DisableMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, request.Reason, cancellationToken),
          cancellationToken);
    }
 }
