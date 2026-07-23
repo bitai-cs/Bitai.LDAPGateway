@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Bitai.LDAPGateway.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Bitai.LDAPHelper\src\Bitai.LDAPHelper.DTO\Bitai.LDAPHelper.DTO.csproj" />
   </ItemGroup>
 
   <ItemGroup>
