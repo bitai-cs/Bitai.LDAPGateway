@@ -17,6 +17,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         _logger = logger;
     }
 
+    #region Authentication Methods
     public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -46,7 +47,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result<AuthenticationResultDto>.Failure(Error.Validation(searchLimitsError));
         }
 
-        if (!TryCreateSearchCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
         {
             return Result<AuthenticationResultDto>.Failure(Error.Validation(credentialError));
         }
@@ -174,9 +175,102 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
         }
     }
+    #endregion
 
-    public Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, CreateMsAdUserDto user, CancellationToken cancellationToken)
-       => NotConfigured<DirectoryEntryDto>("CreateMsAdUser");
+    public async Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, CreateMsAdUserDto user, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (user is null)
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation("User payload is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(credentialError));
+        }
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-create-msad-user:{ldapServerProfile.ProfileId}:{user.SAMAccountName}:{DateTime.UtcNow:O}";
+            var accountManager = new AccountManager(
+               connectionInfo,
+               searchLimits,
+               credentialForSearching,
+               new NovellLdapConnectionFactoryAdapter());
+
+            var createResult = await accountManager
+               .CreateUserAccountForMsAD(user, requestLabel)
+               .WaitAsync(cancellationToken);
+
+            if (!createResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   createResult.ErrorObject,
+                   "Bitai.LDAPHelper CreateMsAdUser failed for profile {ProfileId} and account {SamAccountName}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   user.SAMAccountName,
+                   createResult.OperationMessage);
+
+                return Result<DirectoryEntryDto>.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(createResult.OperationMessage)
+                      ? "LDAP user-creation operation failed."
+                      : createResult.OperationMessage));
+            }
+
+            var createdUser = createResult.UserAccount ?? user;
+            var identifier = string.IsNullOrWhiteSpace(createdUser.DistinguishedName)
+               ? createdUser.SAMAccountName ?? string.Empty
+               : createdUser.DistinguishedName;
+
+            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["distinguishedName"] = createdUser.DistinguishedName ?? string.Empty,
+                ["distinguishedNameOfContainer"] = createdUser.DistinguishedNameOfContainer ?? string.Empty,
+                ["givenName"] = createdUser.GivenName ?? string.Empty,
+                ["sn"] = createdUser.Sn ?? string.Empty,
+                ["cn"] = createdUser.Cn ?? string.Empty,
+                ["name"] = createdUser.Name ?? string.Empty,
+                ["displayName"] = createdUser.DisplayName ?? string.Empty,
+                ["description"] = createdUser.Description ?? string.Empty,
+                ["objectClass"] = createdUser.ObjectClass is null ? string.Empty : string.Join(',', createdUser.ObjectClass),
+                ["samAccountName"] = createdUser.SAMAccountName ?? string.Empty,
+                ["userPrincipalName"] = createdUser.UserPrincipalName ?? string.Empty,
+                ["userAccountControl"] = createdUser.UserAccountControl ?? string.Empty,
+                ["department"] = createdUser.Department ?? string.Empty,
+                ["telephoneNumber"] = createdUser.TelephoneNumber ?? string.Empty,
+                ["mail"] = createdUser.Mail ?? string.Empty
+            };
+
+            return Result<DirectoryEntryDto>.Success(new DirectoryEntryDto(identifier, attributes));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+               ex,
+               "Unhandled exception while creating MS AD user for profile {ProfileId} and account {SamAccountName}.",
+               ldapServerProfile.ProfileId,
+               user.SAMAccountName);
+
+            return Result<DirectoryEntryDto>.Failure(Error.BadGateway($"LDAP user-creation failed: {ex.Message}"));
+        }
+    }
 
     public Task<Result> SetMsAdUserPasswordAsync(string server, CatalogType catalogType, string identifier, string password, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
        => NotConfigured("SetMsAdUserPassword");
@@ -301,7 +395,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         return true;
     }
 
-    private static bool TryCreateSearchCredential(LdapServerProfileOption ldapServerProfile, out LDAPDomainAccountCredential credential, out string error)
+    private static bool TryCreateConnectionCredential(LdapServerProfileOption ldapServerProfile, out LDAPDomainAccountCredential credential, out string error)
     {
         credential = default!;
         error = string.Empty;
