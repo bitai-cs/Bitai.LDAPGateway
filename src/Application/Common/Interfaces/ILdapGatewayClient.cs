@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common.Models;
+using Bitai.LDAPGateway.Domain.Enums;
 
 namespace Bitai.LDAPGateway.Application.Common.Interfaces;
 
@@ -23,6 +24,7 @@ public interface ILdapGatewayClient
 
     Task<Result> SetMsAdUserPasswordAsync(
        LdapRequestContext context,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        string newPassword,
        bool mustChangeAtNextLogon,

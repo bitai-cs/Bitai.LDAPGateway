@@ -12,10 +12,14 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 {
     private readonly ILogger<BitaiLdapHelperNovellAdapter> _logger;
 
+
+
     public BitaiLdapHelperNovellAdapter(ILogger<BitaiLdapHelperNovellAdapter> logger)
     {
         _logger = logger;
     }
+
+
 
     #region Authentication Methods
     public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
@@ -177,6 +181,8 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     }
     #endregion
 
+
+    #region User Provisioning
     public async Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, CreateMsAdUserDto user, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -272,14 +278,100 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
     }
 
-    public Task<Result> SetMsAdUserPasswordAsync(string server, CatalogType catalogType, string identifier, string password, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
-       => NotConfigured("SetMsAdUserPassword");
+    public async Task<Result> SetMsAdUserPasswordAsync(
+       LdapServerProfileOption ldapServerProfile,
+       CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
+       string identifier,
+       string password,
+       bool mustChangeAtNextLogon,
+       CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return Result.Failure(Error.Validation("Password is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-set-msad-password:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var accountManager = new AccountManager(
+               connectionInfo,
+               searchLimits,
+               credentialForSearching,
+               new NovellLdapConnectionFactoryAdapter());
+
+            var setPasswordResult = await accountManager
+               .SetMsADUserAccountPassword(resolvedIdentifierAttribute, identifier, password, requestLabel, mustChangeAtNextLogon)
+               .WaitAsync(cancellationToken);
+
+            if (!setPasswordResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   setPasswordResult.ErrorObject,
+                   "Bitai.LDAPHelper SetMsAdUserPassword failed for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   identifier,
+                   resolvedIdentifierAttribute,
+                   setPasswordResult.OperationMessage);
+
+                return Result.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(setPasswordResult.OperationMessage)
+                      ? "LDAP password-update operation failed."
+                      : setPasswordResult.OperationMessage));
+            }
+
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+               ex,
+               "Unhandled exception while setting MS AD password for profile {ProfileId} and identifier {Identifier}.",
+               ldapServerProfile.ProfileId,
+               identifier);
+
+            return Result.Failure(Error.BadGateway($"LDAP password-update failed: {ex.Message}"));
+        }
+    }
 
     public Task<Result> DisableMsAdUserAsync(string server, CatalogType catalogType, string identifier, string? reason, CancellationToken cancellationToken)
        => NotConfigured("DisableMsAdUser");
 
     public Task<Result> DeleteMsAdUserAsync(string server, CatalogType catalogType, string identifier, CancellationToken cancellationToken)
        => NotConfigured("DeleteMsAdUser");
+    #endregion
+
+
 
     public Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
       => NotConfigured<DirectoryEntryDto>("GetDirectoryEntry");
@@ -488,6 +580,16 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
 
         return int.TryParse(portValue, out port) && port > 0 && port <= 65535;
+    }
+
+    private static EntryAttribute ResolveIdentifierAttribute(IdentifierAttribute identifierAttribute)
+    {
+        return identifierAttribute switch
+        {
+            IdentifierAttribute.DistinguishedName => EntryAttribute.distinguishedName,
+            IdentifierAttribute.SAMAccountName => EntryAttribute.sAMAccountName,
+            _ => throw new ArgumentOutOfRangeException(nameof(identifierAttribute), $"Unsupported identifier attribute: {identifierAttribute}")
+        };
     }
 
     private Task<Result<T>> NotConfigured<T>(string operation)

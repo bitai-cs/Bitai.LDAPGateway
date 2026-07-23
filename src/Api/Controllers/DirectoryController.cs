@@ -71,11 +71,12 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
+       [FromQuery] IdentifierAttribute identifierAttribute,
        [FromBody] SetMsAdUserCredentialRequest request,
        CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-           new SetMsAdUserPasswordCommand(serverProfile, catalogType, identifier, request.Password, request.MustChangeAtNextLogon),
+           new SetMsAdUserPasswordCommand(serverProfile, catalogType, identifierAttribute, identifier, request.Password, request.MustChangeAtNextLogon),
            cancellationToken);
 
         return this.ToActionResult(result);

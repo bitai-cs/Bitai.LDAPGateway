@@ -1,5 +1,6 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
+using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
@@ -58,15 +59,15 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.CreateMsAdUserAsync(profileResult.Value!, context.CatalogType, request, cancellationToken);
     }
 
-    public async Task<Result> SetMsAdUserPasswordAsync(LdapRequestContext context, string identifier, string newPassword, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
+    public async Task<Result> SetMsAdUserPasswordAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, string newPassword, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result.Failure(profileResult.Error!);
         }
 
-        return await _adapter.SetMsAdUserPasswordAsync(profileResult.Value!, context.CatalogType, identifier, newPassword, mustChangeAtNextLogon, cancellationToken);
+        return await _adapter.SetMsAdUserPasswordAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, newPassword, mustChangeAtNextLogon, cancellationToken);
     }
 
     public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, string identifier, string? reason, CancellationToken cancellationToken)

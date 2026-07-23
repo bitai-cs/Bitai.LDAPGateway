@@ -10,6 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.SetMsAdUserPassword;
 public sealed record SetMsAdUserPasswordCommand(
    string ServerProfile,
    CatalogType CatalogType,
+   IdentifierAttribute IdentifierAttribute,
    string Identifier,
    string NewPassword,
    bool MustChangeAtNextLogon) : IRequest<Result>;
@@ -38,7 +39,7 @@ public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase, IReques
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("SetMsAdUserPassword", context,
-         () => _ldapGatewayClient.SetMsAdUserPasswordAsync(context, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
+         () => _ldapGatewayClient.SetMsAdUserPasswordAsync(context, request.IdentifierAttribute, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
          cancellationToken);
    }
 }

@@ -27,8 +27,9 @@ public interface IBitaiLdapHelperAdapter
            CancellationToken cancellationToken);
 
     Task<Result> SetMsAdUserPasswordAsync(
-       string server,
+       LdapServerProfileOption ldapServerProfile,
        CatalogType catalogType,
+       IdentifierAttribute identifierAttribute,
        string identifier,
        string password,
        bool mustChangeAtNextLogon,
