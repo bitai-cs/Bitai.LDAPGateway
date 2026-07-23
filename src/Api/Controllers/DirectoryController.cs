@@ -24,14 +24,16 @@ public sealed class DirectoryController : ControllerBase
 
 
 
+    #region Constructor
     public DirectoryController(IMediator mediator)
     {
         _mediator = mediator;
     }
+    #endregion
 
 
 
-    #region User Management
+    #region User Provisioning Endpoints
     [HttpPost("MsADUsers")]
     public async Task<IActionResult> CreateMsAdUser(
        [FromRoute] string serverProfile,
@@ -109,12 +111,13 @@ public sealed class DirectoryController : ControllerBase
     #endregion
 
 
+    #region Generic Search Endpoints
     [HttpGet("{identifier}")]
     public async Task<IActionResult> GetByIdentifier(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "distinguishedName",
+       [FromQuery] string identifierAttribute = "SAMAccountName",
        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
@@ -135,7 +138,10 @@ public sealed class DirectoryController : ControllerBase
         var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
         return this.ToActionResult(result);
     }
+    #endregion
 
+
+    #region User Search Endpoints
     [HttpGet("Users/{identifier}/Parents")]
     public async Task<IActionResult> GetUserParents(
        [FromRoute] string serverProfile,
@@ -159,7 +165,10 @@ public sealed class DirectoryController : ControllerBase
         var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
         return this.ToActionResult(result);
     }
+    #endregion
 
+
+    #region Group Search Endpoints
     [HttpGet("Groups/{identifier}")]
     public async Task<IActionResult> GetGroup(
        [FromRoute] string serverProfile,
@@ -195,6 +204,7 @@ public sealed class DirectoryController : ControllerBase
         var result = await _mediator.Send(new SearchGroupsQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
         return this.ToActionResult(result);
     }
+    #endregion
 }
 
 public sealed record CreateMsAdUserRequest(

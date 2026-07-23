@@ -95,7 +95,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
     public async Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<DirectoryEntryDto>.Failure(profileResult.Error!);

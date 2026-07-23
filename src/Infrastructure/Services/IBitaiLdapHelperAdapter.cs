@@ -51,7 +51,7 @@ public interface IBitaiLdapHelperAdapter
        CancellationToken cancellationToken);
 
     Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
-      string server,
+         LdapServerProfileOption ldapServerProfile,
       CatalogType catalogType,
       string identifier,
       string identifierAttribute,

@@ -4,6 +4,7 @@ using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPHelper;
 using Bitai.LDAPHelper.DTO;
 using Bitai.LDAPHelper.LdapAdapters.Novell;
+using Bitai.LDAPHelper.QueryFilters;
 using Microsoft.Extensions.Logging;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
@@ -527,19 +528,154 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     #endregion
 
 
+    #region Generic Directory Search Methods
+    public async Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
+       LdapServerProfileOption ldapServerProfile,
+       CatalogType catalogType,
+       string identifier,
+       string identifierAttribute,
+       CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-    public Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
-      => NotConfigured<DirectoryEntryDto>("GetDirectoryEntry");
+        if (ldapServerProfile is null)
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifierAttribute))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation("IdentifierAttribute is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(credentialError));
+        }
+
+        if (!TryResolveIdentifierAttribute(identifierAttribute, out var resolvedIdentifierAttribute, out var identifierAttributeError))
+        {
+            return Result<DirectoryEntryDto>.Failure(Error.Validation(identifierAttributeError));
+        }
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-get-entry:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var searcher = new Searcher(
+               connectionInfo,
+               searchLimits,
+               credentialForSearching,
+               new NovellLdapConnectionFactoryAdapter());
+
+            var filter = new AttributeFilter(resolvedIdentifierAttribute, new FilterValue(identifier));
+            var searchResult = await searcher
+               .SearchEntriesAsync(filter, RequiredEntryAttributes.Few, requestLabel)
+               .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                   searchResult.ErrorObject,
+                   "Bitai.LDAPHelper GetDirectoryEntry failed for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}. Message: {OperationMessage}",
+                   ldapServerProfile.ProfileId,
+                   identifier,
+                   resolvedIdentifierAttribute,
+                   searchResult.OperationMessage);
+
+                return Result<DirectoryEntryDto>.Failure(
+                   Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
+                      ? "LDAP get-entry operation failed."
+                      : searchResult.OperationMessage));
+            }
+
+            var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
+            if (entries.Count == 0)
+            {
+                return Result<DirectoryEntryDto>.Failure(
+                   Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
+            }
+
+            if (entries.Count > 1)
+            {
+                return Result<DirectoryEntryDto>.Failure(
+                   Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+            }
+
+            var entry = entries[0];
+            var resolvedIdentifier = string.IsNullOrWhiteSpace(entry.distinguishedName)
+               ? entry.samAccountName ?? identifier
+               : entry.distinguishedName;
+
+            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["distinguishedName"] = entry.distinguishedName ?? string.Empty,
+                ["samAccountName"] = entry.samAccountName ?? string.Empty,
+                ["userPrincipalName"] = entry.userPrincipalName ?? string.Empty,
+                ["displayName"] = entry.displayName ?? string.Empty,
+                ["givenName"] = entry.givenName ?? string.Empty,
+                ["sn"] = entry.sn ?? string.Empty,
+                ["name"] = entry.name ?? string.Empty,
+                ["mail"] = entry.mail ?? string.Empty,
+                ["department"] = entry.department ?? string.Empty,
+                ["telephoneNumber"] = entry.telephoneNumber ?? string.Empty,
+                ["description"] = entry.description ?? string.Empty,
+                ["objectCategory"] = entry.objectCategory ?? string.Empty,
+                ["objectClass"] = entry.objectClass is null ? string.Empty : string.Join(',', entry.objectClass),
+                ["userAccountControl"] = entry.userAccountControl ?? string.Empty,
+                ["manager"] = entry.manager ?? string.Empty,
+                ["title"] = entry.title ?? string.Empty,
+                ["company"] = entry.company ?? string.Empty,
+                ["whenCreated"] = entry.whenCreated?.ToString("O") ?? string.Empty,
+                ["lastLogon"] = entry.lastLogon?.ToString("O") ?? string.Empty,
+                ["objectGuid"] = entry.objectGuid ?? string.Empty,
+                ["objectSid"] = entry.objectSid ?? string.Empty
+            };
+
+            return Result<DirectoryEntryDto>.Success(new DirectoryEntryDto(resolvedIdentifier, attributes));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+               ex,
+               "Unhandled exception while getting directory entry for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}.",
+               ldapServerProfile.ProfileId,
+               identifier,
+               identifierAttribute);
+
+            return Result<DirectoryEntryDto>.Failure(Error.BadGateway($"LDAP get-entry operation failed: {ex.Message}"));
+        }
+    }
 
     public Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("SearchDirectory");
+    #endregion
 
+
+    #region User Search Methods
     public Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("GetUserParents");
 
     public Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<LdapUserDto>>("SearchUsers");
+    #endregion
 
+
+    #region Group Search Methods
     public Task<Result<LdapGroupDto>> GetGroupAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
        => NotConfigured<LdapGroupDto>("GetGroup");
 
@@ -548,7 +684,10 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
     public Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<LdapGroupDto>>("SearchGroups");
+    #endregion
 
+
+    #region Private Helper Methods
     private static bool TryCreateConnectionInfo(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out ConnectionInfo connectionInfo, out string error)
     {
         connectionInfo = default!;
@@ -747,6 +886,32 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         };
     }
 
+    private static bool TryResolveIdentifierAttribute(string identifierAttribute, out EntryAttribute entryAttribute, out string error)
+    {
+        entryAttribute = default;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(identifierAttribute))
+        {
+            error = "IdentifierAttribute is required.";
+            return false;
+        }
+
+        if (!Enum.TryParse<EntryAttribute>(identifierAttribute.Trim(), true, out entryAttribute))
+        {
+            error = $"IdentifierAttribute '{identifierAttribute}' is not valid.";
+            return false;
+        }
+
+        if (entryAttribute != EntryAttribute.sAMAccountName && entryAttribute != EntryAttribute.distinguishedName)
+        {
+            error = $"IdentifierAttribute '{identifierAttribute}' is not supported. Use '{EntryAttribute.sAMAccountName}' or '{EntryAttribute.distinguishedName}'.";
+            return false;
+        }
+
+        return true;
+    }
+
     // private static EntryAttribute ResolveIdentifierAttribute(string identifier)
     // {
     //     var value = identifier?.Trim();
@@ -773,4 +938,5 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
         return Task.FromResult(Result.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
     }
+    #endregion
 }
