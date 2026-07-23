@@ -65,5 +65,5 @@ public sealed record LdapServerProfileDto(
    int ConnectionTimeout,
    bool UseSsl,
    bool UseSslForGlobalCatalog,
-   string DomainAccountName,
+   string BindAccountName,
    int HealthCheckPingTimeout);

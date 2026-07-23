@@ -385,12 +385,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
         if (catalogType == CatalogType.GC)
         {
-            selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc;
+            selectedUseSslValue = ldapServerProfile.UseSSLforGlobalCatalog;
             selectedPortValue = ldapServerProfile.PortForGlobalCatalog;
             return true;
         }
 
-        selectedUseSslValue = bool.TryParse(ldapServerProfile.UseSSL, out var useSslLc) && useSslLc;
+        selectedUseSslValue = ldapServerProfile.UseSSL;
         selectedPortValue = ldapServerProfile.Port;
         return true;
     }
@@ -400,13 +400,13 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         credential = default!;
         error = string.Empty;
 
-        if (!TryResolveDomainAndAccount(ldapServerProfile.DomainAccountName, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
+        if (!TryResolveDomainAndAccount(ldapServerProfile.BindAccountName, ldapServerProfile.DefaultDomainName, out var resolvedDomainName, out var resolvedAccountName, out error))
         {
-            error = $"Invalid DomainAccountName for profile '{ldapServerProfile.ProfileId}'. {error}";
+            error = $"Invalid BindAccountName for profile '{ldapServerProfile.ProfileId}'. {error}";
             return false;
         }
 
-        credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, ldapServerProfile.DomainAccountPassword ?? string.Empty);
+        credential = new LDAPDomainAccountCredential(resolvedDomainName, resolvedAccountName, ldapServerProfile.BindAccountPassword ?? string.Empty);
         return true;
     }
 

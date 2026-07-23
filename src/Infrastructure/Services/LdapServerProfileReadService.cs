@@ -45,9 +45,9 @@ public sealed class LdapServerProfileReadService : IServerProfileReadService
          value.BaseDNforGlobalCatalog,
          value.DefaultDomainName,
          value.ConnectionTimeout,
-         bool.TryParse(value.UseSSL, out var useSsl) && useSsl,
-         bool.TryParse(value.UseSSLforGlobalCatalog, out var useSslGc) && useSslGc,
-         value.DomainAccountName,
+         value.UseSSL,
+         value.UseSSLforGlobalCatalog,
+         value.BindAccountName,
          value.HealthCheckPingTimeout);
    }
 }

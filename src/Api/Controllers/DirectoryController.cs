@@ -22,38 +22,16 @@ public sealed class DirectoryController : ControllerBase
 {
     private readonly IMediator _mediator;
 
+
+
     public DirectoryController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
-    [HttpGet("{identifier}")]
-    public async Task<IActionResult> GetByIdentifier(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "distinguishedName",
-       CancellationToken cancellationToken = default)
-    {
-        var result = await _mediator.Send(
-           new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute),
-           cancellationToken);
 
-        return this.ToActionResult(result);
-    }
 
-    [HttpGet("filterBy")]
-    public async Task<IActionResult> FilterBy(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromQuery] string filter,
-       [FromQuery] int sizeLimit = 100,
-       CancellationToken cancellationToken = default)
-    {
-        var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
-        return this.ToActionResult(result);
-    }
-
+    #region User Management
     [HttpPost("MsADUsers")]
     public async Task<IActionResult> CreateMsAdUser(
        [FromRoute] string serverProfile,
@@ -61,26 +39,28 @@ public sealed class DirectoryController : ControllerBase
        [FromBody] CreateMsAdUserRequest request,
        CancellationToken cancellationToken)
     {
+        var command = new CreateMsAdUserCommand(serverProfile, catalogType)
+        {
+            DistinguishedName = request.distinguishedName,
+            DistinguishedNameOfContainer = request.distinguishedNameOfContainer,
+            GivenName = request.givenName,
+            Sn = request.sn,
+            Cn = request.cn,
+            Name = request.name,
+            DisplayName = request.displayName,
+            Description = request.description,
+            ObjectClass = request.objectClass,
+            SAMAccountName = request.samAccountName,
+            UserPrincipalName = request.userPrincipalName,
+            UserAccountControl = request.userAccountControl,
+            Department = request.department,
+            TelephoneNumber = request.telephoneNumber,
+            Mail = request.mail,
+            Password = request.password
+        };
+
         var result = await _mediator.Send(
-           new CreateMsAdUserCommand(
-              serverProfile,
-              catalogType,
-              request.distinguishedName,
-              request.distinguishedNameOfContainer,
-              request.givenName,
-              request.sn,
-              request.cn,
-              request.name,
-              request.displayName,
-              request.description,
-              request.objectClass,
-              request.samAccountName,
-              request.userPrincipalName,
-              request.userAccountControl,
-              request.department,
-              request.telephoneNumber,
-              request.mail,
-              request.password),
+           command,
            cancellationToken);
 
         return this.ToActionResult(result);
@@ -121,6 +101,35 @@ public sealed class DirectoryController : ControllerBase
        CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new DeleteMsAdUserCommand(serverProfile, catalogType, identifier), cancellationToken);
+        return this.ToActionResult(result);
+    }
+    #endregion
+
+
+    [HttpGet("{identifier}")]
+    public async Task<IActionResult> GetByIdentifier(
+       [FromRoute] string serverProfile,
+       [FromRoute] CatalogType catalogType,
+       [FromRoute] string identifier,
+       [FromQuery] string identifierAttribute = "distinguishedName",
+       CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+           new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute),
+           cancellationToken);
+
+        return this.ToActionResult(result);
+    }
+
+    [HttpGet("filterBy")]
+    public async Task<IActionResult> FilterBy(
+       [FromRoute] string serverProfile,
+       [FromRoute] CatalogType catalogType,
+       [FromQuery] string filter,
+       [FromQuery] int sizeLimit = 100,
+       CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
         return this.ToActionResult(result);
     }
 

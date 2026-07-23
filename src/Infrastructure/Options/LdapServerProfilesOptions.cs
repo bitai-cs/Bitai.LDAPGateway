@@ -11,13 +11,13 @@ public sealed class LdapServerProfileOption
    public int HealthCheckPingTimeout { get; set; } = 100;
    public string Server { get; set; } = string.Empty;
    public string DefaultDomainName { get; set; } = string.Empty;
-   public string DomainAccountName { get; set; } = string.Empty;
-   public string DomainAccountPassword { get; set; } = string.Empty;
+   public string BindAccountName { get; set; } = string.Empty;
+   public string BindAccountPassword { get; set; } = string.Empty;
    public int ConnectionTimeout { get; set; } = 10;
-   public string UseSSL { get; set; } = "false";
+   public bool UseSSL { get; set; } = false;
    public string Port { get; set; } = "Default";
    public string BaseDN { get; set; } = string.Empty;
-   public string UseSSLforGlobalCatalog { get; set; } = "false";
+   public bool UseSSLforGlobalCatalog { get; set; } = false;
    public string PortForGlobalCatalog { get; set; } = "Default";
    public string BaseDNforGlobalCatalog { get; set; } = string.Empty;
 }
