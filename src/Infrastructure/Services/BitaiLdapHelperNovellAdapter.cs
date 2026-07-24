@@ -65,6 +65,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         try
         {
             var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{username}:{DateTime.UtcNow:O}";
+
             var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
             var authenticationResult = await authenticator.AuthenticateAsync(
@@ -572,9 +573,10 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                credentialForSearching,
                new NovellLdapConnectionFactoryAdapter());
 
-            var filter = new AttributeFilter(resolvedIdentifierAttribute, new FilterValue(identifier));
+            var filterObject = CreateLdapHelperFilterObject(false, resolvedIdentifierAttribute, identifier);
+
             var searchResult = await searcher
-                    .SearchEntriesAsync(filter, resolvedRequiredAttributes, requestLabel)
+                    .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
                .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -612,11 +614,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         catch (Exception ex)
         {
             _logger.LogError(
-               ex,
-               "Unhandled exception while getting directory entry for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}.",
-               ldapServerProfile.ProfileId,
-               identifier,
-               identifierAttribute);
+                ex,
+                "Unhandled exception while getting directory entry for profile {ProfileId}, identifier {Identifier}, attribute {IdentifierAttribute}.",
+                ldapServerProfile.ProfileId,
+                identifier,
+                identifierAttribute);
 
             return Result<DirectoryEntryDto>.Failure(Error.BadGateway($"LDAP get-entry operation failed: {ex.Message}"));
         }
@@ -665,13 +667,35 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(credentialError));
         }
 
-        searchLimits.MaxSearchResults = sizeLimit;
+        if (secondaryFilterAttribute.HasValue && (string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters == null))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("SecondaryFilterValue and CombineFilters are required when SecondaryFilterAttribute is provided."));
+        }
+
+        if (!secondaryFilterAttribute.HasValue && (!string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters != null))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("SecondaryFilterAttribute and CombineFilters are required when SecondaryFilterValue is provided."));
+        }
+
+        var resolvedFilterAttribute = ResolveLdapEntryAttribute(filterAttribute);
+
+        var resolvedSecondaryFilterAttribute = secondaryFilterAttribute.HasValue
+            ? ResolveLdapEntryAttribute(secondaryFilterAttribute.Value)
+            : (EntryAttribute?)null;
 
         try
         {
             var requestLabel = $"ldap-gateway-search-directory:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
 
-            var combinedFilter = CreateCombinedFilterObject(false, filterAttribute, filterValue, true, secondaryFilterAttribute, secondaryFilterValue);
+            searchLimits.MaxSearchResults = sizeLimit;
+
+            var combinedFilter = CreateLdapHelperFilterObject(
+                false,
+                resolvedFilterAttribute,
+                filterValue,
+                combineFilters,
+                resolvedSecondaryFilterAttribute,
+                secondaryFilterValue);
 
             var searcher = new Searcher(
                 connectionInfo,
@@ -742,6 +766,21 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
 
     #region Private Helper Methods
+    private Task<Result<T>> NotConfigured<T>(string operation)
+    {
+        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
+        return Task.FromResult(Result<T>.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
+    }
+
+    private Task<Result> NotConfigured(string operation)
+    {
+        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
+        return Task.FromResult(Result.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
+    }
+    #endregion
+
+
+    #region Private Static Helper Methods
     private static bool TryCreateConnectionInfo(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, out ConnectionInfo connectionInfo, out string error)
     {
         connectionInfo = default!;
@@ -922,8 +961,8 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         if (string.IsNullOrWhiteSpace(portValue) || string.Equals(portValue.Trim(), "Default", StringComparison.OrdinalIgnoreCase))
         {
             port = catalogType == CatalogType.GC
-               ? useSsl ? 3269 : 3268
-               : useSsl ? 636 : 389;
+                ? useSsl ? 3269 : 3268
+                : useSsl ? 636 : 389;
             return true;
         }
 
@@ -938,6 +977,16 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             IdentifierAttribute.SAMAccountName => EntryAttribute.sAMAccountName,
             _ => throw new ArgumentOutOfRangeException(nameof(identifierAttribute), $"Unsupported identifier attribute: {identifierAttribute}")
         };
+    }
+
+    private static EntryAttribute ResolveLdapEntryAttribute(LdapEntryAttribute ldapEntryAttribute)
+    {
+        if (Enum.TryParse<EntryAttribute>(ldapEntryAttribute.ToString(), out var resolvedAttribute))
+        {
+            return resolvedAttribute;
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(ldapEntryAttribute), $"Unsupported LDAP entry attribute: {ldapEntryAttribute}");
     }
 
     private static RequiredEntryAttributes ResolveRequiredEntryAttributes(LdapEntryAttributeSet requiredAttributeSet)
@@ -1005,9 +1054,9 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         };
     }
 
-    private static ICombinableFilter CreateCombinedFilterObject(bool negateResult, LdapEntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd, LdapEntryAttribute? secondaryAttribute, string? secondaryValue)
+    private static ICombinableFilter CreateLdapHelperFilterObject(bool negateResult, EntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd = null, EntryAttribute? secondaryAttribute = null, string? secondaryValue = null)
     {
-        var firstAttributeFilter = new AttributeFilter((EntryAttribute)primaryAttribute, new FilterValue(primaryValue));
+        var firstAttributeFilter = new AttributeFilter(primaryAttribute, new FilterValue(primaryValue));
 
         ICombinableFilter combinableFilter;
         if (secondaryAttribute is null || string.IsNullOrWhiteSpace(secondaryValue))
@@ -1016,7 +1065,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return combinableFilter;
         }
 
-        var secondAttributeFilter = new AttributeFilter((EntryAttribute)secondaryAttribute, new FilterValue(secondaryValue));
+        var secondAttributeFilter = new AttributeFilter(secondaryAttribute.Value, new FilterValue(secondaryValue));
 
         combinableFilter = CombineFilters(negateResult, combineWithAnd ?? true, firstAttributeFilter, secondAttributeFilter);
         return combinableFilter;
@@ -1032,18 +1081,6 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         {
             return new AttributeFilterCombiner(negateResult, combineWithAnd ?? true, new List<ICombinableFilter> { primaryFilter, secondaryFilter });
         }
-    }
-
-    private Task<Result<T>> NotConfigured<T>(string operation)
-    {
-        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
-        return Task.FromResult(Result<T>.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
-    }
-
-    private Task<Result> NotConfigured(string operation)
-    {
-        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
-        return Task.FromResult(Result.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
     }
     #endregion
 }
