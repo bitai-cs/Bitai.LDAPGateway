@@ -117,11 +117,12 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "SAMAccountName",
+       [FromQuery] IdentifierAttribute identifierAttribute = IdentifierAttribute.SAMAccountName,
+       [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-           new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute),
+           new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet),
            cancellationToken);
 
         return this.ToActionResult(result);

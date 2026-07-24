@@ -242,30 +242,25 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             }
 
             var createdUser = createResult.UserAccount ?? user;
-            var identifier = string.IsNullOrWhiteSpace(createdUser.DistinguishedName)
-               ? createdUser.SAMAccountName ?? string.Empty
-               : createdUser.DistinguishedName;
-
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            var createdEntry = new DirectoryEntryDto
             {
-                ["distinguishedName"] = createdUser.DistinguishedName ?? string.Empty,
-                ["distinguishedNameOfContainer"] = createdUser.DistinguishedNameOfContainer ?? string.Empty,
-                ["givenName"] = createdUser.GivenName ?? string.Empty,
-                ["sn"] = createdUser.Sn ?? string.Empty,
-                ["cn"] = createdUser.Cn ?? string.Empty,
-                ["name"] = createdUser.Name ?? string.Empty,
-                ["displayName"] = createdUser.DisplayName ?? string.Empty,
-                ["description"] = createdUser.Description ?? string.Empty,
-                ["objectClass"] = createdUser.ObjectClass is null ? string.Empty : string.Join(',', createdUser.ObjectClass),
-                ["samAccountName"] = createdUser.SAMAccountName ?? string.Empty,
-                ["userPrincipalName"] = createdUser.UserPrincipalName ?? string.Empty,
-                ["userAccountControl"] = createdUser.UserAccountControl ?? string.Empty,
-                ["department"] = createdUser.Department ?? string.Empty,
-                ["telephoneNumber"] = createdUser.TelephoneNumber ?? string.Empty,
-                ["mail"] = createdUser.Mail ?? string.Empty
+                distinguishedName = createdUser.DistinguishedName,
+                givenName = createdUser.GivenName,
+                sn = createdUser.Sn,
+                cn = createdUser.Cn,
+                name = createdUser.Name,
+                displayName = createdUser.DisplayName,
+                description = createdUser.Description,
+                objectClass = createdUser.ObjectClass,
+                samAccountName = createdUser.SAMAccountName,
+                userPrincipalName = createdUser.UserPrincipalName,
+                userAccountControl = createdUser.UserAccountControl,
+                department = createdUser.Department,
+                telephoneNumber = createdUser.TelephoneNumber,
+                mail = createdUser.Mail
             };
 
-            return Result<DirectoryEntryDto>.Success(new DirectoryEntryDto(identifier, attributes));
+            return Result<DirectoryEntryDto>.Success(createdEntry);
         }
         catch (Exception ex)
         {
@@ -530,11 +525,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
     #region Generic Directory Search Methods
     public async Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
-       LdapServerProfileOption ldapServerProfile,
-       CatalogType catalogType,
-       string identifier,
-       string identifierAttribute,
-       CancellationToken cancellationToken)
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        IdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -546,11 +542,6 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         if (string.IsNullOrWhiteSpace(identifier))
         {
             return Result<DirectoryEntryDto>.Failure(Error.Validation("Identifier is required."));
-        }
-
-        if (string.IsNullOrWhiteSpace(identifierAttribute))
-        {
-            return Result<DirectoryEntryDto>.Failure(Error.Validation("IdentifierAttribute is required."));
         }
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
@@ -568,10 +559,9 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             return Result<DirectoryEntryDto>.Failure(Error.Validation(credentialError));
         }
 
-        if (!TryResolveIdentifierAttribute(identifierAttribute, out var resolvedIdentifierAttribute, out var identifierAttributeError))
-        {
-            return Result<DirectoryEntryDto>.Failure(Error.Validation(identifierAttributeError));
-        }
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
 
         try
         {
@@ -584,7 +574,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
             var filter = new AttributeFilter(resolvedIdentifierAttribute, new FilterValue(identifier));
             var searchResult = await searcher
-               .SearchEntriesAsync(filter, RequiredEntryAttributes.Few, requestLabel)
+                    .SearchEntriesAsync(filter, resolvedRequiredAttributes, requestLabel)
                .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -617,36 +607,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             }
 
             var entry = entries[0];
-            var resolvedIdentifier = string.IsNullOrWhiteSpace(entry.distinguishedName)
-               ? entry.samAccountName ?? identifier
-               : entry.distinguishedName;
-
-            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["distinguishedName"] = entry.distinguishedName ?? string.Empty,
-                ["samAccountName"] = entry.samAccountName ?? string.Empty,
-                ["userPrincipalName"] = entry.userPrincipalName ?? string.Empty,
-                ["displayName"] = entry.displayName ?? string.Empty,
-                ["givenName"] = entry.givenName ?? string.Empty,
-                ["sn"] = entry.sn ?? string.Empty,
-                ["name"] = entry.name ?? string.Empty,
-                ["mail"] = entry.mail ?? string.Empty,
-                ["department"] = entry.department ?? string.Empty,
-                ["telephoneNumber"] = entry.telephoneNumber ?? string.Empty,
-                ["description"] = entry.description ?? string.Empty,
-                ["objectCategory"] = entry.objectCategory ?? string.Empty,
-                ["objectClass"] = entry.objectClass is null ? string.Empty : string.Join(',', entry.objectClass),
-                ["userAccountControl"] = entry.userAccountControl ?? string.Empty,
-                ["manager"] = entry.manager ?? string.Empty,
-                ["title"] = entry.title ?? string.Empty,
-                ["company"] = entry.company ?? string.Empty,
-                ["whenCreated"] = entry.whenCreated?.ToString("O") ?? string.Empty,
-                ["lastLogon"] = entry.lastLogon?.ToString("O") ?? string.Empty,
-                ["objectGuid"] = entry.objectGuid ?? string.Empty,
-                ["objectSid"] = entry.objectSid ?? string.Empty
-            };
-
-            return Result<DirectoryEntryDto>.Success(new DirectoryEntryDto(resolvedIdentifier, attributes));
+            return Result<DirectoryEntryDto>.Success(MapToDirectoryEntryDto(entry));
         }
         catch (Exception ex)
         {
@@ -886,46 +847,70 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         };
     }
 
-    private static bool TryResolveIdentifierAttribute(string identifierAttribute, out EntryAttribute entryAttribute, out string error)
+    private static RequiredEntryAttributes ResolveRequiredEntryAttributes(LdapEntryAttributeSet requiredAttributeSet)
     {
-        entryAttribute = default;
-        error = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(identifierAttribute))
+        return requiredAttributeSet switch
         {
-            error = "IdentifierAttribute is required.";
-            return false;
-        }
-
-        if (!Enum.TryParse<EntryAttribute>(identifierAttribute.Trim(), true, out entryAttribute))
-        {
-            error = $"IdentifierAttribute '{identifierAttribute}' is not valid.";
-            return false;
-        }
-
-        if (entryAttribute != EntryAttribute.sAMAccountName && entryAttribute != EntryAttribute.distinguishedName)
-        {
-            error = $"IdentifierAttribute '{identifierAttribute}' is not supported. Use '{EntryAttribute.sAMAccountName}' or '{EntryAttribute.distinguishedName}'.";
-            return false;
-        }
-
-        return true;
+            LdapEntryAttributeSet.Minimum => RequiredEntryAttributes.Minimun,
+            LdapEntryAttributeSet.MinimumWithMember => RequiredEntryAttributes.MinimunWithMember,
+            LdapEntryAttributeSet.MinimumWithMemberOf => RequiredEntryAttributes.MinimunWithMemberOf,
+            LdapEntryAttributeSet.MinimumWithMemberAndMemberOf => RequiredEntryAttributes.MinimunWithMemberAndMemberOf,
+            LdapEntryAttributeSet.Few => RequiredEntryAttributes.Few,
+            LdapEntryAttributeSet.FewWithMember => RequiredEntryAttributes.FewWithMember,
+            LdapEntryAttributeSet.FewWithMemberOf => RequiredEntryAttributes.FewWithMemberOf,
+            LdapEntryAttributeSet.FewWithMemberAndMemberOf => RequiredEntryAttributes.FewWithMemberAndMemberOf,
+            LdapEntryAttributeSet.All => RequiredEntryAttributes.All,
+            LdapEntryAttributeSet.AllWithMember => RequiredEntryAttributes.AllWithMember,
+            LdapEntryAttributeSet.AllWithMemberOf => RequiredEntryAttributes.AllWithMemberOf,
+            LdapEntryAttributeSet.AllWithMemberAndMemberOf => RequiredEntryAttributes.AllWithMemberAndMemberOf,
+            LdapEntryAttributeSet.MemberAndMemberOf => RequiredEntryAttributes.MemberAndMemberOf,
+            LdapEntryAttributeSet.ObjectSidAndSAMAccountName => RequiredEntryAttributes.ObjectSidAndSAMAccountName,
+            LdapEntryAttributeSet.OnlyMember => RequiredEntryAttributes.OnlyMember,
+            LdapEntryAttributeSet.OnlyMemberOf => RequiredEntryAttributes.OnlyMemberOf,
+            LdapEntryAttributeSet.OnlyCN => RequiredEntryAttributes.OnlyCN,
+            LdapEntryAttributeSet.OnlyObjectSid => RequiredEntryAttributes.OnlyObjectSid,
+            _ => throw new ArgumentOutOfRangeException(nameof(requiredAttributeSet), $"Unsupported required attribute set: {requiredAttributeSet}")
+        };
     }
 
-    // private static EntryAttribute ResolveIdentifierAttribute(string identifier)
-    // {
-    //     var value = identifier?.Trim();
-    //     if (string.IsNullOrWhiteSpace(value))
-    //     {
-    //         return EntryAttribute.sAMAccountName;
-    //     }
-
-    //     return value.StartsWith("CN=", StringComparison.OrdinalIgnoreCase)
-    //        || value.Contains(",OU=", StringComparison.OrdinalIgnoreCase)
-    //        || value.Contains(",DC=", StringComparison.OrdinalIgnoreCase)
-    //        ? EntryAttribute.distinguishedName
-    //        : EntryAttribute.sAMAccountName;
-    // }
+    private static DirectoryEntryDto MapToDirectoryEntryDto(LDAPEntry entry)
+    {
+        return new DirectoryEntryDto
+        {
+            RequestLabel = entry.RequestLabel,
+            c = entry.c,
+            cn = entry.cn,
+            company = entry.company,
+            co = entry.co,
+            description = entry.description,
+            department = entry.department,
+            displayName = entry.displayName,
+            distinguishedName = entry.distinguishedName,
+            givenName = entry.givenName,
+            l = entry.l,
+            lastLogon = entry.lastLogon,
+            mail = entry.mail,
+            manager = entry.manager,
+            member = entry.member,
+            memberOf = entry.memberOf,
+            memberOfEntries = entry.memberOfEntries?.Select(MapToDirectoryEntryDto).ToList(),
+            name = entry.name,
+            objectCategory = entry.objectCategory,
+            objectClass = entry.objectClass,
+            samAccountName = entry.samAccountName,
+            samAccountType = entry.samAccountType,
+            sn = entry.sn,
+            telephoneNumber = entry.telephoneNumber,
+            title = entry.title,
+            userPrincipalName = entry.userPrincipalName,
+            whenCreated = entry.whenCreated,
+            objectGuid = entry.objectGuid,
+            objectGuidBytes = entry.objectGuidBytes,
+            objectSid = entry.objectSid,
+            objectSidBytes = entry.objectSidBytes,
+            userAccountControl = entry.userAccountControl
+        };
+    }
 
     private Task<Result<T>> NotConfigured<T>(string operation)
     {

@@ -45,8 +45,9 @@ public interface ILdapGatewayClient
 
     Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
        LdapRequestContext context,
+       IdentifierAttribute identifierAttribute,
        string identifier,
-       string identifierAttribute,
+       LdapEntryAttributeSet requiredAttributeSet,
        CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(

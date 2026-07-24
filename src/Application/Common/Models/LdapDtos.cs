@@ -2,7 +2,41 @@ namespace Bitai.LDAPGateway.Application.Common.Models;
 
 public sealed record AuthenticationResultDto(bool Authenticated, string Username, string Message);
 
-public sealed record DirectoryEntryDto(string Identifier, IReadOnlyDictionary<string, string> Attributes);
+public sealed record DirectoryEntryDto
+{
+    public string? RequestLabel { get; init; }
+    public string? c { get; init; }
+    public string? cn { get; init; }
+    public string? company { get; init; }
+    public string? co { get; init; }
+    public string? description { get; init; }
+    public string? department { get; init; }
+    public string? displayName { get; init; }
+    public string? distinguishedName { get; init; }
+    public string? givenName { get; init; }
+    public string? l { get; init; }
+    public DateTime? lastLogon { get; init; }
+    public string? mail { get; init; }
+    public string? manager { get; init; }
+    public string[]? member { get; init; }
+    public string[]? memberOf { get; init; }
+    public IEnumerable<DirectoryEntryDto>? memberOfEntries { get; init; }
+    public string? name { get; init; }
+    public string? objectCategory { get; init; }
+    public string[]? objectClass { get; init; }
+    public string? samAccountName { get; init; }
+    public string? samAccountType { get; init; }
+    public string? sn { get; init; }
+    public string? telephoneNumber { get; init; }
+    public string? title { get; init; }
+    public string? userPrincipalName { get; init; }
+    public DateTime? whenCreated { get; init; }
+    public string? objectGuid { get; init; }
+    public byte[]? objectGuidBytes { get; init; }
+    public string? objectSid { get; init; }
+    public byte[]? objectSidBytes { get; init; }
+    public string? userAccountControl { get; init; }
+}
 
 public sealed record LdapUserDto(string Identifier, string Username, string DisplayName, string Email);
 

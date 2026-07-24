@@ -53,8 +53,9 @@ public interface IBitaiLdapHelperAdapter
     Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
          LdapServerProfileOption ldapServerProfile,
       CatalogType catalogType,
+         IdentifierAttribute identifierAttribute,
       string identifier,
-      string identifierAttribute,
+         LdapEntryAttributeSet requiredAttributeSet,
       CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(

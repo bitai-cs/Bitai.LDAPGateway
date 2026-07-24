@@ -11,7 +11,8 @@ public sealed record GetDirectoryEntryByIdentifierQuery(
    string ServerProfile,
    CatalogType CatalogType,
    string Identifier,
-   string IdentifierAttribute) : IRequest<Result<DirectoryEntryDto>>;
+   IdentifierAttribute IdentifierAttribute,
+   LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<DirectoryEntryDto>>;
 
 public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValidator<GetDirectoryEntryByIdentifierQuery>
 {
@@ -19,7 +20,8 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
    {
       RuleFor(x => x.ServerProfile).NotEmpty();
       RuleFor(x => x.Identifier).NotEmpty();
-      RuleFor(x => x.IdentifierAttribute).NotEmpty();
+      RuleFor(x => x.IdentifierAttribute).IsInEnum();
+      RuleFor(x => x.RequiredAttributeSet).IsInEnum();
    }
 }
 
@@ -37,7 +39,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase,
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("GetDirectoryEntryByIdentifier", context,
-         () => _ldapGatewayClient.GetDirectoryEntryAsync(context, request.Identifier, request.IdentifierAttribute, cancellationToken),
+         () => _ldapGatewayClient.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
          cancellationToken);
    }
 }
