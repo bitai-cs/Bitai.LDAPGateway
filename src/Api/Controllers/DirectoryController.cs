@@ -132,11 +132,16 @@ public sealed class DirectoryController : ControllerBase
     public async Task<IActionResult> FilterBy(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
-       [FromQuery] string filter,
+       [FromQuery] LdapEntryAttribute filterAttribute,
+       [FromQuery] string filterValue,
+       [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
+       [FromQuery] string? secondFilterValue = null,
+       [FromQuery] bool? combineFilters = null,
        [FromQuery] int sizeLimit = 100,
        CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
+        var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, sizeLimit), cancellationToken);
+
         return this.ToActionResult(result);
     }
     #endregion
@@ -152,6 +157,7 @@ public sealed class DirectoryController : ControllerBase
        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetUserParentsQuery(serverProfile, catalogType, identifier, identifierAttribute), cancellationToken);
+
         return this.ToActionResult(result);
     }
 
@@ -164,6 +170,7 @@ public sealed class DirectoryController : ControllerBase
        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
+
         return this.ToActionResult(result);
     }
     #endregion

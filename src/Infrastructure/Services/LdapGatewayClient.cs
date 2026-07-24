@@ -105,15 +105,15 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.GetDirectoryEntryAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, LdapEntryAttribute FilterAttribute, string FilterValue, LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue, bool? CombineFilters, int sizeLimit, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.SearchDirectoryAsync(profileResult.Value!, context.CatalogType, filter, sizeLimit, cancellationToken);
+        return await _adapter.SearchDirectoryAsync(profileResult.Value!, context.CatalogType, FilterAttribute, FilterValue, SecondFilterAttribute, SecondFilterValue, CombineFilters, sizeLimit, cancellationToken);
     }
     #endregion
 

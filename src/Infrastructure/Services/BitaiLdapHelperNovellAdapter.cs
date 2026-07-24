@@ -622,8 +622,101 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
     }
 
-    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
-       => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("SearchDirectory");
+    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        int sizeLimit,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(filterValue))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("Filter is required."));
+        }
+
+        if (sizeLimit <= 0)
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        searchLimits.MaxSearchResults = sizeLimit;
+
+        try
+        {
+            var requestLabel = $"ldap-gateway-search-directory:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+
+            var combinedFilter = CreateCombinedFilterObject(false, filterAttribute, filterValue, true, secondaryFilterAttribute, secondaryFilterValue);
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
+
+            var searchResult = await searcher
+                .SearchEntriesAsync(combinedFilter, RequiredEntryAttributes.Few, requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "Bitai.LDAPHelper SearchDirectory failed for profile {ProfileId}, filter {Filter}, sizeLimit {SizeLimit}. Message: {OperationMessage}",
+                    ldapServerProfile.ProfileId,
+                    combinedFilter,
+                    sizeLimit,
+                    searchResult.OperationMessage);
+
+                return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+                    Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
+                        ? "LDAP search-directory operation failed."
+                        : searchResult.OperationMessage));
+            }
+
+            var mappedEntries = (searchResult.Entries ?? Array.Empty<LDAPEntry>())
+                .Select(MapToDirectoryEntryDto)
+                .ToList();
+
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Success(mappedEntries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unhandled exception while searching directory for profile {ProfileId} with filter {Filter} and sizeLimit {SizeLimit}.",
+                ldapServerProfile.ProfileId,
+                filterValue,
+                sizeLimit);
+
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.BadGateway($"LDAP search-directory operation failed: {ex.Message}"));
+        }
+    }
     #endregion
 
 
@@ -679,10 +772,10 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
 
         connectionInfo = new ConnectionInfo(
-           ldapServerProfile.Server,
-           resolvedPortNumber,
-           selectedUseSslValue,
-           (short)ldapServerProfile.ConnectionTimeout);
+            ldapServerProfile.Server,
+            resolvedPortNumber,
+            selectedUseSslValue,
+            (short)ldapServerProfile.ConnectionTimeout);
 
         return true;
     }
@@ -910,6 +1003,35 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             objectSidBytes = entry.objectSidBytes,
             userAccountControl = entry.userAccountControl
         };
+    }
+
+    private static ICombinableFilter CreateCombinedFilterObject(bool negateResult, LdapEntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd, LdapEntryAttribute? secondaryAttribute, string? secondaryValue)
+    {
+        var firstAttributeFilter = new AttributeFilter((EntryAttribute)primaryAttribute, new FilterValue(primaryValue));
+
+        ICombinableFilter combinableFilter;
+        if (secondaryAttribute is null || string.IsNullOrWhiteSpace(secondaryValue))
+        {
+            combinableFilter = CombineFilters(negateResult, true, firstAttributeFilter, null);
+            return combinableFilter;
+        }
+
+        var secondAttributeFilter = new AttributeFilter((EntryAttribute)secondaryAttribute, new FilterValue(secondaryValue));
+
+        combinableFilter = CombineFilters(negateResult, combineWithAnd ?? true, firstAttributeFilter, secondAttributeFilter);
+        return combinableFilter;
+    }
+
+    private static ICombinableFilter CombineFilters(bool negateResult, bool? combineWithAnd, ICombinableFilter primaryFilter, ICombinableFilter? secondaryFilter)
+    {
+        if (secondaryFilter is null)
+        {
+            return new AttributeFilterCombiner(negateResult, true, new List<ICombinableFilter> { primaryFilter });
+        }
+        else
+        {
+            return new AttributeFilterCombiner(negateResult, combineWithAnd ?? true, new List<ICombinableFilter> { primaryFilter, secondaryFilter });
+        }
     }
 
     private Task<Result<T>> NotConfigured<T>(string operation)
