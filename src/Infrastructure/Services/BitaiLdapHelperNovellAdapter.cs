@@ -11,6 +11,8 @@ namespace Bitai.LDAPGateway.Infrastructure.Services;
 
 public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 {
+    private readonly string _classFriendlyName = "LDAP Connector";
+    private readonly string _classCodeName = "ldap-novell-adapter";
     private readonly ILogger<BitaiLdapHelperNovellAdapter> _logger;
 
 
@@ -745,8 +747,140 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
 
     #region User Search Methods
-    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
-       => NotConfigured<IReadOnlyList<DirectoryEntryDto>>("GetUserParents");
+    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        string identifier,
+        IdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
+    {
+        string methodCodeName = "get-user-parents";
+        string methodFriendlyName = "to get user's parent LDAP entries";
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
+
+            var filterObject = CreateLdapHelperFilterObject(false, resolvedIdentifierAttribute, identifier);
+
+            var componentName = nameof(Searcher);
+            var componentMethod = nameof(Searcher.SearchParentEntriesAsync);
+            var searchResult = await searcher
+                    .SearchParentEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                    .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    componentName,
+                    componentMethod,
+                    searchResult.OperationMessage,
+                    filterObject,
+                    resolvedRequiredAttributes,
+                    ldapServerProfile.ProfileId,
+                    catalogType);
+
+                if (searchResult.ErrorObject != null)
+                {
+                    if (searchResult.ErrorObject is EntryNotFoundException)
+                    {
+                        return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+                            Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
+                    }
+                    else if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException novellError)
+                    {
+                        return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+                            Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} with error: {novellError.LdapErrorMessage}."));
+                    }
+                    else
+                    {
+                        throw searchResult.ErrorObject;
+                    }
+                }
+
+                // If we reach here, it means the operation was not successful, there was no specific error object, but we still have an operation message.
+                return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+                    Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
+                        ? $"{_classFriendlyName} failed {methodFriendlyName}."
+                        : searchResult.OperationMessage));
+            }
+
+            var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
+            // if (entries.Count == 0)
+            // {
+            //     return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+            //         Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
+            // }
+
+            // if (entries.Count > 1)
+            // {
+            //     return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(
+            //         Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+            // }
+
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Success(ResolveLdapEntries(entries));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
+                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
+                "Identifier: {Identifier}, Identifier Attribute {IdentifierAttribute}." +
+                "Required attributes: {RequiredAttributes}",
+                _classFriendlyName, methodFriendlyName,
+                ldapServerProfile.ProfileId, catalogType,
+                identifier, identifierAttribute,
+                requiredAttributeSet);
+
+            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+        }
+    }
 
     public Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<LdapUserDto>>("SearchUsers");
@@ -890,11 +1024,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     }
 
     private static bool TryCreateUserCredential(
-       LdapServerProfileOption ldapServerProfile,
-       string username,
-       string password,
-       out LDAPDomainAccountCredential credential,
-       out string error)
+        LdapServerProfileOption ldapServerProfile,
+        string username,
+        string password,
+        out LDAPDomainAccountCredential credential,
+        out string error)
     {
         credential = default!;
         error = string.Empty;
@@ -1052,6 +1186,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             objectSidBytes = entry.objectSidBytes,
             userAccountControl = entry.userAccountControl
         };
+    }
+
+    private static IReadOnlyList<DirectoryEntryDto> ResolveLdapEntries(IReadOnlyList<LDAPEntry> entries)
+    {
+        return entries.Select(MapToDirectoryEntryDto).ToList();
     }
 
     private static ICombinableFilter CreateLdapHelperFilterObject(bool negateResult, EntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd = null, EntryAttribute? secondaryAttribute = null, string? secondaryValue = null)

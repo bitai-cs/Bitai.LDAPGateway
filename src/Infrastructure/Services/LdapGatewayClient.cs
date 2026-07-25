@@ -119,15 +119,15 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region User Search Methods
-    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, IdentifierAttribute identifierAttribute, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
             return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, cancellationToken);
+        return await _adapter.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)

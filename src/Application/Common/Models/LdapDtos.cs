@@ -70,34 +70,17 @@ public record CreateMsAdUserDto: Bitai.LDAPHelper.DTO.LDAPMsADUserAccount
                distinguishedName, objectClass, samAccountName, userPrincipalName, userAccountControl,
                department, telephoneNumber, mail, password) { }
 }
-// public sealed record CreateMsAdUserDto(
-//    string DistinguishedName,
-//    string DistinguishedNameOfContainer,
-//    string GivenName,
-//    string Surname,
-//    string CommonName,
-//    string Name,
-//    string DisplayName,
-//    string Description,
-//    string[] ObjectClass,
-//    string SamAccountName,
-//    string UserPrincipalName,
-//    string UserAccountControl,
-//    string Department,
-//    string TelephoneNumber,
-//    string Mail,
-//    string Password);
 
 public sealed record LdapServerProfileDto(
-   string ProfileId,
-   string Server,
-   string Port,
-   string PortForGlobalCatalog,
-   string BaseDn,
-   string BaseDnForGlobalCatalog,
-   string DefaultDomainName,
-   int ConnectionTimeout,
-   bool UseSsl,
-   bool UseSslForGlobalCatalog,
-   string BindAccountName,
-   int HealthCheckPingTimeout);
+    string ProfileId,
+    string Server,
+    string Port,
+    string PortForGlobalCatalog,
+    string BaseDn,
+    string BaseDnForGlobalCatalog,
+    string DefaultDomainName,
+    int ConnectionTimeout,
+    bool UseSsl,
+    bool UseSslForGlobalCatalog,
+    string BindAccountName,
+    int HealthCheckPingTimeout);

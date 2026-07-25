@@ -119,7 +119,7 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string identifier,
        [FromQuery] IdentifierAttribute identifierAttribute = IdentifierAttribute.SAMAccountName,
        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
-       CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
            new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet),
@@ -130,15 +130,15 @@ public sealed class DirectoryController : ControllerBase
 
     [HttpGet("filterBy")]
     public async Task<IActionResult> FilterBy(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromQuery] LdapEntryAttribute filterAttribute,
-       [FromQuery] string filterValue,
-       [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
-       [FromQuery] string? secondFilterValue = null,
-       [FromQuery] bool? combineFilters = null,
-       [FromQuery] int sizeLimit = 100,
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromQuery] LdapEntryAttribute filterAttribute,
+        [FromQuery] string filterValue,
+        [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
+        [FromQuery] string? secondFilterValue = null,
+        [FromQuery] bool? combineFilters = null,
+        [FromQuery] int sizeLimit = 100,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, sizeLimit), cancellationToken);
 
@@ -150,24 +150,25 @@ public sealed class DirectoryController : ControllerBase
     #region User Search Endpoints
     [HttpGet("Users/{identifier}/Parents")]
     public async Task<IActionResult> GetUserParents(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "distinguishedName",
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromRoute] string identifier,
+        [FromQuery] IdentifierAttribute identifierAttribute = IdentifierAttribute.SAMAccountName,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetUserParentsQuery(serverProfile, catalogType, identifier, identifierAttribute), cancellationToken);
+        var result = await _mediator.Send(new GetUserParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
 
         return this.ToActionResult(result);
     }
 
     [HttpGet("Users/filterBy")]
     public async Task<IActionResult> FilterUsersBy(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromQuery] string filter,
-       [FromQuery] int sizeLimit = 100,
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromQuery] string filter,
+        [FromQuery] int sizeLimit = 100,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
 

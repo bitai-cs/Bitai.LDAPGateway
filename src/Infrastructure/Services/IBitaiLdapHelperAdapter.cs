@@ -70,10 +70,11 @@ public interface IBitaiLdapHelperAdapter
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(
-        string server,
+        LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         string identifier,
-        string identifierAttribute,
+        IdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(

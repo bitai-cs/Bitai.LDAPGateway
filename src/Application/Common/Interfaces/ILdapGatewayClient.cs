@@ -70,7 +70,8 @@ public interface ILdapGatewayClient
     Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(
         LdapRequestContext context,
         string identifier,
-        string identifierAttribute,
+        IdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(
