@@ -122,8 +122,7 @@ public sealed class DirectoryController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-           new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet),
-           cancellationToken);
+            new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
 
         return this.ToActionResult(result);
     }
