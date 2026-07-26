@@ -10,7 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.SetMsAdUserPassword;
 public sealed record SetMsAdUserPasswordCommand(
    string ServerProfile,
    CatalogType CatalogType,
-   IdentifierAttribute IdentifierAttribute,
+   LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    string NewPassword,
    bool MustChangeAtNextLogon) : IRequest<Result>;

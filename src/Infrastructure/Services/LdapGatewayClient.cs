@@ -47,18 +47,18 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region User Provisioning Methods
-    public async Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(LdapRequestContext context, CreateMsAdUserDto request, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto>> CreateMsAdUserAsync(LdapRequestContext context, CreateMsAdUserDto request, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<DirectoryEntryDto>.Failure(profileResult.Error!);
+            return Result<LdapEntryDto>.Failure(profileResult.Error!);
         }
 
         return await _adapter.CreateMsAdUserAsync(profileResult.Value!, context.CatalogType, request, cancellationToken);
     }
 
-    public async Task<Result> SetMsAdUserPasswordAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, string newPassword, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
+    public async Task<Result> SetMsAdUserPasswordAsync(LdapRequestContext context, LdapIdentifierAttribute identifierAttribute, string identifier, string newPassword, bool mustChangeAtNextLogon, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -69,7 +69,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.SetMsAdUserPasswordAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, newPassword, mustChangeAtNextLogon, cancellationToken);
     }
 
-    public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, string? reason, CancellationToken cancellationToken)
+    public async Task<Result> DisableMsAdUserAsync(LdapRequestContext context, LdapIdentifierAttribute identifierAttribute, string identifier, string? reason, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -80,7 +80,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.DisableMsAdUserAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, reason, cancellationToken);
     }
 
-    public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, CancellationToken cancellationToken)
+    public async Task<Result> DeleteMsAdUserAsync(LdapRequestContext context, LdapIdentifierAttribute identifierAttribute, string identifier, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -94,23 +94,23 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region Generic Directory Search Methods
-    public async Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(LdapRequestContext context, IdentifierAttribute identifierAttribute, string identifier, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto>> GetDirectoryEntryAsync(LdapRequestContext context, LdapIdentifierAttribute identifierAttribute, string identifier, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<DirectoryEntryDto>.Failure(profileResult.Error!);
+            return Result<LdapEntryDto>.Failure(profileResult.Error!);
         }
 
         return await _adapter.GetDirectoryEntryAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, LdapEntryAttribute FilterAttribute, string FilterValue, LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue, bool? CombineFilters, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, LdapEntryAttribute FilterAttribute, string FilterValue, LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue, bool? CombineFilters, int sizeLimit, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
         return await _adapter.SearchDirectoryAsync(profileResult.Value!, context.CatalogType, FilterAttribute, FilterValue, SecondFilterAttribute, SecondFilterValue, CombineFilters, sizeLimit, cancellationToken);
@@ -119,40 +119,45 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region User Search Methods
-    public async Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, IdentifierAttribute identifierAttribute, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, LdapIdentifierAttribute identifierAttribute, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<IReadOnlyList<DirectoryEntryDto>>.Failure(profileResult.Error!);
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
         return await _adapter.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(LdapRequestContext context, LdapEntryAttribute filterAttribute, string filterValue, LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue, bool? combineFilters, LdapEntryAttributeSet requiredAttributeSet, int sizeLimit, CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<IReadOnlyList<LdapUserDto>>.Failure(profileResult.Error!);
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.SearchUsersAsync(profileResult.Value!, context.CatalogType, filter, sizeLimit, cancellationToken);
+        return await _adapter.SearchUsersAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit, cancellationToken);
     }
     #endregion
 
 
     #region Group Search Methods
-    public async Task<Result<LdapGroupDto>> GetGroupAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto>> GetGroupAsync(
+        LdapRequestContext context,
+        LdapIdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<LdapGroupDto>.Failure(profileResult.Error!);
+            return Result<LdapEntryDto>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.GetGroupAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, cancellationToken);
+        return await _adapter.GetGroupAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)

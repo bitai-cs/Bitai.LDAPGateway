@@ -73,7 +73,7 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] IdentifierAttribute identifierAttribute,
+       [FromQuery] LdapIdentifierAttribute identifierAttribute,
        [FromBody] SetMsAdUserCredentialRequest request,
        CancellationToken cancellationToken)
     {
@@ -89,7 +89,7 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] IdentifierAttribute identifierAttribute,
+       [FromQuery] LdapIdentifierAttribute identifierAttribute,
        [FromBody] DisableMsAdUserRequest request,
        CancellationToken cancellationToken)
     {
@@ -102,7 +102,7 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] IdentifierAttribute identifierAttribute,
+       [FromQuery] LdapIdentifierAttribute identifierAttribute,
        CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new DeleteMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier), cancellationToken);
@@ -117,7 +117,7 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] IdentifierAttribute identifierAttribute = IdentifierAttribute.SAMAccountName,
+       [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
@@ -153,7 +153,7 @@ public sealed class DirectoryController : ControllerBase
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
         [FromRoute] string identifier,
-        [FromQuery] IdentifierAttribute identifierAttribute = IdentifierAttribute.SAMAccountName,
+        [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
@@ -166,11 +166,16 @@ public sealed class DirectoryController : ControllerBase
     public async Task<IActionResult> FilterUsersBy(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
-        [FromQuery] string filter,
+        [FromQuery] LdapEntryAttribute filterAttribute,
+        [FromQuery] string filterValue,
+        [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
+        [FromQuery] string? secondFilterValue = null,
+        [FromQuery] bool? combineFilters = null,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
+        var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -183,10 +188,12 @@ public sealed class DirectoryController : ControllerBase
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
        [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "distinguishedName",
+       [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
+       [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
        CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute), cancellationToken);
+        var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet), cancellationToken);
+
         return this.ToActionResult(result);
     }
 

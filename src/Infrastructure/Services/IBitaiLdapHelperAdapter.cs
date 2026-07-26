@@ -20,7 +20,7 @@ public interface IBitaiLdapHelperAdapter
         string password,
         CancellationToken cancellationToken);
 
-    Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(
+    Task<Result<LdapEntryDto>> CreateMsAdUserAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         CreateMsAdUserDto user,
@@ -29,7 +29,7 @@ public interface IBitaiLdapHelperAdapter
     Task<Result> SetMsAdUserPasswordAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         string password,
         bool mustChangeAtNextLogon,
@@ -38,7 +38,7 @@ public interface IBitaiLdapHelperAdapter
     Task<Result> DisableMsAdUserAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         string? reason,
         CancellationToken cancellationToken);
@@ -46,19 +46,19 @@ public interface IBitaiLdapHelperAdapter
     Task<Result> DeleteMsAdUserAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         CancellationToken cancellationToken);
 
-    Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
+    Task<Result<LdapEntryDto>> GetDirectoryEntryAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchDirectoryAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapEntryAttribute FilterAttribute,
@@ -69,26 +69,32 @@ public interface IBitaiLdapHelperAdapter
         int sizeLimit,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         string identifier,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(
-        string server,
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(
+        LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        string filter,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
         int sizeLimit,
         CancellationToken cancellationToken);
 
-    Task<Result<LdapGroupDto>> GetGroupAsync(
-        string server,
+    Task<Result<LdapEntryDto>> GetGroupAsync(
+        LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
-        string identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(

@@ -15,7 +15,7 @@ public sealed record SearchDirectoryQuery(
    LdapEntryAttribute? SecondFilterAttribute,
    string? SecondFilterValue,
    bool? CombineFilters,
-   int SizeLimit) : IRequest<Result<IReadOnlyList<DirectoryEntryDto>>>;
+   int SizeLimit) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
 
 public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDirectoryQuery>
 {
@@ -31,7 +31,7 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
     }
 }
 
-public sealed class SearchDirectoryQueryHandler : LdapHandlerBase, IRequestHandler<SearchDirectoryQuery, Result<IReadOnlyList<DirectoryEntryDto>>>
+public sealed class SearchDirectoryQueryHandler : LdapHandlerBase, IRequestHandler<SearchDirectoryQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
@@ -41,7 +41,7 @@ public sealed class SearchDirectoryQueryHandler : LdapHandlerBase, IRequestHandl
         _ldapGatewayClient = ldapGatewayClient;
     }
 
-    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> Handle(SearchDirectoryQuery request, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(SearchDirectoryQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchDirectory", context,

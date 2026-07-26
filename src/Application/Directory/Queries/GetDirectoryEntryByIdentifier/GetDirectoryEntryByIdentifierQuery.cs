@@ -11,8 +11,8 @@ public sealed record GetDirectoryEntryByIdentifierQuery(
     string ServerProfile,
     CatalogType CatalogType,
     string Identifier,
-    IdentifierAttribute IdentifierAttribute,
-    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<DirectoryEntryDto>>;
+    LdapIdentifierAttribute IdentifierAttribute,
+    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<LdapEntryDto>>;
 
 public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValidator<GetDirectoryEntryByIdentifierQuery>
 {
@@ -25,7 +25,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
     }
 }
 
-public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetDirectoryEntryByIdentifierQuery, Result<DirectoryEntryDto>>
+public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetDirectoryEntryByIdentifierQuery, Result<LdapEntryDto>>
 {
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
@@ -35,7 +35,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase,
         _ldapGatewayClient = ldapGatewayClient;
     }
 
-    public Task<Result<DirectoryEntryDto>> Handle(GetDirectoryEntryByIdentifierQuery request, CancellationToken cancellationToken)
+    public Task<Result<LdapEntryDto>> Handle(GetDirectoryEntryByIdentifierQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("GetDirectoryEntryByIdentifier", context,

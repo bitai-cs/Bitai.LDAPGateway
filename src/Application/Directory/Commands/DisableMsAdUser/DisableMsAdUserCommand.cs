@@ -10,7 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.DisableMsAdUser;
 public sealed record DisableMsAdUserCommand(
    string ServerProfile,
    CatalogType CatalogType,
-   IdentifierAttribute IdentifierAttribute,
+   LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    string? Reason) : IRequest<Result>;
 

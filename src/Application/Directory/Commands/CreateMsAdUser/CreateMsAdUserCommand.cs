@@ -9,7 +9,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.CreateMsAdUser;
 
 public sealed record CreateMsAdUserCommand(
    string ServerProfile,
-   CatalogType CatalogType) : CreateMsAdUserDto, IRequest<Result<DirectoryEntryDto>>;
+   CatalogType CatalogType) : CreateMsAdUserDto, IRequest<Result<LdapEntryDto>>;
 // public sealed record CreateMsAdUserCommand(
 //    string ServerProfile,
 //    CatalogType CatalogType,
@@ -28,7 +28,7 @@ public sealed record CreateMsAdUserCommand(
 //    string Department,
 //    string TelephoneNumber,
 //    string Mail,
-//    string Password) : IRequest<Result<DirectoryEntryDto>>;
+//    string Password) : IRequest<Result<LdapEntryDto>>;
 
 public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsAdUserCommand>
 {
@@ -46,7 +46,7 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
     }
 }
 
-public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<CreateMsAdUserCommand, Result<DirectoryEntryDto>>
+public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<CreateMsAdUserCommand, Result<LdapEntryDto>>
 {
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
@@ -56,7 +56,7 @@ public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHand
         _ldapGatewayClient = ldapGatewayClient;
     }
 
-    public Task<Result<DirectoryEntryDto>> Handle(CreateMsAdUserCommand request, CancellationToken cancellationToken)
+    public Task<Result<LdapEntryDto>> Handle(CreateMsAdUserCommand request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         var payload = new CreateMsAdUserDto(

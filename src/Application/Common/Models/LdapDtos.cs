@@ -2,7 +2,7 @@ namespace Bitai.LDAPGateway.Application.Common.Models;
 
 public sealed record AuthenticationResultDto(bool Authenticated, string Username, string Message);
 
-public sealed record DirectoryEntryDto
+public sealed record LdapEntryDto
 {
     public string? RequestLabel { get; init; }
     public string? c { get; init; }
@@ -20,7 +20,7 @@ public sealed record DirectoryEntryDto
     public string? manager { get; init; }
     public string[]? member { get; init; }
     public string[]? memberOf { get; init; }
-    public IEnumerable<DirectoryEntryDto>? memberOfEntries { get; init; }
+    public IEnumerable<LdapEntryDto>? memberOfEntries { get; init; }
     public string? name { get; init; }
     public string? objectCategory { get; init; }
     public string[]? objectClass { get; init; }
@@ -37,8 +37,6 @@ public sealed record DirectoryEntryDto
     public byte[]? objectSidBytes { get; init; }
     public string? userAccountControl { get; init; }
 }
-
-public sealed record LdapUserDto(string Identifier, string Username, string DisplayName, string Email);
 
 public sealed record LdapGroupDto(string Identifier, string Name, string Description);
 

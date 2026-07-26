@@ -20,14 +20,14 @@ public interface ILdapGatewayClient
     #endregion
 
     #region User Provisioning Methods
-    Task<Result<DirectoryEntryDto>> CreateMsAdUserAsync(
+    Task<Result<LdapEntryDto>> CreateMsAdUserAsync(
         LdapRequestContext context,
         CreateMsAdUserDto request,
         CancellationToken cancellationToken);
 
     Task<Result> SetMsAdUserPasswordAsync(
         LdapRequestContext context,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         string newPassword,
         bool mustChangeAtNextLogon,
@@ -35,27 +35,27 @@ public interface ILdapGatewayClient
 
     Task<Result> DisableMsAdUserAsync(
         LdapRequestContext context,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         string? reason,
         CancellationToken cancellationToken);
 
     Task<Result> DeleteMsAdUserAsync(
         LdapRequestContext context,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         CancellationToken cancellationToken);
     #endregion
 
     #region Generic Directory Methods
-    Task<Result<DirectoryEntryDto>> GetDirectoryEntryAsync(
+    Task<Result<LdapEntryDto>> GetDirectoryEntryAsync(
         LdapRequestContext context,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<DirectoryEntryDto>>> SearchDirectoryAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchDirectoryAsync(
         LdapRequestContext context,
         LdapEntryAttribute FilterAttribute,
         string FilterValue,
@@ -67,25 +67,29 @@ public interface ILdapGatewayClient
     #endregion
 
     #region User Directory Methods
-    Task<Result<IReadOnlyList<DirectoryEntryDto>>> GetUserParentsAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapRequestContext context,
         string identifier,
-        IdentifierAttribute identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapUserDto>>> SearchUsersAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(
         LdapRequestContext context,
-        string filter,
+        LdapEntryAttribute filterAttribute, string filterValue,
+        LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
         int sizeLimit,
         CancellationToken cancellationToken);
     #endregion
 
     #region Group Directory Methods
-    Task<Result<LdapGroupDto>> GetGroupAsync(
+    Task<Result<LdapEntryDto>> GetGroupAsync(
         LdapRequestContext context,
+        LdapIdentifierAttribute identifierAttribute,
         string identifier,
-        string identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(

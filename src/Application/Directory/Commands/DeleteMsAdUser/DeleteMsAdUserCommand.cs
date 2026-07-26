@@ -10,7 +10,7 @@ namespace Bitai.LDAPGateway.Application.Directory.Commands.DeleteMsAdUser;
 public sealed record DeleteMsAdUserCommand(
    string ServerProfile,
    CatalogType CatalogType,
-   IdentifierAttribute IdentifierAttribute,
+   LdapIdentifierAttribute IdentifierAttribute,
    string Identifier) : IRequest<Result>;
 
 public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsAdUserCommand>

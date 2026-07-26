@@ -11,8 +11,8 @@ public sealed record GetUserParentsQuery(
     string ServerProfile,
     CatalogType CatalogType,
     string Identifier,
-    IdentifierAttribute IdentifierAttribute,
-    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<IReadOnlyList<DirectoryEntryDto>>>;
+    LdapIdentifierAttribute IdentifierAttribute,
+    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
 
 public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserParentsQuery>
 {
@@ -25,7 +25,7 @@ public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserPare
     }
 }
 
-public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetUserParentsQuery, Result<IReadOnlyList<DirectoryEntryDto>>>
+public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetUserParentsQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
@@ -35,7 +35,7 @@ public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandle
         _ldapGatewayClient = ldapGatewayClient;
     }
 
-    public Task<Result<IReadOnlyList<DirectoryEntryDto>>> Handle(GetUserParentsQuery request, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(GetUserParentsQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
