@@ -38,8 +38,6 @@ public sealed record LdapEntryDto
     public string? userAccountControl { get; init; }
 }
 
-public sealed record LdapGroupDto(string Identifier, string Name, string Description);
-
 public record CreateMsAdUserDto: Bitai.LDAPHelper.DTO.LDAPMsADUserAccount
 {
     public CreateMsAdUserDto() : base() { }

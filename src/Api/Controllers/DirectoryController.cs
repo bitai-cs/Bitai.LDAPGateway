@@ -13,7 +13,6 @@ using Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 using Bitai.LDAPGateway.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Novell.Directory.Ldap;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -203,7 +202,7 @@ public sealed class DirectoryController : ControllerBase
         [FromRoute] CatalogType catalogType,
         [FromRoute] string identifier,
         [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
-        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few ,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
@@ -214,33 +213,39 @@ public sealed class DirectoryController : ControllerBase
     public async Task<IActionResult> FilterGroupsBy(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
-        [FromQuery] string filter,
+        [FromQuery] LdapEntryAttribute filterAttribute,
+        [FromQuery] string filterValue,
+        [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
+        [FromQuery] string? secondFilterValue = null,
+        [FromQuery] bool? combineFilters = null,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchGroupsQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
+        var result = await _mediator.Send(new SearchGroupsQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
+
         return this.ToActionResult(result);
     }
     #endregion
 }
 
 public sealed record CreateMsAdUserRequest(
-   string distinguishedName,
-   string distinguishedNameOfContainer,
-   string givenName,
-   string sn,
-   string cn,
-   string name,
-   string displayName,
-   string description,
-   string[] objectClass,
-   string samAccountName,
-   string userPrincipalName,
-   string userAccountControl,
-   string department,
-   string telephoneNumber,
-   string mail,
-   string password);
+    string distinguishedName,
+    string distinguishedNameOfContainer,
+    string givenName,
+    string sn,
+    string cn,
+    string name,
+    string displayName,
+    string description,
+    string[] objectClass,
+    string samAccountName,
+    string userPrincipalName,
+    string userAccountControl,
+    string department,
+    string telephoneNumber,
+    string mail,
+    string password);
 
 public sealed record SetMsAdUserCredentialRequest(string Password, bool MustChangeAtNextLogon = false);
 

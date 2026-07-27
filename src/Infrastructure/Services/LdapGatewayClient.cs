@@ -176,15 +176,24 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.GetGroupParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
+        LdapRequestContext context,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
+        int sizeLimit,
+        CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<IReadOnlyList<LdapGroupDto>>.Failure(profileResult.Error!);
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.SearchGroupsAsync(profileResult.Value!, context.CatalogType, filter, sizeLimit, cancellationToken);
+        return await _adapter.SearchGroupsAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondaryFilterAttribute, secondaryFilterValue, combineFilters, requiredAttributeSet, sizeLimit, cancellationToken);
     }
     #endregion
 
@@ -193,21 +202,21 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
     private Result<string> GetLdapServerProfileName(string profileId)
     {
         var profile = _options.CurrentValue
-           .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
+            .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
 
         return profile is null
-           ? Result<string>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
-           : Result<string>.Success(profile.Server);
+            ? Result<string>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
+            : Result<string>.Success(profile.Server);
     }
 
     private Result<LdapServerProfileOption> GetLdapServerProfileConfiguration(string profileId)
     {
         var profile = _options.CurrentValue
-           .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
+            .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
 
         return profile is null
-           ? Result<LdapServerProfileOption>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
-           : Result<LdapServerProfileOption>.Success(profile);
+            ? Result<LdapServerProfileOption>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
+            : Result<LdapServerProfileOption>.Success(profile);
     }
     #endregion
 }

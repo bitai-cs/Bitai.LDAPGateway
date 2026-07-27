@@ -99,9 +99,14 @@ public interface ILdapGatewayClient
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
         LdapRequestContext context,
-        string filter,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
         int sizeLimit,
         CancellationToken cancellationToken);
     #endregion

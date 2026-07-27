@@ -8,20 +8,20 @@ using MediatR;
 namespace Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 
 public sealed record SearchUsersQuery(
-   string ServerProfile,
-   CatalogType CatalogType,
-   LdapEntryAttribute FilterAttribute, string FilterValue,
-   LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue,
-   bool? CombineFilters,
-   LdapEntryAttributeSet RequiredAttributeSet,
-   int SizeLimit) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    string ServerProfile,
+    CatalogType CatalogType,
+    LdapEntryAttribute FilterAttribute, string FilterValue,
+    LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue,
+    bool? CombineFilters,
+    LdapEntryAttributeSet RequiredAttributeSet,
+    int SizeLimit) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
 
 public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQuery>
 {
     public SearchUsersQueryValidator()
     {
         RuleFor(x => x.ServerProfile)
-          .NotEmpty().WithMessage("Server profile is required.");
+            .NotEmpty().WithMessage("Server profile is required.");
 
         RuleFor(x => x.FilterValue)
             .NotEmpty().WithMessage("Filter value is required.");
@@ -65,7 +65,7 @@ public sealed class SearchUsersQueryHandler : LdapHandlerBase, IRequestHandler<S
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
     public SearchUsersQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;
     }
@@ -74,7 +74,7 @@ public sealed class SearchUsersQueryHandler : LdapHandlerBase, IRequestHandler<S
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchUsers", context,
-           () => _ldapGatewayClient.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
-           cancellationToken);
+            () => _ldapGatewayClient.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
+        cancellationToken);
     }
 }

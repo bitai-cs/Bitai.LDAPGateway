@@ -105,10 +105,15 @@ public interface IBitaiLdapHelperAdapter
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(
-        string server,
+    Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
+        LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
-        string filter,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
         int sizeLimit,
         CancellationToken cancellationToken);
 }

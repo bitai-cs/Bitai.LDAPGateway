@@ -1086,15 +1086,15 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
             var searcher = new Searcher(
-               connectionInfo,
-               searchLimits,
-               credentialForSearching,
-               new NovellLdapConnectionFactoryAdapter());
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
             var searchResult = await searcher.SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
-               .WaitAsync(cancellationToken);
+                .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
             {
@@ -1290,8 +1290,164 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
     }
 
-    public Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
-       => NotConfigured<IReadOnlyList<LdapGroupDto>>("SearchGroups");
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
+        int sizeLimit,
+        CancellationToken cancellationToken)
+    {
+        string methodCodeName = "get-groups";
+        string methodFriendlyName = "to get LDAP group entries";
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(filterValue))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
+        }
+
+        if (sizeLimit <= 0)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        if (secondaryFilterAttribute.HasValue && (string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters == null))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterValue and CombineFilters are required when SecondaryFilterAttribute is provided."));
+        }
+
+        if (!secondaryFilterAttribute.HasValue && (!string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters != null))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterAttribute and CombineFilters are required when SecondaryFilterValue is provided."));
+        }
+
+        var resolvedFilterAttribute = ResolveLdapEntryAttribute(filterAttribute);
+
+        var resolvedSecondaryFilterAttribute = secondaryFilterAttribute.HasValue
+            ? ResolveLdapEntryAttribute(secondaryFilterAttribute.Value)
+            : (EntryAttribute?)null;
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+
+            searchLimits.MaxSearchResults = sizeLimit;
+
+            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner();
+
+            var combinedFilter = CreateFilterCombiner(
+                false,
+                resolvedFilterAttribute,
+                filterValue,
+                combineFilters,
+                resolvedSecondaryFilterAttribute,
+                secondaryFilterValue);
+
+            var filterObject = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, combinedFilter });
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
+
+            var componentName = nameof(Searcher);
+            var componentMethod = nameof(Searcher.SearchEntriesAsync);
+            var searchResult = await searcher
+                .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogWarning(
+                    searchResult.ErrorObject,
+                    "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    componentName, componentMethod,
+                    searchResult.OperationMessage,
+                    filterObject,
+                    resolvedRequiredAttributes,
+                    ldapServerProfile.ProfileId,
+                    catalogType);
+
+                Error error;
+                string errorMsg = $"{_classFriendlyName} failed {methodFriendlyName} using LDAP connector.";
+
+                if (searchResult.HasErrorObject)
+                {
+                    error = Error.BadGateway(errorMsg,
+                        !string.IsNullOrWhiteSpace(searchResult.OperationMessage)
+                        ? Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(searchResult.ErrorObject.Message))
+                        : Error.InnerErr(searchResult.ErrorObject.Message));
+                }
+                else
+                {
+                    error = Error.BadGateway(errorMsg,
+                        !string.IsNullOrWhiteSpace(searchResult.OperationMessage)
+                        ? Error.InnerErr(searchResult.OperationMessage)
+                        : null);
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            var mappedEntries = (searchResult.Entries ?? Array.Empty<LDAPEntry>())
+                .Select(MapToDirectoryEntryDto)
+                .ToList();
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Success(mappedEntries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
+                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
+                "FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, " +
+                "SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, " +
+                "CombineFilters: {CombineFilters}, " +
+                "Required attributes: {RequiredAttributes}",
+                _classFriendlyName, methodFriendlyName,
+                ldapServerProfile.ProfileId, catalogType,
+                filterAttribute, filterValue,
+                secondaryFilterAttribute, secondaryFilterValue,
+                combineFilters, requiredAttributeSet);
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+        }
+    }
     #endregion
 
 
