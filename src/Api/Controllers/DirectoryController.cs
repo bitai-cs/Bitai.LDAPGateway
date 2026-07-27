@@ -13,6 +13,7 @@ using Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 using Bitai.LDAPGateway.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Novell.Directory.Ldap;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -184,12 +185,12 @@ public sealed class DirectoryController : ControllerBase
     #region Group Search Endpoints
     [HttpGet("Groups/{identifier}")]
     public async Task<IActionResult> GetGroup(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromRoute] string identifier,
-       [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
-       [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromRoute] string identifier,
+        [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet), cancellationToken);
 
@@ -198,23 +199,24 @@ public sealed class DirectoryController : ControllerBase
 
     [HttpGet("Groups/{identifier}/Parents")]
     public async Task<IActionResult> GetGroupParents(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromRoute] string identifier,
-       [FromQuery] string identifierAttribute = "distinguishedName",
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromRoute] string identifier,
+        [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few ,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute), cancellationToken);
+        var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
         return this.ToActionResult(result);
     }
 
     [HttpGet("Groups/filterBy")]
     public async Task<IActionResult> FilterGroupsBy(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromQuery] string filter,
-       [FromQuery] int sizeLimit = 100,
-       CancellationToken cancellationToken = default)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromQuery] string filter,
+        [FromQuery] int sizeLimit = 100,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new SearchGroupsQuery(serverProfile, catalogType, filter, sizeLimit), cancellationToken);
         return this.ToActionResult(result);

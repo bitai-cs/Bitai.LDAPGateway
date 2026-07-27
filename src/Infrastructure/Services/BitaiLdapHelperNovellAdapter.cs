@@ -1133,12 +1133,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             if (searchResult.Entries == null || searchResult.Entries.Count() == 0)
             {
                 return Result<LdapEntryDto>.Failure(
-                   Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
+                    Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
             }
             if (searchResult.Entries.Count() > 1)
             {
                 return Result<LdapEntryDto>.Failure(
-                   Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
 ;
             return Result<LdapEntryDto>.Success(
@@ -1160,8 +1160,135 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         }
     }
 
-    public Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(string server, CatalogType catalogType, string identifier, string identifierAttribute, CancellationToken cancellationToken)
-       => NotConfigured<IReadOnlyList<LdapEntryDto>>("GetGroupParents");
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        string identifier,
+        LdapIdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
+    {
+        string methodCodeName = "get-group-parents";
+        string methodFriendlyName = "to get group's parent LDAP entries";
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
+
+            var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+
+            var componentName = nameof(Searcher);
+            var componentMethod = nameof(Searcher.SearchParentEntriesAsync);
+            var searchResult = await searcher
+                    .SearchParentEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                    .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    componentName,
+                    componentMethod,
+                    searchResult.OperationMessage,
+                    filterObject,
+                    resolvedRequiredAttributes,
+                    ldapServerProfile.ProfileId,
+                    catalogType);
+
+                Error error;
+                string errorMsg = $"{_classFriendlyName} failed {methodFriendlyName} with error in {componentName}.";
+
+                if (searchResult.ErrorObject != null)
+                {
+                    if (searchResult.ErrorObject is EntryNotFoundException notFoundEx)
+                    {
+                        error = Error.NotFound($"Directory entry not found for '{identifier}'.", Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(notFoundEx.Message)));
+                    }
+                    else if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
+                    {
+                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(ldapEx.LdapErrorMessage)));
+                    }
+                    else
+                    {
+                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(searchResult.ErrorObject.Message)));
+                    }
+
+                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+                }
+
+                // If we reach here, it means the operation was not successful, there was no specific error object, but we still have an operation message.
+                error = Error.BadGateway(errorMsg);
+                if (!string.IsNullOrWhiteSpace(searchResult.OperationMessage))
+                {
+                    error = error.WithInner(Error.InnerErr(searchResult.OperationMessage));
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Success(ResolveLdapEntries(entries));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
+                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
+                "Identifier: {Identifier}, Identifier Attribute {LdapIdentifierAttribute}." +
+                "Required attributes: {RequiredAttributes}",
+                _classFriendlyName, methodFriendlyName,
+                ldapServerProfile.ProfileId, catalogType,
+                identifier, identifierAttribute,
+                requiredAttributeSet);
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+        }
+    }
 
     public Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(string server, CatalogType catalogType, string filter, int sizeLimit, CancellationToken cancellationToken)
        => NotConfigured<IReadOnlyList<LdapGroupDto>>("SearchGroups");

@@ -92,10 +92,11 @@ public interface ILdapGatewayClient
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(
+    Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
         LdapRequestContext context,
         string identifier,
-        string identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(

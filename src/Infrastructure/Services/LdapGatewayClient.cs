@@ -160,15 +160,20 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
         return await _adapter.GetGroupAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(LdapRequestContext context, string identifier, string identifierAttribute, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
+        LdapRequestContext context,
+        string identifier,
+        LdapIdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
     {
-        var profileResult = GetLdapServerProfileName(context.ServerProfile);
+        var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<IReadOnlyList<LdapGroupDto>>.Failure(profileResult.Error!);
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.GetGroupParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, cancellationToken);
+        return await _adapter.GetGroupParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(LdapRequestContext context, string filter, int sizeLimit, CancellationToken cancellationToken)

@@ -97,11 +97,12 @@ public interface IBitaiLdapHelperAdapter
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
-    Task<Result<IReadOnlyList<LdapGroupDto>>> GetGroupParentsAsync(
-        string server,
+    Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
+        LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         string identifier,
-        string identifierAttribute,
+        LdapIdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapGroupDto>>> SearchGroupsAsync(
