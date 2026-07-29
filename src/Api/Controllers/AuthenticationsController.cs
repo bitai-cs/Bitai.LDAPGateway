@@ -8,43 +8,43 @@ using Microsoft.AspNetCore.Mvc;
 namespace Bitai.LDAPGateway.Api.Controllers;
 
 [ApiController]
-[Route("api/{serverProfile}/{catalogType}/[controller]")]
+[Route("api/{serverProfile:ldapSvrPf}/{catalogType:ldapCatType}/[controller]")]
 public sealed class AuthenticationsController : ControllerBase
 {
-   private readonly IMediator _mediator;
+    private readonly IMediator _mediator;
 
-   public AuthenticationsController(IMediator mediator)
-   {
-      _mediator = mediator;
-   }
+    public AuthenticationsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
 
-   [HttpPost("authenticate")]
-   public async Task<IActionResult> Authenticate(
-      [FromRoute] string serverProfile,
-      [FromRoute] CatalogType catalogType,
-      [FromBody] AuthenticateRequest request,
-      CancellationToken cancellationToken)
-   {
-      var result = await _mediator.Send(
-         new AuthenticateCommand(serverProfile, catalogType, request.Username, request.Password),
-         cancellationToken);
+    [HttpPost("authenticate")]
+    public async Task<IActionResult> Authenticate(
+       [FromRoute] string serverProfile,
+       [FromRoute] CatalogType catalogType,
+       [FromBody] AuthenticateRequest request,
+       CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+           new AuthenticateCommand(serverProfile, catalogType, request.Username, request.Password),
+           cancellationToken);
 
-      return this.ToActionResult(result);
-   }
+        return this.ToActionResult(result);
+    }
 
-   [HttpPost("authenticateWithoutUserLookup")]
-   public async Task<IActionResult> AuthenticateWithoutUserLookup(
-      [FromRoute] string serverProfile,
-      [FromRoute] CatalogType catalogType,
-      [FromBody] AuthenticateRequest request,
-      CancellationToken cancellationToken)
-   {
-      var result = await _mediator.Send(
-         new AuthenticateWithoutUserLookupCommand(serverProfile, catalogType, request.Username, request.Password),
-         cancellationToken);
+    [HttpPost("authenticateWithoutUserLookup")]
+    public async Task<IActionResult> AuthenticateWithoutUserLookup(
+       [FromRoute] string serverProfile,
+       [FromRoute] CatalogType catalogType,
+       [FromBody] AuthenticateRequest request,
+       CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+           new AuthenticateWithoutUserLookupCommand(serverProfile, catalogType, request.Username, request.Password),
+           cancellationToken);
 
-      return this.ToActionResult(result);
-   }
+        return this.ToActionResult(result);
+    }
 }
 
 public sealed record AuthenticateRequest(string Username, string Password);

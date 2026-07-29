@@ -26,7 +26,7 @@ public sealed class GetProfileByIdQueryHandler : IRequestHandler<GetProfileByIdQ
 
    public async Task<Result<LdapServerProfileDto>> Handle(GetProfileByIdQuery request, CancellationToken cancellationToken)
    {
-      var profile = await _serverProfileReadService.GetProfileAsync(request.ProfileId, cancellationToken);
+      var profile = _serverProfileReadService.GetProfile(request.ProfileId);
       return profile is null
          ? Result<LdapServerProfileDto>.Failure(Error.NotFound($"LDAP server profile '{request.ProfileId}' was not found."))
          : Result<LdapServerProfileDto>.Success(profile);

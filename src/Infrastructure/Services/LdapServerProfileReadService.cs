@@ -5,49 +5,72 @@ using Microsoft.Extensions.Options;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
+/// <summary>
+/// Provides read services for LDAP server profiles by retrieving configuration from options.
+/// </summary>
 public sealed class LdapServerProfileReadService : IServerProfileReadService
 {
-   private readonly IOptionsMonitor<LdapServerProfilesOptions> _options;
+    private readonly IOptionsMonitor<LdapServerProfilesOptions> _options;
 
-   public LdapServerProfileReadService(IOptionsMonitor<LdapServerProfilesOptions> options)
-   {
-      _options = options;
-   }
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LdapServerProfileReadService"/> class.
+    /// </summary>
+    /// <param name="options">The options monitor for LDAP server profiles.</param>
+    public LdapServerProfileReadService(IOptionsMonitor<LdapServerProfilesOptions> options)
+    {
+        _options = options;
+    }
 
-   public Task<IReadOnlyList<string>> GetProfileIdsAsync(CancellationToken cancellationToken)
-   {
-      IReadOnlyList<string> ids = _options.CurrentValue.Select(x => x.ProfileId).ToArray();
-      return Task.FromResult(ids);
-   }
+    /// <summary>
+    /// Retrieves a list of all configured LDAP server profile IDs.
+    /// </summary>
+    /// <returns>A read-only list of LDAP server profile IDs.</returns>
+    public IReadOnlyList<string> GetProfileIds()
+    {
+        return _options.CurrentValue.Select(x => x.ProfileId).ToArray();
+    }
 
-   public Task<IReadOnlyList<LdapServerProfileDto>> GetProfilesAsync(CancellationToken cancellationToken)
-   {
-      IReadOnlyList<LdapServerProfileDto> profiles = _options.CurrentValue.Select(Map).ToArray();
-      return Task.FromResult(profiles);
-   }
+    /// <summary>
+    /// Retrieves a list of all configured LDAP server profiles.
+    /// </summary>
+    /// <returns>A read-only list of LDAP server profiles as DTOs.</returns>
+    public IReadOnlyList<LdapServerProfileDto> GetProfiles()
+    {
+        return _options.CurrentValue.Select(Map).ToArray();
+    }
 
-   public Task<LdapServerProfileDto?> GetProfileAsync(string profileId, CancellationToken cancellationToken)
-   {
-      var profile = _options.CurrentValue
-         .FirstOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Retrieves a specific LDAP server profile by its ID.
+    /// </summary>
+    /// <param name="profileId">The unique identifier of the LDAP server profile.</param>
+    /// <returns>The <see cref="LdapServerProfileDto"/> if found, otherwise null.</returns>
+    public LdapServerProfileDto? GetProfile(string profileId)
+    {
+        var profile = _options.CurrentValue
+            .FirstOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
 
-      return Task.FromResult(profile is null ? null : Map(profile));
-   }
+        return profile is null ? null : Map(profile);
+    }
 
-   private static LdapServerProfileDto Map(LdapServerProfileOption value)
-   {
-      return new LdapServerProfileDto(
-         value.ProfileId,
-         value.Server,
-         value.Port,
-         value.PortForGlobalCatalog,
-         value.BaseDN,
-         value.BaseDNforGlobalCatalog,
-         value.DefaultDomainName,
-         value.ConnectionTimeout,
-         value.UseSSL,
-         value.UseSSLforGlobalCatalog,
-         value.BindAccountName,
-         value.HealthCheckPingTimeout);
-   }
+    /// <summary>
+    /// Maps an <see cref="LdapServerProfileOption"/> to an <see cref="LdapServerProfileDto"/>.
+    /// </summary>
+    /// <param name="value">The <see cref="LdapServerProfileOption"/> to map.</param>
+    /// <returns>A new instance of <see cref="LdapServerProfileDto"/>.</returns>
+    private static LdapServerProfileDto Map(LdapServerProfileOption value)
+    {
+        return new LdapServerProfileDto(
+            value.ProfileId,
+            value.Server,
+            value.Port,
+            value.PortForGlobalCatalog,
+            value.BaseDN,
+            value.BaseDNforGlobalCatalog,
+            value.DefaultDomainName,
+            value.ConnectionTimeout,
+            value.UseSSL,
+            value.UseSSLforGlobalCatalog,
+            value.BindAccountName,
+            value.HealthCheckPingTimeout);
+    }
 }

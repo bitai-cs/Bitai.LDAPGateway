@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Bitai.LDAPGateway.Api.Controllers;
 
 [ApiController]
-[Route("api/{serverProfile}/{catalogType}/[controller]")]
+[Route("api/{serverProfile:ldapSvrPf}/{catalogType:ldapCatType}/[controller]")]
 public sealed class DirectoryController : ControllerBase
 {
     private readonly IMediator _mediator;

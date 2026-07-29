@@ -27,6 +27,9 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
     #region Authentication Methods
     public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
+        const string methodCodeName = "authenticate";
+        const string methodFriendlyName = "to authenticate user";
+
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
@@ -66,10 +69,12 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
         try
         {
-            var requestLabel = $"ldap-gateway-auth:{ldapServerProfile.ProfileId}:{username}:{DateTime.UtcNow:O}";
-
+            var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+            
             var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
+            var componentName = nameof(Authenticator);
+            var componentMethod = nameof(Authenticator.AuthenticateAsync);
             var authenticationResult = await authenticator.AuthenticateAsync(
                credentialToAuthenticate,
                searchLimits,
@@ -80,15 +85,34 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             {
                 _logger.LogError(
                    authenticationResult.ErrorObject,
-                   "Bitai.LDAPHelper Authenticate failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
-                   ldapServerProfile.ProfileId,
+                   "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "UserToAuthenticate: {UserToAuthenticate}, " +
+                    "SearchLimits: {SearchLimits}, " +
+                    "UserForSearching: {UserForSearching}",
+                   componentName, componentMethod,
+                   authenticationResult.OperationMessage,
                    credentialToAuthenticate.DomainAccountName,
-                   authenticationResult.OperationMessage);
+                   searchLimits,
+                   credentialForSearching.DomainAccountName);
 
-                return Result<AuthenticationResultDto>.Failure(
-                   Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-                      ? "LDAP authentication operation failed."
-                      : authenticationResult.OperationMessage));
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
+
+                if (authenticationResult.HasErrorObject)
+                {
+                    error = error.WithInner(
+                        Error.InnerErr(
+                            authenticationResult.OperationMessage,
+                            null,
+                            Error.InnerErr(authenticationResult.ErrorObject)));                    
+                }
+                else
+                {
+                    error = error.WithInner(
+                        Error.InnerErr(authenticationResult.OperationMessage));
+                }
+
+                return Result<AuthenticationResultDto>.Failure(error);
             }
 
             var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
@@ -113,6 +137,9 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
     public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
+        const string methodCodeName = "authenticate-lookup";
+        const string methodFriendlyName = "to authenticate user";
+
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
@@ -145,6 +172,8 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{username}:${DateTime.UtcNow:O}";
             var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
+            var componentName = nameof(Authenticator);
+            var componentMethod = nameof(Authenticator.AuthenticateAsync);
             var authenticationResult = await authenticator.AuthenticateAsync(
                credentialToAuthenticate,
                requestLabel);
@@ -153,18 +182,34 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             {
                 _logger.LogError(
                    authenticationResult.ErrorObject,
-                   "Bitai.LDAPHelper AuthenticateWithoutUserLookup failed for profile {ProfileId} and user {DomainAccount}. Message: {OperationMessage}",
-                   ldapServerProfile.ProfileId,
-                   credentialToAuthenticate.DomainAccountName,
-                   authenticationResult.OperationMessage);
+                   "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} | " +
+                    "UserToAuthenticate: {UserToAuthenticate}.",
+                   componentName, componentMethod,
+                   authenticationResult.OperationMessage,
+                   credentialToAuthenticate.DomainAccountName);
+                
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
 
-                return Result<AuthenticationResultDto>.Failure(
-                   Error.BadGateway(string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
-                      ? "LDAP authentication operation failed."
-                      : authenticationResult.OperationMessage));
+                if (authenticationResult.HasErrorObject)
+                {
+                    error = error.WithInner(
+                        Error.InnerErr(
+                            authenticationResult.OperationMessage,
+                            null,
+                            Error.InnerErr(authenticationResult.ErrorObject)));
+                }
+                else
+                {
+                    error = error.WithInner(
+                        Error.InnerErr(authenticationResult.OperationMessage));
+                }
+
+                return Result<AuthenticationResultDto>.Failure(error);
             }
 
             var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
+
             var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
                ? "LDAP authentication operation completed."
                : authenticationResult.OperationMessage;
@@ -1245,15 +1290,15 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 {
                     if (searchResult.ErrorObject is EntryNotFoundException notFoundEx)
                     {
-                        error = Error.NotFound($"Directory entry not found for '{identifier}'.", Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(notFoundEx.Message)));
+                        error = Error.NotFound($"Directory entry not found for '{identifier}'.", Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(notFoundEx.Message)));
                     }
                     else if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
                     {
-                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(ldapEx.LdapErrorMessage)));
+                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(ldapEx.LdapErrorMessage)));
                     }
                     else
                     {
-                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(searchResult.ErrorObject.Message)));
+                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, null,  Error.InnerErr(searchResult.ErrorObject.Message)));
                     }
 
                     return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
@@ -1409,7 +1454,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 {
                     error = Error.BadGateway(errorMsg,
                         !string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? Error.InnerErr(searchResult.OperationMessage, Error.InnerErr(searchResult.ErrorObject.Message))
+                        ? Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(searchResult.ErrorObject.Message))
                         : Error.InnerErr(searchResult.ErrorObject.Message));
                 }
                 else

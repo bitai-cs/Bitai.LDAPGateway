@@ -2,9 +2,11 @@ namespace Bitai.LDAPGateway.Api.Options;
 
 public sealed class WebApiCorsConfiguration
 {
-   public const string SectionName = "WebApiCorsConfiguration";
+    public const string SectionName = "WebApiCorsConfiguration";
 
-   public bool AllowAnyOrigin { get; set; }
+    public string CorsPolicyName {get; set;} = "LdapGatewayCorsPolicy";
 
-   public List<string> AllowedOrigins { get; set; } = [];
+    public bool AllowAnyOrigin { get; set; }
+
+    public List<string> AllowedOrigins { get; set; } = [];
 }

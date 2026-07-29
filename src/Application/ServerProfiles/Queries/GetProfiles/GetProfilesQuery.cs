@@ -17,7 +17,7 @@ public sealed class GetProfilesQueryHandler : IRequestHandler<GetProfilesQuery, 
 
    public async Task<Result<IReadOnlyList<LdapServerProfileDto>>> Handle(GetProfilesQuery request, CancellationToken cancellationToken)
    {
-      var profiles = await _serverProfileReadService.GetProfilesAsync(cancellationToken);
+      var profiles = _serverProfileReadService.GetProfiles();
       return Result<IReadOnlyList<LdapServerProfileDto>>.Success(profiles);
    }
 }
