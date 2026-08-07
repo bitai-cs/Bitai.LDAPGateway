@@ -1,16 +1,17 @@
-using System.Reflection.Metadata;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Routing.Patterns;
+using Bitai.LDAPGateway.Application.Common.Models;
+using Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds;
+using MediatR;
 
 namespace Bitai.LDAPGateway.Api.Controllers.ParameterPolicies;
 
 public sealed class LdapServerProfileParameterPolicy : IRouteConstraint
 {
-    private readonly IServerProfileReadService _ldapServerProfileReader;
+    private readonly IMediator _mediator;
 
-    public LdapServerProfileParameterPolicy(IServerProfileReadService ldapServerProfileReader)
+    public LdapServerProfileParameterPolicy(IMediator mediator)
     {
-        _ldapServerProfileReader = ldapServerProfileReader;
+        _mediator = mediator;
     }    
 
     bool IRouteConstraint.Match(HttpContext? httpContext, IRouter? route, string routeKey, RouteValueDictionary values, RouteDirection routeDirection)
@@ -22,7 +23,13 @@ public sealed class LdapServerProfileParameterPolicy : IRouteConstraint
         if (string.IsNullOrWhiteSpace(profileId))
             return false;
 
-        return _ldapServerProfileReader.GetProfileIds().Any(m =>
-            m.Equals(profileId, StringComparison.OrdinalIgnoreCase));
+        Result<IReadOnlyList<string>> result = _mediator.Send(new GetProfileIdsQuery()).GetAwaiter().GetResult();
+        if (!result.IsSuccess)
+            return false;
+
+        if (result.Value == null || !result.Value.Contains(profileId))
+            return false;
+
+        return true;
     }
 }
