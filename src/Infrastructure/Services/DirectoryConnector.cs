@@ -7,14 +7,14 @@ using Microsoft.Extensions.Options;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
-public sealed class LdapGatewayClient : ILdapGatewayClient
+public sealed class DirectoryConnector : IDirectoryConnector
 {
     private readonly IOptionsMonitor<LdapServerProfilesOptions> _options;
     private readonly IBitaiLdapHelperAdapter _adapter;
 
 
 
-    public LdapGatewayClient(IOptionsMonitor<LdapServerProfilesOptions> options, IBitaiLdapHelperAdapter adapter)
+    public DirectoryConnector(IOptionsMonitor<LdapServerProfilesOptions> options, IBitaiLdapHelperAdapter adapter)
     {
         _options = options;
         _adapter = adapter;

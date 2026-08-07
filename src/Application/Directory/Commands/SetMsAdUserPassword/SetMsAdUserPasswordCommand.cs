@@ -27,9 +27,9 @@ public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetM
 
 public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase, IRequestHandler<SetMsAdUserPasswordCommand, Result>
 {
-   private readonly ILdapGatewayClient _ldapGatewayClient;
+   private readonly IDirectoryConnector _ldapGatewayClient;
 
-   public SetMsAdUserPasswordCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public SetMsAdUserPasswordCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
       _ldapGatewayClient = ldapGatewayClient;

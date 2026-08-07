@@ -28,9 +28,9 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
 
 public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupByIdentifierQuery, Result<LdapEntryDto>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public GetGroupByIdentifierQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetGroupByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

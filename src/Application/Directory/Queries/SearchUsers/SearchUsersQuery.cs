@@ -62,9 +62,9 @@ public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQue
 
 public sealed class SearchUsersQueryHandler : LdapHandlerBase, IRequestHandler<SearchUsersQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public SearchUsersQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public SearchUsersQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

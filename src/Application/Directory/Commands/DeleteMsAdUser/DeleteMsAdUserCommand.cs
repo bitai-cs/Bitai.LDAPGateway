@@ -24,9 +24,9 @@ public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsA
 
 public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DeleteMsAdUserCommand, Result>
 {
-   private readonly ILdapGatewayClient _ldapGatewayClient;
+   private readonly IDirectoryConnector _ldapGatewayClient;
 
-   public DeleteMsAdUserCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public DeleteMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
       _ldapGatewayClient = ldapGatewayClient;

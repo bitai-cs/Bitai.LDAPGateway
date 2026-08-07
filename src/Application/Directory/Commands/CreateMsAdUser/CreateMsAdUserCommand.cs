@@ -48,9 +48,9 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
 
 public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<CreateMsAdUserCommand, Result<LdapEntryDto>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public CreateMsAdUserCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public CreateMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

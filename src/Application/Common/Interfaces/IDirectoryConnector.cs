@@ -4,7 +4,7 @@ using Bitai.LDAPGateway.Domain.ValueObjects;
 
 namespace Bitai.LDAPGateway.Application.Common.Interfaces;
 
-public interface ILdapGatewayClient
+public interface IDirectoryConnector
 {
     #region Authentication Methods
     Task<Result<AuthenticationResultDto>> AuthenticateAsync(

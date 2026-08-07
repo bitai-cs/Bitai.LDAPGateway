@@ -33,9 +33,9 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
 
 public sealed class SearchDirectoryQueryHandler : LdapHandlerBase, IRequestHandler<SearchDirectoryQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public SearchDirectoryQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public SearchDirectoryQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

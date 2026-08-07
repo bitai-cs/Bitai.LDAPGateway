@@ -25,9 +25,9 @@ public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableM
 
 public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DisableMsAdUserCommand, Result>
 {
-   private readonly ILdapGatewayClient _ldapGatewayClient;
+   private readonly IDirectoryConnector _ldapGatewayClient;
 
-   public DisableMsAdUserCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public DisableMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
       _ldapGatewayClient = ldapGatewayClient;

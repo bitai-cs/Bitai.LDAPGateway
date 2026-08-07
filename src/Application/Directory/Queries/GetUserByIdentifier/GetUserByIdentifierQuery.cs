@@ -28,9 +28,9 @@ public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUse
 
 public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetUserByIdentifierQuery, Result<LdapEntryDto?>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public GetUserByIdentifierQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetUserByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

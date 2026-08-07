@@ -27,9 +27,9 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
 
 public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetDirectoryEntryByIdentifierQuery, Result<LdapEntryDto>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public GetDirectoryEntryByIdentifierQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetDirectoryEntryByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

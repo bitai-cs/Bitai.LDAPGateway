@@ -26,9 +26,9 @@ public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractVali
 
 public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateWithoutUserLookupCommand, Result<AuthenticationResultDto>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public AuthenticateWithoutUserLookupCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public AuthenticateWithoutUserLookupCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

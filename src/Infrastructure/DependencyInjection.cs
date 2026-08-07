@@ -21,7 +21,7 @@ public static class DependencyInjection
         //services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperNovellAdapter>();
         services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperNovellAdapter>();
 
-        services.AddScoped<ILdapGatewayClient, LdapGatewayClient>();
+        services.AddScoped<IDirectoryConnector, DirectoryConnector>();
 
         // IServerProfileReadService is registered as singleton because of it's
         // a general-use service and LDAPServerProfileParameterPolicy is

@@ -27,9 +27,9 @@ public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserPare
 
 public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetUserParentsQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public GetUserParentsQueryHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetUserParentsQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;

@@ -26,9 +26,9 @@ public sealed class AuthenticateCommandValidator : AbstractValidator<Authenticat
 
 public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateCommand, Result<AuthenticationResultDto>>
 {
-    private readonly ILdapGatewayClient _ldapGatewayClient;
+    private readonly IDirectoryConnector _ldapGatewayClient;
 
-    public AuthenticateCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public AuthenticateCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;
