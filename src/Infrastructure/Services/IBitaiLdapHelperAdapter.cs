@@ -69,6 +69,14 @@ public interface IBitaiLdapHelperAdapter
         int sizeLimit,
         CancellationToken cancellationToken);
 
+    Task<Result<LdapEntryDto?>> GetUserAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapIdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken);
+
     Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,

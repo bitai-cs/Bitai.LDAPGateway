@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Bitai.LDAPHelper\adapters\Bitai.LDAPHelper.LdapAdapters.LdapHelperMock\Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.csproj" />
     <ProjectReference Include="..\..\..\Bitai.LDAPHelper\adapters\Bitai.LDAPHelper.LdapAdapters.Novell\Bitai.LDAPHelper.LdapAdapters.Novell.csproj" />
     <ProjectReference Include="..\..\..\Bitai.LDAPHelper\src\Bitai.LDAPHelper\Bitai.LDAPHelper.csproj" />
     <ProjectReference Include="..\..\..\Bitai.LDAPHelper\src\Bitai.LDAPHelper.DTO\Bitai.LDAPHelper.DTO.csproj" />

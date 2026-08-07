@@ -15,11 +15,11 @@ public sealed class LdapCatalogTypeParameterPolicy : IRouteConstraint
         if (!values.TryGetValue(routeKey, out var routeValue))
             return false;
 
-        var profileId = routeValue as string;
-        if (string.IsNullOrWhiteSpace(profileId))
+        var catalogType = routeValue as string;
+        if (string.IsNullOrWhiteSpace(catalogType))
             return false;
 
-        if (!Enum.TryParse<Domain.Enums.CatalogType>(profileId, true, out var resolvedCatalogType))
+        if (!Enum.TryParse<Domain.Enums.CatalogType>(catalogType, true, out var resolvedCatalogType))
             return false;
 
         return true;

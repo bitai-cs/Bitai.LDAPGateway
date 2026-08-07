@@ -45,6 +45,8 @@ public static class ServiceCollectionExtensions
             config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.ParameterPolicies.LdapServerProfileParameterPolicy));
 
             config.ConstraintMap.Add("ldapCatType", typeof(Controllers.ParameterPolicies.LdapCatalogTypeParameterPolicy));
+
+            config.ConstraintMap.Add("entryId", typeof(Controllers.ParameterPolicies.DirectoryUserEntryParameterPolicy));
         });
 
         return services;

@@ -797,6 +797,143 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
 
     #region User Search Methods
+    public async Task<Result<LdapEntryDto?>> GetUserAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapIdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
+    {
+        const string methodCodeName = "get-user";
+        const string methodFriendlyName = "to get LDAP user";
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+
+            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
+
+            var identifierFilter = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+
+            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, identifierFilter });
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                new NovellLdapConnectionFactoryAdapter());
+
+            var componentName = nameof(Searcher);
+            var componentMethod = nameof(Searcher.SearchEntriesAsync);
+            var searchResult = await searcher.SearchEntriesAsync(fullFilter, resolvedRequiredAttributes, requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogWarning(
+                    searchResult.ErrorObject,
+                    "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    componentName, componentMethod,
+                    searchResult.OperationMessage,
+                    identifierFilter,
+                    resolvedRequiredAttributes,
+                    ldapServerProfile.ProfileId,
+                    catalogType);
+
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {identifier} using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
+
+                if (searchResult.ErrorObject != null)
+                {
+                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
+                    {
+                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage));
+                    }
+                    else if (searchResult.ErrorObject is Exception)
+                    {
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject.Message));
+                    }
+                }
+
+                return Result<LdapEntryDto?>.Failure(error);
+            }
+
+            //if (searchResult.Entries == null || searchResult.Entries.Count() == 0)
+            //{
+            //    return Result<LdapEntryDto>.Failure(
+            //        Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
+            //}
+
+            if (searchResult.Entries.Count() > 1)
+            {
+                // Log a warning if multiple entries are found for the same identifier
+                return Result<LdapEntryDto?>.Failure(
+                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+            }
+;
+            if (searchResult.Entries.Count() == 0)
+            {
+                return Result<LdapEntryDto?>.Success(null);
+            }
+            else
+            {
+                return Result<LdapEntryDto?>.Success(
+                    searchResult.Entries.Count() == 0 ? null :
+                    MapToDirectoryEntryDto(searchResult.Entries.Single()));
+            }            
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception in {ClassName} {MethodName} while {MethodFriendlyName}. " +
+                "ServerProfile: {ProfileId}, CatalogType: {CatalogType}, " +
+                "Identifier: {Identifier}, IdentifierAttribute: {LdapIdentifierAttribute}.",
+                _classCodeName, methodCodeName, methodFriendlyName,
+                ldapServerProfile.ProfileId, catalogType,
+                identifier, identifierAttribute);
+
+            return Result<LdapEntryDto?>.Failure(
+                Error.BadGateway($"Unexpected exception in {_classFriendlyName} while trying {methodFriendlyName}.", Error.InnerErr(ex.Message)));
+        }
+    }
+
     public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
@@ -1130,7 +1267,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         {
             var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
 
-            var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+            var onlyGroupsFilter = AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner();
+
+            var identifierFilter = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+
+            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyGroupsFilter, identifierFilter });
 
             var searcher = new Searcher(
                 connectionInfo,
@@ -1140,7 +1281,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
-            var searchResult = await searcher.SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+            var searchResult = await searcher.SearchEntriesAsync(fullFilter, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -1155,7 +1296,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                     "CatalogType: {CatalogType}",
                     componentName, componentMethod,
                     searchResult.OperationMessage,
-                    filterObject,
+                    identifierFilter,
                     resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
                     catalogType);
@@ -1792,32 +1933,32 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         return entries.Select(MapToDirectoryEntryDto).ToList();
     }
 
-    private static ICombinableFilter CreateFilterCombiner(bool negateResult, EntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd = null, EntryAttribute? secondaryAttribute = null, string? secondaryValue = null)
+    private static ICombinableFilter CreateFilterCombiner(bool notEqual, EntryAttribute primaryAttribute, string primaryValue, bool? combineWithAnd = null, EntryAttribute? secondaryAttribute = null, string? secondaryValue = null)
     {
         var firstAttributeFilter = new AttributeFilter(primaryAttribute, new FilterValue(primaryValue));
 
         ICombinableFilter combinableFilter;
         if (secondaryAttribute is null || string.IsNullOrWhiteSpace(secondaryValue))
         {
-            combinableFilter = CombineFilters(negateResult, true, firstAttributeFilter, null);
+            combinableFilter = CombineFilters(notEqual, true, firstAttributeFilter, null);
             return combinableFilter;
         }
 
         var secondAttributeFilter = new AttributeFilter(secondaryAttribute.Value, new FilterValue(secondaryValue));
 
-        combinableFilter = CombineFilters(negateResult, combineWithAnd ?? true, firstAttributeFilter, secondAttributeFilter);
+        combinableFilter = CombineFilters(notEqual, combineWithAnd ?? true, firstAttributeFilter, secondAttributeFilter);
         return combinableFilter;
     }
 
-    private static ICombinableFilter CombineFilters(bool negateResult, bool? combineWithAnd, ICombinableFilter primaryFilter, ICombinableFilter? secondaryFilter)
+    private static ICombinableFilter CombineFilters(bool notEqual, bool? combineWithAnd, ICombinableFilter primaryFilter, ICombinableFilter? secondaryFilter)
     {
         if (secondaryFilter is null)
         {
-            return new AttributeFilterCombiner(negateResult, true, new List<ICombinableFilter> { primaryFilter });
+            return new AttributeFilterCombiner(notEqual, true, new List<ICombinableFilter> { primaryFilter });
         }
         else
         {
-            return new AttributeFilterCombiner(negateResult, combineWithAnd ?? true, new List<ICombinableFilter> { primaryFilter, secondaryFilter });
+            return new AttributeFilterCombiner(notEqual, combineWithAnd ?? true, new List<ICombinableFilter> { primaryFilter, secondaryFilter });
         }
     }
     #endregion

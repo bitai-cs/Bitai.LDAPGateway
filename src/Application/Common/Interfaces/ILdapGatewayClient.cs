@@ -66,6 +66,13 @@ public interface ILdapGatewayClient
     #endregion
 
     #region User Directory Methods
+    Task<Result<LdapEntryDto?>> GetUserAsync(
+        LdapRequestContext context,
+        LdapIdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken);
+
     Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapRequestContext context,
         string identifier,
