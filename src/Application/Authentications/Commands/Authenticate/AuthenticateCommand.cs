@@ -2,16 +2,16 @@ using Bitai.LDAPGateway.Application.Common;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 using FluentValidation;
 using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Authentications.Commands.Authenticate;
 
 public sealed record AuthenticateCommand(
-   string ServerProfile,
-   CatalogType CatalogType,
-   string Username,
-   string Password) : IRequest<Result<AuthenticationResultDto>>;
+    string ServerProfile,
+    CatalogType CatalogType,
+    UserCredential credential) : IRequest<Result<AuthenticationResultDto>>;
 
 public sealed class AuthenticateCommandValidator : AbstractValidator<AuthenticateCommand>
 {
@@ -19,8 +19,8 @@ public sealed class AuthenticateCommandValidator : AbstractValidator<Authenticat
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.CatalogType).IsInEnum();
-        RuleFor(x => x.Username).NotEmpty();
-        RuleFor(x => x.Password).NotEmpty();
+        RuleFor(x => x.credential.Username).NotEmpty();
+        RuleFor(x => x.credential.Password).NotNull();
     }
 }
 
@@ -29,7 +29,7 @@ public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandle
     private readonly ILdapGatewayClient _ldapGatewayClient;
 
     public AuthenticateCommandHandler(ILdapGatewayClient ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+        : base(domainEventPublisher)
     {
         _ldapGatewayClient = ldapGatewayClient;
     }
@@ -39,9 +39,9 @@ public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandle
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
         return ExecuteAsync(
-           operationName: "Authenticate",
-           context,
-           () => _ldapGatewayClient.AuthenticateAsync(context, request.Username, request.Password, cancellationToken),
-           cancellationToken);
+            operationName: "Authenticate",
+            context,
+            () => _ldapGatewayClient.AuthenticateAsync(context, request.credential, cancellationToken),
+            cancellationToken);
     }
 }

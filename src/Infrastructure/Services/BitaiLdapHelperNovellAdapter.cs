@@ -11,8 +11,8 @@ namespace Bitai.LDAPGateway.Infrastructure.Services;
 
 public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 {
-    private readonly string _classFriendlyName = "LDAP Adapter";
-    private readonly string _classCodeName = "ldap-novell-adapter";
+    private readonly string _classFriendlyName = "LDAP Helper Adapter";
+    private readonly string _classCodeName = "ldap-helper-adapter";
     private readonly ILogger<BitaiLdapHelperNovellAdapter> _logger;
 
 
@@ -70,31 +70,31 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         try
         {
             var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
-            
+
             var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
             var componentName = nameof(Authenticator);
             var componentMethod = nameof(Authenticator.AuthenticateAsync);
             var authenticationResult = await authenticator.AuthenticateAsync(
-               credentialToAuthenticate,
-               searchLimits,
-               credentialForSearching,
-               requestLabel);
+                credentialToAuthenticate,
+                searchLimits,
+                credentialForSearching,
+                requestLabel);
 
             if (!authenticationResult.IsSuccessfulOperation)
             {
                 _logger.LogError(
-                   authenticationResult.ErrorObject,
-                   "{ComponentName} failed executing {ComponentMethod}. " +
+                    authenticationResult.ErrorObject,
+                    "{ComponentName} failed executing {ComponentMethod}. " +
                     "OperationMessage: {OperationMessage} " +
                     "UserToAuthenticate: {UserToAuthenticate}, " +
                     "SearchLimits: {SearchLimits}, " +
                     "UserForSearching: {UserForSearching}",
-                   componentName, componentMethod,
-                   authenticationResult.OperationMessage,
-                   credentialToAuthenticate.DomainAccountName,
-                   searchLimits,
-                   credentialForSearching.DomainAccountName);
+                    componentName, componentMethod,
+                    authenticationResult.OperationMessage,
+                    credentialToAuthenticate.DomainAccountName,
+                    searchLimits,
+                    credentialForSearching.DomainAccountName);
 
                 var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
 
@@ -104,7 +104,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                         Error.InnerErr(
                             authenticationResult.OperationMessage,
                             null,
-                            Error.InnerErr(authenticationResult.ErrorObject)));                    
+                            Error.InnerErr(authenticationResult.ErrorObject)));
                 }
                 else
                 {
@@ -116,6 +116,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
             }
 
             var authenticatedUsername = authenticationResult.Credential?.DomainAccountName ?? credentialToAuthenticate.DomainAccountName;
+
             var message = string.IsNullOrWhiteSpace(authenticationResult.OperationMessage)
                ? "LDAP authentication operation completed."
                : authenticationResult.OperationMessage;
@@ -127,11 +128,11 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         {
             _logger.LogError(
                ex,
-               "Unhandled exception while authenticating profile {ProfileId} and username {Username}.",
+               "Unhandled exception while authenticating username: {Username} and LDAP server profile: {ProfileId}.",
                ldapServerProfile.ProfileId,
                username);
 
-            return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
+            return Result<AuthenticationResultDto>.Failure(Error.Internal($"LDAP authentication failed unexpectedly for username: {username} and LDAP server profile: {ldapServerProfile.ProfileId}."));
         }
     }
 
@@ -169,7 +170,8 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
         try
         {
-            var requestLabel = $"ldap-gateway-auth-no-lookup:{ldapServerProfile.ProfileId}:{username}:${DateTime.UtcNow:O}";
+            var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+
             var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
 
             var componentName = nameof(Authenticator);
@@ -188,7 +190,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                    componentName, componentMethod,
                    authenticationResult.OperationMessage,
                    credentialToAuthenticate.DomainAccountName);
-                
+
                 var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
 
                 if (authenticationResult.HasErrorObject)

@@ -2,6 +2,7 @@ using Bitai.LDAPGateway.Application.Common;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 using FluentValidation;
 using MediatR;
 
@@ -10,16 +11,16 @@ namespace Bitai.LDAPGateway.Application.Authentications.Commands.AuthenticateWit
 public sealed record AuthenticateWithoutUserLookupCommand(
     string ServerProfile,
     CatalogType CatalogType,
-    string Username,
-    string Password) : IRequest<Result<AuthenticationResultDto>>;
+    UserCredential Credential) : IRequest<Result<AuthenticationResultDto>>;
 
 public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractValidator<AuthenticateWithoutUserLookupCommand>
 {
     public AuthenticateWithoutUserLookupCommandValidator()
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
-        RuleFor(x => x.Username).NotEmpty();
-        RuleFor(x => x.Password).NotEmpty();
+        RuleFor(x => x.Credential).NotNull();
+        RuleFor(x => x.Credential.Username).NotEmpty();
+        RuleFor(x => x.Credential.Password).NotNull();
     }
 }
 
@@ -36,10 +37,11 @@ public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBas
     public Task<Result<AuthenticationResultDto>> Handle(AuthenticateWithoutUserLookupCommand request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
+
         return ExecuteAsync(
             operationName: "AuthenticateWithoutUserLookup",
             context,
-            () => _ldapGatewayClient.AuthenticateWithoutUserLookupAsync(context, request.Username, request.Password, cancellationToken),
+            () => _ldapGatewayClient.AuthenticateWithoutUserLookupAsync(context, request.Credential, cancellationToken),
             cancellationToken);
     }
 }

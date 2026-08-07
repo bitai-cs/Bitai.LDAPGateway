@@ -1,6 +1,7 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
@@ -22,7 +23,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
 
 
     #region Authentication Methods
-    public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapRequestContext context, string username, string password, CancellationToken cancellationToken)
+    public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapRequestContext context, UserCredential credential, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -30,10 +31,10 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
             return Result<AuthenticationResultDto>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.AuthenticateAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);
+        return await _adapter.AuthenticateAsync(profileResult.Value!, context.CatalogType, credential.Username, credential.Password.DangerousGetSecret(), cancellationToken);
     }
 
-    public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapRequestContext context, string username, string password, CancellationToken cancellationToken)
+    public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapRequestContext context, UserCredential credential, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -41,7 +42,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
             return Result<AuthenticationResultDto>.Failure(profileResult.Error!);
         }
 
-        return await _adapter.AuthenticateWithoutUserLookupAsync(profileResult.Value!, context.CatalogType, username, password, cancellationToken);
+        return await _adapter.AuthenticateWithoutUserLookupAsync(profileResult.Value!, context.CatalogType, credential.Username, credential.Password.DangerousGetSecret(), cancellationToken);
     }
     #endregion
 
@@ -198,17 +199,7 @@ public sealed class LdapGatewayClient : ILdapGatewayClient
     #endregion
 
 
-    #region Private Methods
-    private Result<string> GetLdapServerProfileName(string profileId)
-    {
-        var profile = _options.CurrentValue
-            .SingleOrDefault(x => string.Equals(x.ProfileId, profileId, StringComparison.OrdinalIgnoreCase));
-
-        return profile is null
-            ? Result<string>.Failure(Error.NotFound($"LDAP server profile '{profileId}' was not found."))
-            : Result<string>.Success(profile.Server);
-    }
-
+    #region Private Methods   
     private Result<LdapServerProfileOption> GetLdapServerProfileConfiguration(string profileId)
     {
         var profile = _options.CurrentValue

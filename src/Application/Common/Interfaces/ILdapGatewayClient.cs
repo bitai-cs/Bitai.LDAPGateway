@@ -1,5 +1,6 @@
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 
 namespace Bitai.LDAPGateway.Application.Common.Interfaces;
 
@@ -8,14 +9,12 @@ public interface ILdapGatewayClient
     #region Authentication Methods
     Task<Result<AuthenticationResultDto>> AuthenticateAsync(
         LdapRequestContext context,
-        string username,
-        string password,
+        UserCredential credential,
         CancellationToken cancellationToken);
 
     Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(
         LdapRequestContext context,
-        string username,
-        string password,
+        UserCredential credential,
         CancellationToken cancellationToken);
     #endregion
 

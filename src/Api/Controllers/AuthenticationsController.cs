@@ -2,6 +2,7 @@ using Bitai.LDAPGateway.Api.Extensions;
 using Bitai.LDAPGateway.Application.Authentications.Commands.Authenticate;
 using Bitai.LDAPGateway.Application.Authentications.Commands.AuthenticateWithoutUserLookup;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,28 +21,32 @@ public sealed class AuthenticationsController : ControllerBase
 
     [HttpPost("authenticate")]
     public async Task<IActionResult> Authenticate(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromBody] AuthenticateRequest request,
-       CancellationToken cancellationToken)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromBody] AuthenticateRequest request,
+        CancellationToken cancellationToken)
     {
+        var credential = new UserCredential(request.Username, new Secret(request.Password));
+
         var result = await _mediator.Send(
-           new AuthenticateCommand(serverProfile, catalogType, request.Username, request.Password),
-           cancellationToken);
+            new AuthenticateCommand(serverProfile, catalogType, credential),
+            cancellationToken);
 
         return this.ToActionResult(result);
     }
 
     [HttpPost("authenticateWithoutUserLookup")]
     public async Task<IActionResult> AuthenticateWithoutUserLookup(
-       [FromRoute] string serverProfile,
-       [FromRoute] CatalogType catalogType,
-       [FromBody] AuthenticateRequest request,
-       CancellationToken cancellationToken)
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromBody] AuthenticateRequest request,
+        CancellationToken cancellationToken)
     {
+        var credential = new UserCredential(request.Username, new Secret(request.Password));
+
         var result = await _mediator.Send(
-           new AuthenticateWithoutUserLookupCommand(serverProfile, catalogType, request.Username, request.Password),
-           cancellationToken);
+            new AuthenticateWithoutUserLookupCommand(serverProfile, catalogType, credential),
+            cancellationToken);
 
         return this.ToActionResult(result);
     }
