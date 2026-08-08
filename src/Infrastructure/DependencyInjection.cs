@@ -3,8 +3,6 @@ using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPGateway.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Bitai.LDAPGateway.Infrastructure;
 
@@ -18,8 +16,13 @@ public static class DependencyInjection
             .Validate(options => options.Count > 0, "At least one LDAP server profile must be configured.")
             .ValidateOnStart();
 
-        //services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperNovellAdapter>();
-        services.AddScoped<IBitaiLdapHelperAdapter, BitaiLdapHelperNovellAdapter>();
+        // For product code, register the real implementation of ILdapConnectionFactory
+        //services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter>();
+
+        // For testing purposes, we can use a mock connection factory adapter
+        services.AddSingleton<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter>();
+
+        services.AddScoped<IDirectoryServiceProvider, BitaiLdapHelperProvider>();
 
         services.AddScoped<IDirectoryConnector, DirectoryConnector>();
 

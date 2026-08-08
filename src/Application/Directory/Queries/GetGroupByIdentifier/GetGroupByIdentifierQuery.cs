@@ -12,7 +12,7 @@ public sealed record GetGroupByIdentifierQuery(
    CatalogType CatalogType,
    LdapIdentifierAttribute identifierAttribute,
    string identifier,
-   LdapEntryAttributeSet requiredAttributeSet) : IRequest<Result<LdapEntryDto>>;
+   LdapEntryAttributeSet requiredAttributeSet) : IRequest<Result<LdapEntryDto?>>;
 
 public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGroupByIdentifierQuery>
 {
@@ -26,7 +26,7 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
     }
 }
 
-public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupByIdentifierQuery, Result<LdapEntryDto>>
+public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupByIdentifierQuery, Result<LdapEntryDto?>>
 {
     private readonly IDirectoryConnector _ldapGatewayClient;
 
@@ -36,11 +36,19 @@ public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequest
         _ldapGatewayClient = ldapGatewayClient;
     }
 
-    public Task<Result<LdapEntryDto>> Handle(GetGroupByIdentifierQuery request, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto?>> Handle(GetGroupByIdentifierQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-        return ExecuteAsync("GetGroupByIdentifier", context,
+
+        var result = await ExecuteAsync("GetGroupByIdentifier", context,
            () => _ldapGatewayClient.GetGroupAsync(context, request.identifierAttribute, request.identifier, request.requiredAttributeSet, cancellationToken),
            cancellationToken);
+
+        if (result.IsSuccess && result.Value is null)
+        {
+           return Result<LdapEntryDto?>.Failure(Error.NotFound($"Directory entry not found for {request.identifierAttribute}='{request.identifier}'."));
+        }
+
+        return result;
     }
 }

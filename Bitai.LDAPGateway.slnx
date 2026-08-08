@@ -4,6 +4,7 @@
     <Project Path="../Bitai.LDAPHelper/adapters/Bitai.LDAPHelper.LdapAdapters.Novell/Bitai.LDAPHelper.LdapAdapters.Novell.csproj" />
     <Project Path="../Bitai.LDAPHelper/src/Bitai.LDAPHelper.DTO/Bitai.LDAPHelper.DTO.csproj" />
     <Project Path="../Bitai.LDAPHelper/src/Bitai.LDAPHelper/Bitai.LDAPHelper.csproj" />
+    <Project Path="../Bitai.LDAPHelper/tests/Bitai.LDAPHelper.Tests/Bitai.LDAPHelper.Tests.csproj" />
     <Project Path="../Bitai.LDAPWebApi/src/LDAPWebApi/Bitai.LDAPWebApi.csproj" />
   </Folder>
   <Folder Name="/src/" />

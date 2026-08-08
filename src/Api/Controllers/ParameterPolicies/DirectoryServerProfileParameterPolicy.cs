@@ -5,11 +5,11 @@ using MediatR;
 
 namespace Bitai.LDAPGateway.Api.Controllers.ParameterPolicies;
 
-public sealed class LdapServerProfileParameterPolicy : IRouteConstraint
+public sealed class DirectoryServerProfileParameterPolicy : IRouteConstraint
 {
     private readonly IMediator _mediator;
 
-    public LdapServerProfileParameterPolicy(IMediator mediator)
+    public DirectoryServerProfileParameterPolicy(IMediator mediator)
     {
         _mediator = mediator;
     }    

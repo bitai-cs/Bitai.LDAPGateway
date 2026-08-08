@@ -4,7 +4,7 @@ using Bitai.LDAPGateway.Infrastructure.Options;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
-public interface IBitaiLdapHelperAdapter
+public interface IDirectoryServiceProvider
 {
     Task<Result<AuthenticationResultDto>> AuthenticateAsync(
         LdapServerProfileOption ldapServerProfile,
@@ -97,7 +97,7 @@ public interface IBitaiLdapHelperAdapter
         int sizeLimit,
         CancellationToken cancellationToken);
 
-    Task<Result<LdapEntryDto>> GetGroupAsync(
+    Task<Result<LdapEntryDto?>> GetGroupAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapIdentifierAttribute identifierAttribute,

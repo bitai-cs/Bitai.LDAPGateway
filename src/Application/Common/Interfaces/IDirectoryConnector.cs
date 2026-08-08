@@ -91,7 +91,7 @@ public interface IDirectoryConnector
     #endregion
 
     #region Group Directory Methods
-    Task<Result<LdapEntryDto>> GetGroupAsync(
+    Task<Result<LdapEntryDto?>> GetGroupAsync(
         LdapRequestContext context,
         LdapIdentifierAttribute identifierAttribute,
         string identifier,

@@ -68,7 +68,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPatch("MsADUsers/{identifier:entryId}/Credential")]
+    [HttpPatch("MsADUsers/{identifier:userId}/Credential")]
     public async Task<IActionResult> SetCredential(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -84,7 +84,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPatch("MsADUsers/{identifier:entryId}/disableBy")]
+    [HttpPatch("MsADUsers/{identifier:userId}/disableBy")]
     public async Task<IActionResult> DisableBy(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -97,7 +97,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpDelete("MsADUsers/{identifier:entryId}")]
+    [HttpDelete("MsADUsers/{identifier:userId}")]
     public async Task<IActionResult> Delete(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -112,7 +112,7 @@ public sealed class DirectoryController : ControllerBase
 
 
     #region Generic Search Endpoints
-    [HttpGet("{identifier:entryId}")]
+    [HttpGet("{identifier}")]
     public async Task<IActionResult> GetByIdentifier(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -147,7 +147,7 @@ public sealed class DirectoryController : ControllerBase
 
 
     #region User Search Endpoints
-    [HttpGet("Users/{identifier:entryId}/Parents")]
+    [HttpGet("Users/{identifier:userId}/Parents")]
     public async Task<IActionResult> GetUserParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -182,7 +182,7 @@ public sealed class DirectoryController : ControllerBase
 
 
     #region Group Search Endpoints
-    [HttpGet("Groups/{identifier:entryId}")]
+    [HttpGet("Groups/{identifier:groupId}")]
     public async Task<IActionResult> GetGroup(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -196,7 +196,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpGet("Groups/{identifier:entryId}/Parents")]
+    [HttpGet("Groups/{identifier:groupId}/Parents")]
     public async Task<IActionResult> GetGroupParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,

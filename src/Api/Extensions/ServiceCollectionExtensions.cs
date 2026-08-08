@@ -42,11 +42,13 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<RouteOptions>(config =>
         {
-            config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.ParameterPolicies.LdapServerProfileParameterPolicy));
+            config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.ParameterPolicies.DirectoryServerProfileParameterPolicy));
 
-            config.ConstraintMap.Add("ldapCatType", typeof(Controllers.ParameterPolicies.LdapCatalogTypeParameterPolicy));
+            config.ConstraintMap.Add("ldapCatType", typeof(Controllers.ParameterPolicies.DirectoryCatalogTypeParameterPolicy));
 
-            config.ConstraintMap.Add("entryId", typeof(Controllers.ParameterPolicies.DirectoryUserEntryParameterPolicy));
+            config.ConstraintMap.Add("userId", typeof(Controllers.ParameterPolicies.DirectoryUserEntryParameterPolicy));
+
+            config.ConstraintMap.Add("groupId", typeof(Controllers.ParameterPolicies.DirectoryGroupEntryParameterPolicy));
         });
 
         return services;

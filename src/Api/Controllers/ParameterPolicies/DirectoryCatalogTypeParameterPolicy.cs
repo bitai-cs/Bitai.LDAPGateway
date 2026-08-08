@@ -3,9 +3,9 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 
 namespace Bitai.LDAPGateway.Api.Controllers.ParameterPolicies;
 
-public sealed class LdapCatalogTypeParameterPolicy : IRouteConstraint
+public sealed class DirectoryCatalogTypeParameterPolicy : IRouteConstraint
 {
-    public LdapCatalogTypeParameterPolicy()
+    public DirectoryCatalogTypeParameterPolicy()
     {
         // Constructor logic here if needed
     }

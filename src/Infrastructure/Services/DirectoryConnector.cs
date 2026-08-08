@@ -10,11 +10,11 @@ namespace Bitai.LDAPGateway.Infrastructure.Services;
 public sealed class DirectoryConnector : IDirectoryConnector
 {
     private readonly IOptionsMonitor<LdapServerProfilesOptions> _options;
-    private readonly IBitaiLdapHelperAdapter _adapter;
+    private readonly IDirectoryServiceProvider _adapter;
 
 
 
-    public DirectoryConnector(IOptionsMonitor<LdapServerProfilesOptions> options, IBitaiLdapHelperAdapter adapter)
+    public DirectoryConnector(IOptionsMonitor<LdapServerProfilesOptions> options, IDirectoryServiceProvider adapter)
     {
         _options = options;
         _adapter = adapter;
@@ -161,7 +161,7 @@ public sealed class DirectoryConnector : IDirectoryConnector
 
 
     #region Group Search Methods
-    public async Task<Result<LdapEntryDto>> GetGroupAsync(
+    public async Task<Result<LdapEntryDto?>> GetGroupAsync(
         LdapRequestContext context,
         LdapIdentifierAttribute identifierAttribute,
         string identifier,
@@ -171,7 +171,7 @@ public sealed class DirectoryConnector : IDirectoryConnector
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
         {
-            return Result<LdapEntryDto>.Failure(profileResult.Error!);
+            return Result<LdapEntryDto?>.Failure(profileResult.Error!);
         }
 
         return await _adapter.GetGroupAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);

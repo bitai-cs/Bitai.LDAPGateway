@@ -3,23 +3,27 @@ using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPHelper;
 using Bitai.LDAPHelper.DTO;
-using Bitai.LDAPHelper.LdapAdapters.Novell;
+using Bitai.LDAPHelper.LdapAdapters;
 using Bitai.LDAPHelper.QueryFilters;
 using Microsoft.Extensions.Logging;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
-public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
+public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 {
     private readonly string _classFriendlyName = "LDAP Helper Adapter";
     private readonly string _classCodeName = "ldap-helper-adapter";
-    private readonly ILogger<BitaiLdapHelperNovellAdapter> _logger;
+    private readonly ILogger<BitaiLdapHelperProvider> _logger;
+    private readonly ILdapConnectionFactoryAdapter _ldapConnectionFactoryAdapter;
 
 
 
-    public BitaiLdapHelperNovellAdapter(ILogger<BitaiLdapHelperNovellAdapter> logger)
+    public BitaiLdapHelperProvider(
+        ILogger<BitaiLdapHelperProvider> logger,
+        ILdapConnectionFactoryAdapter ldapConnectionFactoryAdapter)
     {
         _logger = logger;
+        _ldapConnectionFactoryAdapter = ldapConnectionFactoryAdapter;
     }
 
 
@@ -71,7 +75,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         {
             var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
 
-            var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
+            var authenticator = new Authenticator(connectionInfo, _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Authenticator);
             var componentMethod = nameof(Authenticator.AuthenticateAsync);
@@ -172,7 +176,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
         {
             var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
 
-            var authenticator = new Authenticator(connectionInfo, new NovellLdapConnectionFactoryAdapter());
+            var authenticator = new Authenticator(connectionInfo, _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Authenticator);
             var componentMethod = nameof(Authenticator.AuthenticateAsync);
@@ -271,7 +275,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                connectionInfo,
                searchLimits,
                credentialForSearching,
-               new NovellLdapConnectionFactoryAdapter());
+               _ldapConnectionFactoryAdapter);
 
             var createResult = await accountManager
                .CreateUserAccountForMsAD(user, requestLabel)
@@ -375,7 +379,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                connectionInfo,
                searchLimits,
                credentialForSearching,
-               new NovellLdapConnectionFactoryAdapter());
+               _ldapConnectionFactoryAdapter);
 
             var setPasswordResult = await accountManager
                .SetMsADUserAccountPassword(resolvedIdentifierAttribute, identifier, password, requestLabel, mustChangeAtNextLogon)
@@ -455,7 +459,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var disableResult = await accountManager
                 .DisableMsADUserAccount(resolvedIdentifierAttribute, identifier, requestLabel)
@@ -536,7 +540,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var deleteResult = await accountManager
                 .RemoveMsADUserAccount(resolvedIdentifierAttribute, identifier, requestLabel)
@@ -622,7 +626,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
@@ -752,7 +756,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var searchResult = await searcher
                 .SearchEntriesAsync(combinedFilter, RequiredEntryAttributes.Few, requestLabel)
@@ -853,7 +857,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
@@ -894,12 +898,6 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 return Result<LdapEntryDto?>.Failure(error);
             }
 
-            //if (searchResult.Entries == null || searchResult.Entries.Count() == 0)
-            //{
-            //    return Result<LdapEntryDto>.Failure(
-            //        Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
-            //}
-
             if (searchResult.Entries.Count() > 1)
             {
                 // Log a warning if multiple entries are found for the same identifier
@@ -907,16 +905,9 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
 ;
-            if (searchResult.Entries.Count() == 0)
-            {
-                return Result<LdapEntryDto?>.Success(null);
-            }
-            else
-            {
-                return Result<LdapEntryDto?>.Success(
-                    searchResult.Entries.Count() == 0 ? null :
-                    MapToDirectoryEntryDto(searchResult.Entries.Single()));
-            }            
+            return Result<LdapEntryDto?>.Success(
+                searchResult.Entries.Count() == 0 ? null :
+                MapToDirectoryEntryDto(searchResult.Entries.Single()));
         }
         catch (Exception ex)
         {
@@ -984,7 +975,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
@@ -1156,7 +1147,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
@@ -1221,7 +1212,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
 
     #region Group Search Methods
-    public async Task<Result<LdapEntryDto>> GetGroupAsync(
+    public async Task<Result<LdapEntryDto?>> GetGroupAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapIdentifierAttribute identifierAttribute,
@@ -1236,27 +1227,27 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
 
         if (ldapServerProfile is null)
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation("Identifier is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Identifier is required."));
         }
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(connectionError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(connectionError));
         }
 
         if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(searchLimitsError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(searchLimitsError));
         }
 
         if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(credentialError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(credentialError));
         }
 
         var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
@@ -1277,7 +1268,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
@@ -1315,22 +1306,19 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                     }
                 }
 
-                return Result<LdapEntryDto>.Failure(error);
+                return Result<LdapEntryDto?>.Failure(error);
             }
 
-            if (searchResult.Entries == null || searchResult.Entries.Count() == 0)
-            {
-                return Result<LdapEntryDto>.Failure(
-                    Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
-            }
             if (searchResult.Entries.Count() > 1)
             {
-                return Result<LdapEntryDto>.Failure(
+                return Result<LdapEntryDto?>.Failure(
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
-;
-            return Result<LdapEntryDto>.Success(
-                MapToDirectoryEntryDto(searchResult.Entries.Single()));
+
+            var entry = searchResult.Entries.FirstOrDefault();
+
+            return Result<LdapEntryDto?>.Success(
+                entry != null ? MapToDirectoryEntryDto(entry) : null);
         }
         catch (Exception ex)
         {
@@ -1398,7 +1386,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
@@ -1565,7 +1553,7 @@ public sealed class BitaiLdapHelperNovellAdapter : IBitaiLdapHelperAdapter
                 connectionInfo,
                 searchLimits,
                 credentialForSearching,
-                new NovellLdapConnectionFactoryAdapter());
+                _ldapConnectionFactoryAdapter);
 
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchEntriesAsync);
