@@ -62,19 +62,19 @@ public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQ
 
 public sealed class SearchGroupsQueryHandler : LdapHandlerBase, IRequestHandler<SearchGroupsQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public SearchGroupsQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public SearchGroupsQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(SearchGroupsQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchGroups", context,
-            () => _ldapGatewayClient.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
+            () => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
         cancellationToken);
     }
 }

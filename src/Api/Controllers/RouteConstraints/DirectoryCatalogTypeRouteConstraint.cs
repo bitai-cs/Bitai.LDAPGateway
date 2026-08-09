@@ -1,11 +1,8 @@
-using Microsoft.AspNetCore.Routing.Patterns;
-using Bitai.LDAPGateway.Application.Common.Interfaces;
+namespace Bitai.LDAPGateway.Api.Controllers.RouteConstraints;
 
-namespace Bitai.LDAPGateway.Api.Controllers.ParameterPolicies;
-
-public sealed class DirectoryCatalogTypeParameterPolicy : IRouteConstraint
+public sealed class DirectoryCatalogTypeRouteConstraint : IRouteConstraint
 {
-    public DirectoryCatalogTypeParameterPolicy()
+    public DirectoryCatalogTypeRouteConstraint()
     {
         // Constructor logic here if needed
     }

@@ -12,7 +12,7 @@ public sealed class AuthenticateCommandHandlerTests
    [Fact]
    public async Task Handle_ValidRequest_ShouldReturnSuccessAndPublishEvent()
    {
-      var ldapClientMock = new Mock<IDirectoryConnector>();
+      var ldapClientMock = new Mock<IDirectoryServiceConnector>();
       var publisherMock = new Mock<IDomainEventPublisher>();
 
       ldapClientMock

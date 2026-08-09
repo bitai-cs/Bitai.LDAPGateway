@@ -31,7 +31,6 @@ public sealed class Result<T> : Result
 
     public static Result<T> Success(T value) //=> new(true, value, null);
     {
-        ArgumentNullException.ThrowIfNull(value, nameof(value));
         return new (true, value, null);
     }
 

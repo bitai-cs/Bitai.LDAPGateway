@@ -50,7 +50,7 @@ public interface IDirectoryServiceProvider
         string identifier,
         CancellationToken cancellationToken);
 
-    Task<Result<LdapEntryDto>> GetDirectoryEntryAsync(
+    Task<Result<LdapEntryDto?>> GetDirectoryEntryAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapIdentifierAttribute identifierAttribute,

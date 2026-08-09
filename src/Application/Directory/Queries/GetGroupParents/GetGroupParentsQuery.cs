@@ -28,12 +28,12 @@ public sealed class GetGroupParentsQueryValidator : AbstractValidator<GetGroupPa
 
 public sealed class GetGroupParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupParentsQuery, Result<IReadOnlyList<LdapEntryDto>>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetGroupParentsQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetGroupParentsQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(GetGroupParentsQuery request, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public sealed class GetGroupParentsQueryHandler : LdapHandlerBase, IRequestHandl
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
         return ExecuteAsync("GetGroupParents", context,
-            () => _ldapGatewayClient.GetGroupParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, cancellationToken),
+            () => _directoryServiceConnector.GetGroupParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, cancellationToken),
             cancellationToken);
     }
 }

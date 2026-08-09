@@ -10,9 +10,10 @@ namespace Bitai.LDAPGateway.Application.Directory.Queries.GetGroupByIdentifier;
 public sealed record GetGroupByIdentifierQuery(
    string ServerProfile,
    CatalogType CatalogType,
-   LdapIdentifierAttribute identifierAttribute,
-   string identifier,
-   LdapEntryAttributeSet requiredAttributeSet) : IRequest<Result<LdapEntryDto?>>;
+   LdapIdentifierAttribute IdentifierAttribute,
+   string Identifier,
+   LdapEntryAttributeSet RequiredAttributeSet,
+   bool UserMustExists) : IRequest<Result<LdapEntryDto?>>;
 
 public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGroupByIdentifierQuery>
 {
@@ -20,20 +21,20 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.CatalogType).IsInEnum();
-        RuleFor(x => x.identifierAttribute).IsInEnum();
-        RuleFor(x => x.identifier).NotEmpty();
-        RuleFor(x => x.requiredAttributeSet).IsInEnum();
+        RuleFor(x => x.IdentifierAttribute).IsInEnum();
+        RuleFor(x => x.Identifier).NotEmpty();
+        RuleFor(x => x.RequiredAttributeSet).IsInEnum();
     }
 }
 
 public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupByIdentifierQuery, Result<LdapEntryDto?>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetGroupByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetGroupByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public async Task<Result<LdapEntryDto?>> Handle(GetGroupByIdentifierQuery request, CancellationToken cancellationToken)
@@ -41,14 +42,17 @@ public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequest
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
         var result = await ExecuteAsync("GetGroupByIdentifier", context,
-           () => _ldapGatewayClient.GetGroupAsync(context, request.identifierAttribute, request.identifier, request.requiredAttributeSet, cancellationToken),
+           () => _directoryServiceConnector.GetGroupAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
            cancellationToken);
 
-        if (result.IsSuccess && result.Value is null)
+        if (!result.IsSuccess || (result.IsSuccess && result.Value != null))
         {
-           return Result<LdapEntryDto?>.Failure(Error.NotFound($"Directory entry not found for {request.identifierAttribute}='{request.identifier}'."));
+            return result;
         }
 
-        return result;
+        if (request.UserMustExists)
+            return Result<LdapEntryDto?>.Failure(Error.NotFound($"Group not found in the catalog for {request.IdentifierAttribute}={request.Identifier}"));
+        else
+            return result;
     }
 }

@@ -40,15 +40,19 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection ConfigureRouteConstraints(this IServiceCollection services)
     {
+        // Register constraint classes in the DI container
+        services.AddScoped<Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint>();
+        services.AddScoped<Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint>();
+        //services.AddScoped<Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint>();
+        //services.AddScoped<Controllers.RouteConstraints.DirectoryGroupRouteConstraint>();
+
+        // Register constraints in the routing system
         services.Configure<RouteOptions>(config =>
         {
-            config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.ParameterPolicies.DirectoryServerProfileParameterPolicy));
-
-            config.ConstraintMap.Add("ldapCatType", typeof(Controllers.ParameterPolicies.DirectoryCatalogTypeParameterPolicy));
-
-            config.ConstraintMap.Add("userId", typeof(Controllers.ParameterPolicies.DirectoryUserEntryParameterPolicy));
-
-            config.ConstraintMap.Add("groupId", typeof(Controllers.ParameterPolicies.DirectoryGroupEntryParameterPolicy));
+            config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint));
+            config.ConstraintMap.Add("ldapCatType", typeof(Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint));
+            //config.ConstraintMap.Add("userId", typeof(Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint));
+            //config.ConstraintMap.Add("groupId", typeof(Controllers.RouteConstraints.DirectoryGroupRouteConstraint));
         });
 
         return services;

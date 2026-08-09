@@ -26,12 +26,12 @@ public sealed class AuthenticateCommandValidator : AbstractValidator<Authenticat
 
 public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateCommand, Result<AuthenticationResultDto>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public AuthenticateCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public AuthenticateCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public Task<Result<AuthenticationResultDto>> Handle(AuthenticateCommand request, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandle
         return ExecuteAsync(
             operationName: "Authenticate",
             context,
-            () => _ldapGatewayClient.AuthenticateAsync(context, request.credential, cancellationToken),
+            () => _directoryServiceConnector.AuthenticateAsync(context, request.credential, cancellationToken),
             cancellationToken);
     }
 }

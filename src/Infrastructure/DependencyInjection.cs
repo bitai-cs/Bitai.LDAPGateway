@@ -24,14 +24,9 @@ public static class DependencyInjection
 
         services.AddScoped<IDirectoryServiceProvider, BitaiLdapHelperProvider>();
 
-        services.AddScoped<IDirectoryConnector, DirectoryConnector>();
-
-        // IServerProfileReadService is registered as singleton because of it's
-        // a general-use service and LDAPServerProfileParameterPolicy is
-        // instantiated by the routing system at application startup, before
-        // any request exists. At startup, ASP.NET Core uses the root service
-        // provider, which cannot resolve scoped services.
-        services.AddSingleton<IServerProfileReadService, LdapServerProfileReadService>();
+        services.AddScoped<IDirectoryServiceConnector, DirectoryServiceConnector>();
+        
+        services.AddScoped<IServerProfileReadService, LdapServerProfileReadService>();
 
         services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
 

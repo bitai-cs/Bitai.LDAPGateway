@@ -10,9 +10,10 @@ namespace Bitai.LDAPGateway.Application.Directory.Queries.GetUserByIdentifier;
 public sealed record GetUserByIdentifierQuery(
    string ServerProfile,
    CatalogType CatalogType,
-   LdapIdentifierAttribute identifierAttribute,
-   string identifier,
-   LdapEntryAttributeSet requiredAttributeSet) : IRequest<Result<LdapEntryDto?>>;
+   LdapIdentifierAttribute IdentifierAttribute,
+   string Identifier,
+   LdapEntryAttributeSet RequiredAttributeSet,
+   bool UserMustExists) : IRequest<Result<LdapEntryDto?>>;
 
 public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUserByIdentifierQuery>
 {
@@ -20,28 +21,38 @@ public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUse
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.CatalogType).IsInEnum();
-        RuleFor(x => x.identifierAttribute).IsInEnum();
-        RuleFor(x => x.identifier).NotEmpty();
-        RuleFor(x => x.requiredAttributeSet).IsInEnum();
+        RuleFor(x => x.IdentifierAttribute).IsInEnum();
+        RuleFor(x => x.Identifier).NotEmpty();
+        RuleFor(x => x.RequiredAttributeSet).IsInEnum();
     }
 }
 
 public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetUserByIdentifierQuery, Result<LdapEntryDto?>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetUserByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetUserByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
-    public Task<Result<LdapEntryDto?>> Handle(GetUserByIdentifierQuery request, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto?>> Handle(GetUserByIdentifierQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
-        return ExecuteAsync("GetUserByIdentifier", context,
-           () => _ldapGatewayClient.GetUserAsync(context, request.identifierAttribute, request.identifier, request.requiredAttributeSet, cancellationToken),
+        var result = await ExecuteAsync("GetUserByIdentifier", context,
+           () => _directoryServiceConnector.GetUserAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
            cancellationToken);
+
+        if (!result.IsSuccess || (result.IsSuccess && result.Value != null))
+        {
+            return result;
+        }
+
+        if (request.UserMustExists)
+            return Result<LdapEntryDto?>.Failure(Error.NotFound($"User not found in the catalog for {request.IdentifierAttribute}={request.Identifier}"));
+        else
+            return result;
     }
 }

@@ -26,12 +26,12 @@ public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractVali
 
 public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateWithoutUserLookupCommand, Result<AuthenticationResultDto>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public AuthenticateWithoutUserLookupCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public AuthenticateWithoutUserLookupCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public Task<Result<AuthenticationResultDto>> Handle(AuthenticateWithoutUserLookupCommand request, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBas
         return ExecuteAsync(
             operationName: "AuthenticateWithoutUserLookup",
             context,
-            () => _ldapGatewayClient.AuthenticateWithoutUserLookupAsync(context, request.Credential, cancellationToken),
+            () => _directoryServiceConnector.AuthenticateWithoutUserLookupAsync(context, request.Credential, cancellationToken),
             cancellationToken);
     }
 }

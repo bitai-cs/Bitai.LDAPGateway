@@ -12,7 +12,8 @@ public sealed record GetDirectoryEntryByIdentifierQuery(
     CatalogType CatalogType,
     string Identifier,
     LdapIdentifierAttribute IdentifierAttribute,
-    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<LdapEntryDto>>;
+    LdapEntryAttributeSet RequiredAttributeSet,
+    bool UserMustExists) : IRequest<Result<LdapEntryDto?>>;
 
 public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValidator<GetDirectoryEntryByIdentifierQuery>
 {
@@ -25,21 +26,32 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
     }
 }
 
-public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetDirectoryEntryByIdentifierQuery, Result<LdapEntryDto>>
+public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetDirectoryEntryByIdentifierQuery, Result<LdapEntryDto?>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetDirectoryEntryByIdentifierQueryHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public GetDirectoryEntryByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
         : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
-    public Task<Result<LdapEntryDto>> Handle(GetDirectoryEntryByIdentifierQuery request, CancellationToken cancellationToken)
+    public async Task<Result<LdapEntryDto?>> Handle(GetDirectoryEntryByIdentifierQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-        return ExecuteAsync("GetDirectoryEntryByIdentifier", context,
-            () => _ldapGatewayClient.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
+
+        var result = await ExecuteAsync("GetDirectoryEntryByIdentifier", context,
+            () => _directoryServiceConnector.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
             cancellationToken);
+
+        if (!result.IsSuccess || (result.IsSuccess && result.Value != null))
+        {
+            return result;
+        }
+
+        if (request.UserMustExists)
+            return Result<LdapEntryDto?>.Failure(Error.NotFound($"Entry not found in the catalog for {request.IdentifierAttribute}={request.Identifier}"));
+        else
+            return result;
     }
 }

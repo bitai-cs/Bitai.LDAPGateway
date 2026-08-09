@@ -48,12 +48,12 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
 
 public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<CreateMsAdUserCommand, Result<LdapEntryDto>>
 {
-    private readonly IDirectoryConnector _ldapGatewayClient;
+    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public CreateMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+    public CreateMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
        : base(domainEventPublisher)
     {
-        _ldapGatewayClient = ldapGatewayClient;
+        _directoryServiceConnector = directoryServiceConnector;
     }
 
     public Task<Result<LdapEntryDto>> Handle(CreateMsAdUserCommand request, CancellationToken cancellationToken)
@@ -78,7 +78,7 @@ public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHand
            request.Password);
 
         return ExecuteAsync("CreateMsAdUser", context,
-           () => _ldapGatewayClient.CreateMsAdUserAsync(context, payload, cancellationToken),
+           () => _directoryServiceConnector.CreateMsAdUserAsync(context, payload, cancellationToken),
            cancellationToken);
     }
 }

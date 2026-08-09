@@ -24,19 +24,19 @@ public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsA
 
 public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DeleteMsAdUserCommand, Result>
 {
-   private readonly IDirectoryConnector _ldapGatewayClient;
+   private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public DeleteMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public DeleteMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
-      _ldapGatewayClient = ldapGatewayClient;
+      _directoryServiceConnector = directoryServiceConnector;
    }
 
    public Task<Result> Handle(DeleteMsAdUserCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("DeleteMsAdUser", context,
-         () => _ldapGatewayClient.DeleteMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, cancellationToken),
+         () => _directoryServiceConnector.DeleteMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, cancellationToken),
          cancellationToken);
    }
 }

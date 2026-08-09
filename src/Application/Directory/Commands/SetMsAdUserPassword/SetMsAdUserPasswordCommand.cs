@@ -27,19 +27,19 @@ public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetM
 
 public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase, IRequestHandler<SetMsAdUserPasswordCommand, Result>
 {
-   private readonly IDirectoryConnector _ldapGatewayClient;
+   private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public SetMsAdUserPasswordCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public SetMsAdUserPasswordCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
-      _ldapGatewayClient = ldapGatewayClient;
+      _directoryServiceConnector = directoryServiceConnector;
    }
 
    public Task<Result> Handle(SetMsAdUserPasswordCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("SetMsAdUserPassword", context,
-         () => _ldapGatewayClient.SetMsAdUserPasswordAsync(context, request.IdentifierAttribute, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
+         () => _directoryServiceConnector.SetMsAdUserPasswordAsync(context, request.IdentifierAttribute, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
          cancellationToken);
    }
 }

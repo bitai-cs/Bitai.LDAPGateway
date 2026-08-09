@@ -580,7 +580,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
 
     #region Generic Directory Search Methods
-    public async Task<Result<LdapEntryDto>> GetDirectoryEntryAsync(
+    public async Task<Result<LdapEntryDto?>> GetDirectoryEntryAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapIdentifierAttribute identifierAttribute,
@@ -592,27 +592,27 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation("Identifier is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Identifier is required."));
         }
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(connectionError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(connectionError));
         }
 
         if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(searchLimitsError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(searchLimitsError));
         }
 
         if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation(credentialError));
+            return Result<LdapEntryDto?>.Failure(Error.Validation(credentialError));
         }
 
         var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
@@ -622,6 +622,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         try
         {
             var requestLabel = $"ldap-gateway-get-entry:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+
             var searcher = new Searcher(
                 connectionInfo,
                 searchLimits,
@@ -630,6 +631,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
+            var componentName = nameof(Searcher);
+            var componentMethod = nameof(Searcher.SearchEntriesAsync);
             var searchResult = await searcher
                     .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
@@ -638,33 +641,48 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     searchResult.ErrorObject,
-                    "Bitai.LDAPHelper GetDirectoryEntry failed for profile {ProfileId}, identifier {Identifier}, attribute {LdapIdentifierAttribute}. Message: {OperationMessage}",
+                    "{ComponentName} failed executing {ComponentMethod}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    componentName, componentMethod,
+                    searchResult.OperationMessage,
+                    filterObject,
+                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    identifier,
-                    resolvedIdentifierAttribute,
-                    searchResult.OperationMessage);
+                    catalogType);
 
-                return Result<LdapEntryDto>.Failure(
-                    Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? "LDAP get-entry operation failed."
-                        : searchResult.OperationMessage));
+                var error = Error.BadGateway($"{_classFriendlyName} failed to get {identifier} using Searcher.SearchEntriesAsync.", Error.InnerErr(searchResult.OperationMessage));
+
+                if (searchResult.ErrorObject != null)
+                {
+                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
+                    {
+                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage));
+                    }
+                    else if (searchResult.ErrorObject is Exception)
+                    {
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject.Message));
+                    }
+                }
+
+                return Result<LdapEntryDto?>.Failure(error);
             }
 
             var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
-            if (entries.Count == 0)
-            {
-                return Result<LdapEntryDto>.Failure(
-                    Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
-            }
 
             if (entries.Count > 1)
             {
-                return Result<LdapEntryDto>.Failure(
-                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+                return Result<LdapEntryDto?>.Failure(
+                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}={identifier}."));
             }
 
-            var entry = entries[0];
-            return Result<LdapEntryDto>.Success(MapToDirectoryEntryDto(entry));
+            var entry = entries.FirstOrDefault();
+
+            return Result<LdapEntryDto?>.Success(
+                entry is null ? null : MapToDirectoryEntryDto(entry));
         }
         catch (Exception ex)
         {
@@ -675,7 +693,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 identifier,
                 identifierAttribute);
 
-            return Result<LdapEntryDto>.Failure(Error.BadGateway($"LDAP get-entry operation failed: {ex.Message}"));
+            return Result<LdapEntryDto?>.Failure(
+                Error.BadGateway($"Unexpected exception in LDAP Helper Provider while trying to search {identifierAttribute}={identifier}", Error.InnerErr(ex)));
         }
     }
 
@@ -904,10 +923,12 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<LdapEntryDto?>.Failure(
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
-;
+
+            var entry = searchResult.Entries.FirstOrDefault();
+
             return Result<LdapEntryDto?>.Success(
-                searchResult.Entries.Count() == 0 ? null :
-                MapToDirectoryEntryDto(searchResult.Entries.Single()));
+                entry is null ? null :
+                MapToDirectoryEntryDto(entry));
         }
         catch (Exception ex)
         {
@@ -921,7 +942,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 identifier, identifierAttribute);
 
             return Result<LdapEntryDto?>.Failure(
-                Error.BadGateway($"Unexpected exception in {_classFriendlyName} while trying {methodFriendlyName}.", Error.InnerErr(ex.Message)));
+                Error.BadGateway($"Unexpected exception in {_classFriendlyName} while trying {methodFriendlyName}.", Error.InnerErr(ex)));
         }
     }
 
@@ -1318,7 +1339,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             var entry = searchResult.Entries.FirstOrDefault();
 
             return Result<LdapEntryDto?>.Success(
-                entry != null ? MapToDirectoryEntryDto(entry) : null);
+                entry is null ? null :
+                MapToDirectoryEntryDto(entry));
         }
         catch (Exception ex)
         {

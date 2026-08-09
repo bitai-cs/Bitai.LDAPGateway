@@ -1,7 +1,7 @@
 ---
 name: .NET Clean Arch Specialist #1
 description: 'Production-grade .NET service specialist implementing Clean Architecture powered by MediatR (CQRS), with FluentValidation, EF Core, domain events, and full test coverage.'
-tools: ['search', 'codebase', 'editFiles', 'runCommands', 'runTests', 'problems', 'usages']
+tools: ['search', 'read', 'edit', 'execute']
 ---
 
 # Identity and Role

@@ -6,6 +6,7 @@ using Bitai.LDAPGateway.Application.Directory.Commands.SetMsAdUserPassword;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetDirectoryEntryByIdentifier;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetGroupByIdentifier;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetGroupParents;
+using Bitai.LDAPGateway.Application.Directory.Queries.GetUserByIdentifier;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetUserParents;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchDirectory;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups;
@@ -68,7 +69,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPatch("MsADUsers/{identifier:userId}/Credential")]
+    [HttpPatch("MsADUsers/{identifier}/Credential")]
     public async Task<IActionResult> SetCredential(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -84,7 +85,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPatch("MsADUsers/{identifier:userId}/disableBy")]
+    [HttpPatch("MsADUsers/{identifier}/disableBy")]
     public async Task<IActionResult> DisableBy(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -97,7 +98,7 @@ public sealed class DirectoryController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpDelete("MsADUsers/{identifier:userId}")]
+    [HttpDelete("MsADUsers/{identifier}")]
     public async Task<IActionResult> Delete(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -122,7 +123,7 @@ public sealed class DirectoryController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
+            new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, UserMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -147,7 +148,21 @@ public sealed class DirectoryController : ControllerBase
 
 
     #region User Search Endpoints
-    [HttpGet("Users/{identifier:userId}/Parents")]
+    [HttpGet("Users/{identifier}")]
+    public async Task<IActionResult> GetUser(
+        [FromRoute] string serverProfile,
+        [FromRoute] CatalogType catalogType,
+        [FromRoute] string identifier,
+        [FromQuery] LdapIdentifierAttribute identifierAttribute = LdapIdentifierAttribute.SAMAccountName,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetUserByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
+
+        return this.ToActionResult(result);
+    }
+
+    [HttpGet("Users/{identifier}/Parents")]
     public async Task<IActionResult> GetUserParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -182,7 +197,7 @@ public sealed class DirectoryController : ControllerBase
 
 
     #region Group Search Endpoints
-    [HttpGet("Groups/{identifier:groupId}")]
+    [HttpGet("Groups/{identifier}")]
     public async Task<IActionResult> GetGroup(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -191,12 +206,12 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet), cancellationToken);
+        var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
 
-    [HttpGet("Groups/{identifier:groupId}/Parents")]
+    [HttpGet("Groups/{identifier}/Parents")]
     public async Task<IActionResult> GetGroupParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,

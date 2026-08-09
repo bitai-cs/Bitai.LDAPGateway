@@ -25,19 +25,19 @@ public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableM
 
 public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DisableMsAdUserCommand, Result>
 {
-   private readonly IDirectoryConnector _ldapGatewayClient;
+   private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public DisableMsAdUserCommandHandler(IDirectoryConnector ldapGatewayClient, IDomainEventPublisher domainEventPublisher)
+   public DisableMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
       : base(domainEventPublisher)
    {
-      _ldapGatewayClient = ldapGatewayClient;
+      _directoryServiceConnector = directoryServiceConnector;
    }
 
    public Task<Result> Handle(DisableMsAdUserCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
       return ExecuteAsync("DisableMsAdUser", context,
-         () => _ldapGatewayClient.DisableMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, request.Reason, cancellationToken),
+         () => _directoryServiceConnector.DisableMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, request.Reason, cancellationToken),
          cancellationToken);
    }
 }
