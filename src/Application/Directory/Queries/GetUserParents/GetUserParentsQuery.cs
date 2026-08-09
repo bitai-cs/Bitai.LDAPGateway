@@ -12,13 +12,15 @@ public sealed record GetUserParentsQuery(
     CatalogType CatalogType,
     string Identifier,
     LdapIdentifierAttribute IdentifierAttribute,
-    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    LdapEntryAttributeSet RequiredAttributeSet,
+    bool UserMustExist) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
 
 public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserParentsQuery>
 {
     public GetUserParentsQueryValidator()
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
+        RuleFor(x => x.CatalogType).IsInEnum();
         RuleFor(x => x.Identifier).NotEmpty();
         RuleFor(x => x.IdentifierAttribute).IsInEnum();
         RuleFor(x => x.RequiredAttributeSet).IsInEnum();
@@ -40,7 +42,7 @@ public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandle
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
         return ExecuteAsync("GetUserParents", context,
-            () => _directoryServiceConnector.GetUserParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, cancellationToken),
+            () => _directoryServiceConnector.GetUserParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, request.UserMustExist, cancellationToken),
             cancellationToken);
     }
 }

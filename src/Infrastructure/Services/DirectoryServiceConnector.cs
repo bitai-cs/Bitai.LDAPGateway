@@ -136,7 +136,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
         return await _directoryServiceProvider.GetUserAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, LdapIdentifierAttribute identifierAttribute, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(LdapRequestContext context, string identifier, LdapIdentifierAttribute identifierAttribute, LdapEntryAttributeSet requiredAttributeSet, bool userMustExist, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -144,7 +144,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _directoryServiceProvider.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
+        return await _directoryServiceProvider.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, userMustExist, cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(LdapRequestContext context, LdapEntryAttribute filterAttribute, string filterValue, LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue, bool? combineFilters, LdapEntryAttributeSet requiredAttributeSet, int sizeLimit, CancellationToken cancellationToken)

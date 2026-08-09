@@ -6,6 +6,7 @@ using Bitai.LDAPHelper.DTO;
 using Bitai.LDAPHelper.LdapAdapters;
 using Bitai.LDAPHelper.QueryFilters;
 using Microsoft.Extensions.Logging;
+using Novell.Directory.Ldap;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
@@ -906,11 +907,11 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 {
                     if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
                     {
-                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage));
+                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage, ldapEx.StackTrace));
                     }
                     else if (searchResult.ErrorObject is Exception)
                     {
-                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject.Message));
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                     }
                 }
 
@@ -952,6 +953,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         string identifier,
         LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
+        bool userMustExist,
         CancellationToken cancellationToken)
     {
         string methodCodeName = "get-user-parents";
@@ -1000,10 +1002,65 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
+            var entrySearchResult = await searcher.SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel);
+            if (!entrySearchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    entrySearchResult.ErrorObject,
+                    "{ClassName} failed executing {MethodName}. " +
+                    "OperationMessage: {OperationMessage} " +
+                    "SearchFilter: {SearchFilter}, " +
+                    "RequiredAttributes: {RequiredAttributes}, " +
+                    "ProfileId: {ProfileId}, " +
+                    "CatalogType: {CatalogType}",
+                    _classCodeName, methodCodeName,
+                    entrySearchResult.OperationMessage,
+                    filterObject,
+                    resolvedRequiredAttributes,
+                    ldapServerProfile.ProfileId,
+                    catalogType);
+
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for identifier '{identifier}' using {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}.", Error.InnerErr(entrySearchResult.OperationMessage));
+
+                if (entrySearchResult.ErrorObject != null)
+                {
+                    if (entrySearchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
+                    {
+                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage, ldapEx.StackTrace));
+                    }
+                    else if (entrySearchResult.ErrorObject is Exception)
+                    {
+                        error = error.WithInner(Error.InnerErr(entrySearchResult.ErrorObject));
+                    }
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            if (entrySearchResult.Entries.Count() == 0)
+            {
+                if (userMustExist)
+                {
+                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                        Error.NotFound($"No directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+                }
+                else
+                {
+                    return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());
+                }
+            }
+
+            if (entrySearchResult.Entries.Count() > 1)
+            {
+                // Log a warning if multiple entries are found for the same identifier
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                    Error.Validation($"More than one directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+            }
+
             var componentName = nameof(Searcher);
             var componentMethod = nameof(Searcher.SearchParentEntriesAsync);
             var searchResult = await searcher
-                    .SearchParentEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                    .SearchParentEntriesAsync(entrySearchResult.Entries, resolvedRequiredAttributes, requestLabel)
                     .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -1024,43 +1081,24 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                     ldapServerProfile.ProfileId,
                     catalogType);
 
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for identifier '{identifier}' using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
+
                 if (searchResult.ErrorObject != null)
                 {
-                    if (searchResult.ErrorObject is EntryNotFoundException)
+                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException novellError)
                     {
-                        return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                            Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
-                    }
-                    else if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException novellError)
-                    {
-                        return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                            Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} with error: {novellError.LdapErrorMessage}."));
+                        error = error.WithInner(Error.InnerErr(novellError.LdapErrorMessage, novellError.StackTrace));
                     }
                     else
                     {
-                        throw searchResult.ErrorObject;
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                     }
                 }
 
-                // If we reach here, it means the operation was not successful, there was no specific error object, but we still have an operation message.
-                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                    Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? $"{_classFriendlyName} failed {methodFriendlyName}."
-                        : searchResult.OperationMessage));
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
             }
 
             var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
-            // if (entries.Count == 0)
-            // {
-            //     return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-            //         Error.NotFound($"Directory entry not found for {identifierAttribute}='{identifier}'."));
-            // }
-
-            // if (entries.Count > 1)
-            // {
-            //     return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-            //         Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
-            // }
 
             return Result<IReadOnlyList<LdapEntryDto>>.Success(ResolveLdapEntries(entries));
         }
@@ -1193,14 +1231,21 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                     ldapServerProfile.ProfileId,
                     catalogType);
 
+                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for {filterAttribute}={filterValue} " +
+                    (!string.IsNullOrEmpty(secondaryFilterValue) ?
+                    $" and {secondaryFilterAttribute}={secondaryFilterValue} and combine filters={combineFilters}" :
+                    string.Empty) +
+                " using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
+
                 if (searchResult.HasErrorObject)
                 {
-                    throw searchResult.ErrorObject;
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                 }
-                else
-                {
-                    throw new Exception($"Unexpected error while executing {componentName}.{componentMethod}. OperationMessage: {searchResult.OperationMessage}");
-                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
             }
 
             var mappedEntries = (searchResult.Entries ?? Array.Empty<LDAPEntry>())
