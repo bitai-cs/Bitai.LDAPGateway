@@ -182,6 +182,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
         string identifier,
         LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
+        bool groupMustExist,
         CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
@@ -190,7 +191,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _directoryServiceProvider.GetGroupParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, cancellationToken);
+        return await _directoryServiceProvider.GetGroupParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, groupMustExist, cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(

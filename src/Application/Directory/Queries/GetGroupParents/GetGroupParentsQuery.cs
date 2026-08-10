@@ -12,7 +12,8 @@ public sealed record GetGroupParentsQuery(
     CatalogType CatalogType,
     string Identifier,
     LdapIdentifierAttribute IdentifierAttribute,
-    LdapEntryAttributeSet RequiredAttributeSet) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    LdapEntryAttributeSet RequiredAttributeSet,
+    bool GroupMustExist) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
 
 public sealed class GetGroupParentsQueryValidator : AbstractValidator<GetGroupParentsQuery>
 {
@@ -41,7 +42,7 @@ public sealed class GetGroupParentsQueryHandler : LdapHandlerBase, IRequestHandl
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
         return ExecuteAsync("GetGroupParents", context,
-            () => _directoryServiceConnector.GetGroupParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, cancellationToken),
+            () => _directoryServiceConnector.GetGroupParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, request.GroupMustExist, cancellationToken),
             cancellationToken);
     }
 }

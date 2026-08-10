@@ -220,7 +220,8 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet), cancellationToken);
+        var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, GroupMustExist: true), cancellationToken);
+
         return this.ToActionResult(result);
     }
 

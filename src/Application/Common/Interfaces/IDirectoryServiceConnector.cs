@@ -104,6 +104,7 @@ public interface IDirectoryServiceConnector
         string identifier,
         LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
+        bool groupMustExist,
         CancellationToken cancellationToken);
 
     Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(

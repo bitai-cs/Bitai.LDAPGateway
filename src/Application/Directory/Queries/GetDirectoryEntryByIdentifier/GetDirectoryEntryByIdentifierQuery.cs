@@ -20,6 +20,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
     public GetDirectoryEntryByIdentifierQueryValidator()
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
+        RuleFor(x => x.CatalogType).IsInEnum();
         RuleFor(x => x.Identifier).NotEmpty();
         RuleFor(x => x.IdentifierAttribute).IsInEnum();
         RuleFor(x => x.RequiredAttributeSet).IsInEnum();
@@ -44,6 +45,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase,
             () => _directoryServiceConnector.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
             cancellationToken);
 
+        // If the result is not successful or if it is successful and the value is not null, return the result.
         if (!result.IsSuccess || (result.IsSuccess && result.Value != null))
         {
             return result;

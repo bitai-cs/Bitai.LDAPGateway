@@ -33,6 +33,19 @@ public sealed record Error(string Code, string Message, int StatusCode, string? 
 
     public static Error Internal(string message, Error? innerError = null) => new("internal_error", message, 500, null, innerError);
 
+    public static Error Internal(Exception ex)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        
+        return new (
+            "internal_error",
+            ex.Message,
+            500,
+            ex.StackTrace,
+            ex.InnerException is not null ? InnerErr(ex.InnerException) : null
+        );
+    }
+
     public static Error BadGateway(string message, Error? innerError = null) => new("bad_gateway", message, 502, null, innerError);
 
     public static Error InnerErr(string message, string? stackTrace = null, Error? innerError = null) => new("inner_error", message, -1, stackTrace, innerError);

@@ -12,8 +12,6 @@ namespace Bitai.LDAPGateway.Infrastructure.Services;
 
 public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 {
-    private readonly string _classFriendlyName = "LDAP Helper Adapter";
-    private readonly string _classCodeName = "ldap-helper-adapter";
     private readonly ILogger<BitaiLdapHelperProvider> _logger;
     private readonly ILdapConnectionFactoryAdapter _ldapConnectionFactoryAdapter;
 
@@ -32,14 +30,11 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
     #region Authentication Methods
     public async Task<Result<AuthenticationResultDto>> AuthenticateAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
-        const string methodCodeName = "authenticate";
-        const string methodFriendlyName = "to authenticate user";
-
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
         {
-            return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(username))
@@ -74,12 +69,10 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             var authenticator = new Authenticator(connectionInfo, _ldapConnectionFactoryAdapter);
-
-            var componentName = nameof(Authenticator);
-            var componentMethod = nameof(Authenticator.AuthenticateAsync);
+            
             var authenticationResult = await authenticator.AuthenticateAsync(
                 credentialToAuthenticate,
                 searchLimits,
@@ -90,31 +83,24 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     authenticationResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "UserToAuthenticate: {UserToAuthenticate}, " +
-                    "SearchLimits: {SearchLimits}, " +
-                    "UserForSearching: {UserForSearching}",
-                    componentName, componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Username: {Username}, UserToAuthenticate: {UserToAuthenticate}, SearchLimits: {SearchLimits}, UserForSearching: {UserForSearching}.",
+                    nameof(Authenticator), nameof(Authenticator.AuthenticateAsync),
                     authenticationResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    username,
                     credentialToAuthenticate.DomainAccountName,
                     searchLimits,
                     credentialForSearching.DomainAccountName);
 
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.AuthenticateAsync)} failed to authenticate user {credentialToAuthenticate.DomainAccountName} due to an error in {nameof(Authenticator)}.{nameof(Authenticator.AuthenticateAsync)}. {authenticationResult.OperationMessage}");
 
                 if (authenticationResult.HasErrorObject)
                 {
-                    error = error.WithInner(
-                        Error.InnerErr(
-                            authenticationResult.OperationMessage,
-                            null,
-                            Error.InnerErr(authenticationResult.ErrorObject)));
-                }
-                else
-                {
-                    error = error.WithInner(
-                        Error.InnerErr(authenticationResult.OperationMessage));
+                    if (authenticationResult.ErrorObject is LdapException ldapExc)                    
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));                    
+                    else
+                        error = error.WithInner(Error.InnerErr(authenticationResult.ErrorObject));
                 }
 
                 return Result<AuthenticationResultDto>.Failure(error);
@@ -133,24 +119,24 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                ex,
-               "Unhandled exception while authenticating username: {Username} and LDAP server profile: {ProfileId}.",
+               "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Username:{Username}.",
+               nameof(BitaiLdapHelperProvider),
+               nameof(BitaiLdapHelperProvider.AuthenticateAsync),
                ldapServerProfile.ProfileId,
+               catalogType,
                username);
 
-            return Result<AuthenticationResultDto>.Failure(Error.Internal($"LDAP authentication failed unexpectedly for username: {username} and LDAP server profile: {ldapServerProfile.ProfileId}."));
+            return Result<AuthenticationResultDto>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.AuthenticateAsync)}.", Error.InnerErr(ex)));
         }
     }
 
     public async Task<Result<AuthenticationResultDto>> AuthenticateWithoutUserLookupAsync(LdapServerProfileOption ldapServerProfile, CatalogType catalogType, string username, string password, CancellationToken cancellationToken)
     {
-        const string methodCodeName = "authenticate-lookup";
-        const string methodFriendlyName = "to authenticate user";
-
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
         {
-            return Result<AuthenticationResultDto>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<AuthenticationResultDto>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(username))
@@ -175,12 +161,10 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"{_classCodeName}.{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             var authenticator = new Authenticator(connectionInfo, _ldapConnectionFactoryAdapter);
 
-            var componentName = nameof(Authenticator);
-            var componentMethod = nameof(Authenticator.AuthenticateAsync);
             var authenticationResult = await authenticator.AuthenticateAsync(
                credentialToAuthenticate,
                requestLabel);
@@ -189,27 +173,22 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                    authenticationResult.ErrorObject,
-                   "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} | " +
-                    "UserToAuthenticate: {UserToAuthenticate}.",
-                   componentName, componentMethod,
+                   "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Username: {Username}, UserToAuthenticate: {UserToAuthenticate}.",
+                   nameof(Authenticator), nameof(Authenticator.AuthenticateAsync),
                    authenticationResult.OperationMessage,
+                   ldapServerProfile.ProfileId,
+                   catalogType,
+                   username,
                    credentialToAuthenticate.DomainAccountName);
 
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {credentialToAuthenticate.DomainAccountName} due to an error in {componentName} component.");
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.AuthenticateAsync)} failed to authenticate user {credentialToAuthenticate.DomainAccountName} due to an error in {nameof(Authenticator)}.{nameof(Authenticator.AuthenticateAsync)}. {authenticationResult.OperationMessage}");
 
                 if (authenticationResult.HasErrorObject)
                 {
-                    error = error.WithInner(
-                        Error.InnerErr(
-                            authenticationResult.OperationMessage,
-                            null,
-                            Error.InnerErr(authenticationResult.ErrorObject)));
-                }
-                else
-                {
-                    error = error.WithInner(
-                        Error.InnerErr(authenticationResult.OperationMessage));
+                    if (authenticationResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(authenticationResult.ErrorObject));                
                 }
 
                 return Result<AuthenticationResultDto>.Failure(error);
@@ -228,11 +207,13 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                ex,
-               "Unhandled exception while authenticating (without lookup) profile {ProfileId} and username {Username}.",
+               "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Username: {Username}.",
+               nameof(BitaiLdapHelperProvider), nameof(BitaiLdapHelperProvider.AuthenticateAsync),
                ldapServerProfile.ProfileId,
+               catalogType,
                username);
 
-            return Result<AuthenticationResultDto>.Failure(Error.BadGateway($"LDAP authentication failed: {ex.Message}"));
+            return Result<AuthenticationResultDto>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.AuthenticateAsync)}.", Error.InnerErr(ex)));
         }
     }
     #endregion
@@ -246,7 +227,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result<LdapEntryDto>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<LdapEntryDto>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (user is null)
@@ -271,7 +252,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-create-msad-user:{ldapServerProfile.ProfileId}:{user.SAMAccountName}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
             var accountManager = new AccountManager(
                connectionInfo,
                searchLimits,
@@ -286,15 +268,24 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                    createResult.ErrorObject,
-                   "Bitai.LDAPHelper CreateMsAdUser failed for profile {ProfileId} and account {SamAccountName}. Message: {OperationMessage}",
+                   "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, UserDN: {UserDN}.",
+                   nameof(AccountManager), nameof(AccountManager.CreateUserAccountForMsAD),
+                   createResult.OperationMessage,
                    ldapServerProfile.ProfileId,
-                   user.SAMAccountName,
-                   createResult.OperationMessage);
+                   catalogType,
+                   user.DistinguishedName);
 
-                return Result<LdapEntryDto>.Failure(
-                   Error.BadGateway(string.IsNullOrWhiteSpace(createResult.OperationMessage)
-                      ? "LDAP user-creation operation failed."
-                      : createResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.CreateMsAdUserAsync)} failed to create user {user.SAMAccountName} due to an error in {nameof(AccountManager)}.{nameof(AccountManager.CreateUserAccountForMsAD)}. {createResult.OperationMessage}");
+
+                if (createResult.HasErrorObject)
+                {
+                    if (createResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(createResult.ErrorObject));
+                }
+
+                return Result<LdapEntryDto>.Failure(error);
             }
 
             var createdUser = createResult.UserAccount ?? user;
@@ -322,11 +313,13 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                ex,
-               "Unhandled exception while creating MS AD user for profile {ProfileId} and account {SamAccountName}.",
+               "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, UserDN: {UserDN}.",
+               nameof(BitaiLdapHelperProvider), nameof(BitaiLdapHelperProvider.CreateMsAdUserAsync),
                ldapServerProfile.ProfileId,
-               user.SAMAccountName);
+               catalogType,
+               user.DistinguishedName);            
 
-            return Result<LdapEntryDto>.Failure(Error.BadGateway($"LDAP user-creation failed: {ex.Message}"));
+            return Result<LdapEntryDto>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.CreateMsAdUserAsync)}.", Error.InnerErr(ex)));
         }
     }
 
@@ -343,7 +336,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result.Failure(Error.Validation("LDAP server profile is required."));
+            return Result.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -375,7 +368,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-set-msad-password:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
             var accountManager = new AccountManager(
                connectionInfo,
                searchLimits,
@@ -390,16 +384,25 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                    setPasswordResult.ErrorObject,
-                   "Bitai.LDAPHelper SetMsAdUserPassword failed for profile {ProfileId}, identifier {Identifier}, attribute {LdapIdentifierAttribute}. Message: {OperationMessage}",
+                   "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}.",
+                   nameof(AccountManager), nameof(AccountManager.SetMsADUserAccountPassword),
+                   setPasswordResult.OperationMessage,
                    ldapServerProfile.ProfileId,
-                   identifier,
+                   catalogType,
                    resolvedIdentifierAttribute,
-                   setPasswordResult.OperationMessage);
+                   identifier);
 
-                return Result.Failure(
-                   Error.BadGateway(string.IsNullOrWhiteSpace(setPasswordResult.OperationMessage)
-                      ? "LDAP password-update operation failed."
-                      : setPasswordResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SetMsAdUserPasswordAsync)} failed to set password for user {identifier} due to an error in {nameof(AccountManager)}.{nameof(AccountManager.SetMsADUserAccountPassword)}. {setPasswordResult.OperationMessage}");
+
+                if (setPasswordResult.HasErrorObject)
+                {
+                    if (setPasswordResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(setPasswordResult.ErrorObject));
+                }
+
+                return Result.Failure(error);
             }
 
             return Result.Success();
@@ -408,11 +411,14 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                ex,
-               "Unhandled exception while setting MS AD password for profile {ProfileId} and identifier {Identifier}.",
+               "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}.",
+               nameof(BitaiLdapHelperProvider),
+               nameof(BitaiLdapHelperProvider.SetMsAdUserPasswordAsync),
                ldapServerProfile.ProfileId,
+               catalogType,
                identifier);
 
-            return Result.Failure(Error.BadGateway($"LDAP password-update failed: {ex.Message}"));
+            return Result.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SetMsAdUserPasswordAsync)}.", Error.InnerErr(ex)));
         }
     }
 
@@ -428,7 +434,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result.Failure(Error.Validation("LDAP server profile is required."));
+            return Result.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -455,7 +461,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-disable-msad-user:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
             var accountManager = new AccountManager(
                 connectionInfo,
                 searchLimits,
@@ -470,17 +477,26 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     disableResult.ErrorObject,
-                    "Bitai.LDAPHelper DisableMsAdUser failed for profile {ProfileId}, identifier {Identifier}, attribute {LdapIdentifierAttribute}, reason {Reason}. Message: {OperationMessage}",
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, Reason: {Reason}.",
+                    nameof(AccountManager), nameof(AccountManager.DisableMsADUserAccount),
+                    disableResult.OperationMessage,
                     ldapServerProfile.ProfileId,
-                    identifier,
+                    catalogType,
                     resolvedIdentifierAttribute,
-                    reason,
-                    disableResult.OperationMessage);
+                    identifier,
+                    reason);
 
-                return Result.Failure(
-                    Error.BadGateway(string.IsNullOrWhiteSpace(disableResult.OperationMessage)
-                        ? "LDAP disable-user operation failed."
-                        : disableResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.DisableMsAdUserAsync)} failed to disable user {identifier} due to an error in {nameof(AccountManager)}.{nameof(AccountManager.DisableMsADUserAccount)}. {disableResult.OperationMessage}");
+
+                if (disableResult.HasErrorObject)
+                {
+                    if (disableResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(disableResult.ErrorObject));
+                }
+
+                return Result.Failure(error);
             }
 
             return Result.Success();
@@ -489,12 +505,15 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unhandled exception while disabling MS AD user for profile {ProfileId} and identifier {Identifier}. Reason: {Reason}",
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}, Reason: {Reason}",
+                nameof(BitaiLdapHelperProvider),
+                nameof(BitaiLdapHelperProvider.DisableMsAdUserAsync),
                 ldapServerProfile.ProfileId,
+                catalogType,
                 identifier,
                 reason);
 
-            return Result.Failure(Error.BadGateway($"LDAP disable-user operation failed: {ex.Message}"));
+            return Result.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.DisableMsAdUserAsync)}.", Error.InnerErr(ex)));
         }
     }
 
@@ -509,7 +528,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result.Failure(Error.Validation("LDAP server profile is required."));
+            return Result.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -536,7 +555,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-delete-msad-user:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
             var accountManager = new AccountManager(
                 connectionInfo,
                 searchLimits,
@@ -551,16 +571,25 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     deleteResult.ErrorObject,
-                    "Bitai.LDAPHelper DeleteMsAdUser failed for profile {ProfileId}, identifier {Identifier}, attribute {LdapIdentifierAttribute}. Message: {OperationMessage}",
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}.",
+                    nameof(AccountManager), nameof(AccountManager.RemoveMsADUserAccount),
+                    deleteResult.OperationMessage,
                     ldapServerProfile.ProfileId,
-                    identifier,
+                    catalogType,
                     resolvedIdentifierAttribute,
-                    deleteResult.OperationMessage);
+                    identifier);
 
-                return Result.Failure(
-                    Error.BadGateway(string.IsNullOrWhiteSpace(deleteResult.OperationMessage)
-                        ? "LDAP delete-user operation failed."
-                        : deleteResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.DeleteMsAdUserAsync)} failed to delete user {identifier} due to an error in {nameof(AccountManager)}.{nameof(AccountManager.RemoveMsADUserAccount)}. {deleteResult.OperationMessage}");
+
+                if (deleteResult.HasErrorObject)
+                {
+                    if (deleteResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(deleteResult.ErrorObject));
+                }
+
+                return Result.Failure(error);
             }
 
             return Result.Success();
@@ -569,11 +598,14 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unhandled exception while deleting MS AD user for profile {ProfileId} and identifier {Identifier}.",
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}.",
+                nameof(BitaiLdapHelperProvider),
+                nameof(BitaiLdapHelperProvider.DeleteMsAdUserAsync),
                 ldapServerProfile.ProfileId,
+                catalogType,
                 identifier);
 
-            return Result.Failure(Error.BadGateway($"LDAP delete-user operation failed: {ex.Message}"));
+            return Result.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.DeleteMsAdUserAsync)}.", Error.InnerErr(ex)));
         }
     }
     #endregion
@@ -593,7 +625,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -622,7 +654,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-get-entry:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             var searcher = new Searcher(
                 connectionInfo,
@@ -632,8 +664,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchEntriesAsync);
             var searchResult = await searcher
                     .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
@@ -642,31 +672,23 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName, componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
                     searchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    catalogType);
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes);
 
-                var error = Error.BadGateway($"{_classFriendlyName} failed to get {identifier} using Searcher.SearchEntriesAsync.", Error.InnerErr(searchResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetDirectoryEntryAsync)} failed to retrieve directory entry for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
 
-                if (searchResult.ErrorObject != null)
+                if (searchResult.HasErrorObject)
                 {
-                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
-                    {
-                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage));
-                    }
-                    else if (searchResult.ErrorObject is Exception)
-                    {
-                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject.Message));
-                    }
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                 }
 
                 return Result<LdapEntryDto?>.Failure(error);
@@ -689,13 +711,17 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unhandled exception while getting directory entry for profile {ProfileId}, identifier {Identifier}, attribute {LdapIdentifierAttribute}.",
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}, IdentifierAttribute: {IdentifierAttribute}, RequiredAttributes: {RequiredAttributes}.",
+                nameof(BitaiLdapHelperProvider),
+                nameof(BitaiLdapHelperProvider.GetDirectoryEntryAsync),
                 ldapServerProfile.ProfileId,
+                catalogType,
                 identifier,
-                identifierAttribute);
+                identifierAttribute,
+                resolvedRequiredAttributes);
 
             return Result<LdapEntryDto?>.Failure(
-                Error.BadGateway($"Unexpected exception in LDAP Helper Provider while trying to search {identifierAttribute}={identifier}", Error.InnerErr(ex)));
+                Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetDirectoryEntryAsync)}.", Error.InnerErr(ex)));
         }
     }
 
@@ -714,7 +740,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         if (ldapServerProfile is null)
         {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(filterValue))
@@ -760,7 +786,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"ldap-gateway-search-directory:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             searchLimits.MaxSearchResults = sizeLimit;
 
@@ -786,456 +812,18 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     searchResult.ErrorObject,
-                    "Bitai.LDAPHelper SearchDirectory failed for profile {ProfileId}, filter {Filter}, sizeLimit {SizeLimit}. Message: {OperationMessage}",
-                    ldapServerProfile.ProfileId,
-                    combinedFilter,
-                    sizeLimit,
-                    searchResult.OperationMessage);
-
-                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                    Error.BadGateway(string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? "LDAP search-directory operation failed."
-                        : searchResult.OperationMessage));
-            }
-
-            var mappedEntries = (searchResult.Entries ?? Array.Empty<LDAPEntry>())
-                .Select(MapToDirectoryEntryDto)
-                .ToList();
-
-            return Result<IReadOnlyList<LdapEntryDto>>.Success(mappedEntries);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Unhandled exception while searching directory for profile {ProfileId} with filter {Filter} and sizeLimit {SizeLimit}.",
-                ldapServerProfile.ProfileId,
-                filterValue,
-                sizeLimit);
-
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"LDAP search-directory operation failed: {ex.Message}"));
-        }
-    }
-    #endregion
-
-
-
-    #region User Search Methods
-    public async Task<Result<LdapEntryDto?>> GetUserAsync(
-        LdapServerProfileOption ldapServerProfile,
-        CatalogType catalogType,
-        LdapIdentifierAttribute identifierAttribute,
-        string identifier,
-        LdapEntryAttributeSet requiredAttributeSet,
-        CancellationToken cancellationToken)
-    {
-        const string methodCodeName = "get-user";
-        const string methodFriendlyName = "to get LDAP user";
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (ldapServerProfile is null)
-        {
-            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
-        }
-
-        if (string.IsNullOrWhiteSpace(identifier))
-        {
-            return Result<LdapEntryDto?>.Failure(Error.Validation("Identifier is required."));
-        }
-
-        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
-        {
-            return Result<LdapEntryDto?>.Failure(Error.Validation(connectionError));
-        }
-
-        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
-        {
-            return Result<LdapEntryDto?>.Failure(Error.Validation(searchLimitsError));
-        }
-
-        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
-        {
-            return Result<LdapEntryDto?>.Failure(Error.Validation(credentialError));
-        }
-
-        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
-
-        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
-
-        try
-        {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
-
-            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
-
-            var identifierFilter = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
-
-            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, identifierFilter });
-
-            var searcher = new Searcher(
-                connectionInfo,
-                searchLimits,
-                credentialForSearching,
-                _ldapConnectionFactoryAdapter);
-
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchEntriesAsync);
-            var searchResult = await searcher.SearchEntriesAsync(fullFilter, resolvedRequiredAttributes, requestLabel)
-                .WaitAsync(cancellationToken);
-
-            if (!searchResult.IsSuccessfulOperation)
-            {
-                _logger.LogWarning(
-                    searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName, componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
                     searchResult.OperationMessage,
-                    identifierFilter,
-                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    catalogType);
+                    catalogType,
+                    resolvedFilterAttribute,
+                    filterValue,
+                    resolvedSecondaryFilterAttribute,
+                    secondaryFilterValue,
+                    combineFilters);
 
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {identifier} using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
-
-                if (searchResult.ErrorObject != null)
-                {
-                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
-                    {
-                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage, ldapEx.StackTrace));
-                    }
-                    else if (searchResult.ErrorObject is Exception)
-                    {
-                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
-                    }
-                }
-
-                return Result<LdapEntryDto?>.Failure(error);
-            }
-
-            if (searchResult.Entries.Count() > 1)
-            {
-                // Log a warning if multiple entries are found for the same identifier
-                return Result<LdapEntryDto?>.Failure(
-                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
-            }
-
-            var entry = searchResult.Entries.FirstOrDefault();
-
-            return Result<LdapEntryDto?>.Success(
-                entry is null ? null :
-                MapToDirectoryEntryDto(entry));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Unexpected exception in {ClassName} {MethodName} while {MethodFriendlyName}. " +
-                "ServerProfile: {ProfileId}, CatalogType: {CatalogType}, " +
-                "Identifier: {Identifier}, IdentifierAttribute: {LdapIdentifierAttribute}.",
-                _classCodeName, methodCodeName, methodFriendlyName,
-                ldapServerProfile.ProfileId, catalogType,
-                identifier, identifierAttribute);
-
-            return Result<LdapEntryDto?>.Failure(
-                Error.BadGateway($"Unexpected exception in {_classFriendlyName} while trying {methodFriendlyName}.", Error.InnerErr(ex)));
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
-        LdapServerProfileOption ldapServerProfile,
-        CatalogType catalogType,
-        string identifier,
-        LdapIdentifierAttribute identifierAttribute,
-        LdapEntryAttributeSet requiredAttributeSet,
-        bool userMustExist,
-        CancellationToken cancellationToken)
-    {
-        string methodCodeName = "get-user-parents";
-        string methodFriendlyName = "to get user's parent LDAP entries";
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (ldapServerProfile is null)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
-        }
-
-        if (string.IsNullOrWhiteSpace(identifier))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Identifier is required."));
-        }
-
-        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
-        }
-
-        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
-        }
-
-        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
-        }
-
-        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
-
-        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
-
-        try
-        {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
-
-            var searcher = new Searcher(
-                connectionInfo,
-                searchLimits,
-                credentialForSearching,
-                _ldapConnectionFactoryAdapter);
-
-            var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
-
-            var entrySearchResult = await searcher.SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel);
-            if (!entrySearchResult.IsSuccessfulOperation)
-            {
-                _logger.LogError(
-                    entrySearchResult.ErrorObject,
-                    "{ClassName} failed executing {MethodName}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    _classCodeName, methodCodeName,
-                    entrySearchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
-                    ldapServerProfile.ProfileId,
-                    catalogType);
-
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for identifier '{identifier}' using {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}.", Error.InnerErr(entrySearchResult.OperationMessage));
-
-                if (entrySearchResult.ErrorObject != null)
-                {
-                    if (entrySearchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
-                    {
-                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage, ldapEx.StackTrace));
-                    }
-                    else if (entrySearchResult.ErrorObject is Exception)
-                    {
-                        error = error.WithInner(Error.InnerErr(entrySearchResult.ErrorObject));
-                    }
-                }
-
-                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
-            }
-
-            if (entrySearchResult.Entries.Count() == 0)
-            {
-                if (userMustExist)
-                {
-                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                        Error.NotFound($"No directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
-                }
-                else
-                {
-                    return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());
-                }
-            }
-
-            if (entrySearchResult.Entries.Count() > 1)
-            {
-                // Log a warning if multiple entries are found for the same identifier
-                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
-                    Error.Validation($"More than one directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
-            }
-
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchParentEntriesAsync);
-            var searchResult = await searcher
-                    .SearchParentEntriesAsync(entrySearchResult.Entries, resolvedRequiredAttributes, requestLabel)
-                    .WaitAsync(cancellationToken);
-
-            if (!searchResult.IsSuccessfulOperation)
-            {
-                _logger.LogError(
-                    searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName,
-                    componentMethod,
-                    searchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
-                    ldapServerProfile.ProfileId,
-                    catalogType);
-
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for identifier '{identifier}' using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
-
-                if (searchResult.ErrorObject != null)
-                {
-                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException novellError)
-                    {
-                        error = error.WithInner(Error.InnerErr(novellError.LdapErrorMessage, novellError.StackTrace));
-                    }
-                    else
-                    {
-                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
-                    }
-                }
-
-                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
-            }
-
-            var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
-
-            return Result<IReadOnlyList<LdapEntryDto>>.Success(ResolveLdapEntries(entries));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
-                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
-                "Identifier: {Identifier}, Identifier Attribute {LdapIdentifierAttribute}." +
-                "Required attributes: {RequiredAttributes}",
-                _classFriendlyName, methodFriendlyName,
-                ldapServerProfile.ProfileId, catalogType,
-                identifier, identifierAttribute,
-                requiredAttributeSet);
-
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(
-        LdapServerProfileOption ldapServerProfile,
-        CatalogType catalogType,
-        LdapEntryAttribute filterAttribute,
-        string filterValue,
-        LdapEntryAttribute? secondaryFilterAttribute,
-        string? secondaryFilterValue,
-        bool? combineFilters,
-        LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
-        CancellationToken cancellationToken)
-    {
-        string methodCodeName = "get-users";
-        string methodFriendlyName = "to get LDAP user entries";
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (ldapServerProfile is null)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
-        }
-
-        if (string.IsNullOrWhiteSpace(filterValue))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
-        }
-
-        if (sizeLimit <= 0)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
-        }
-
-        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
-        }
-
-        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
-        }
-
-        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
-        }
-
-        if (secondaryFilterAttribute.HasValue && (string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters == null))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterValue and CombineFilters are required when SecondaryFilterAttribute is provided."));
-        }
-
-        if (!secondaryFilterAttribute.HasValue && (!string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters != null))
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterAttribute and CombineFilters are required when SecondaryFilterValue is provided."));
-        }
-
-        var resolvedFilterAttribute = ResolveLdapEntryAttribute(filterAttribute);
-
-        var resolvedSecondaryFilterAttribute = secondaryFilterAttribute.HasValue
-            ? ResolveLdapEntryAttribute(secondaryFilterAttribute.Value)
-            : (EntryAttribute?)null;
-
-        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
-
-        try
-        {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
-
-            searchLimits.MaxSearchResults = sizeLimit;
-
-            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
-
-            var combinedFilter = CreateFilterCombiner(
-                false,
-                resolvedFilterAttribute,
-                filterValue,
-                combineFilters,
-                resolvedSecondaryFilterAttribute,
-                secondaryFilterValue);
-
-            var filterObject = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, combinedFilter });
-
-            var searcher = new Searcher(
-                connectionInfo,
-                searchLimits,
-                credentialForSearching,
-                _ldapConnectionFactoryAdapter);
-
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchEntriesAsync);
-            var searchResult = await searcher
-                .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
-                .WaitAsync(cancellationToken);
-
-            if (!searchResult.IsSuccessfulOperation)
-            {
-                _logger.LogWarning(
-                    searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName, componentMethod,
-                    searchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
-                    ldapServerProfile.ProfileId,
-                    catalogType);
-
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} for {filterAttribute}={filterValue} " +
-                    (!string.IsNullOrEmpty(secondaryFilterValue) ?
-                    $" and {secondaryFilterAttribute}={secondaryFilterValue} and combine filters={combineFilters}" :
-                    string.Empty) +
-                " using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchDirectoryAsync)} failed to retrieve directory entries for filter {combinedFilter} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
 
                 if (searchResult.HasErrorObject)
                 {
@@ -1258,27 +846,22 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
-                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
-                "FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, " +
-                "SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, " +
-                "CombineFilters: {CombineFilters}, " +
-                "Required attributes: {RequiredAttributes}",
-                _classFriendlyName, methodFriendlyName,
-                ldapServerProfile.ProfileId, catalogType,
-                filterAttribute, filterValue,
-                secondaryFilterAttribute, secondaryFilterValue,
-                combineFilters, requiredAttributeSet);
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, Filter: {Filter}, SizeLimit: {SizeLimit}.",
+                nameof(BitaiLdapHelperProvider),
+                nameof(BitaiLdapHelperProvider.SearchDirectoryAsync),
+                ldapServerProfile.ProfileId,
+                filterValue,
+                sizeLimit);
 
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchDirectoryAsync)}.", Error.InnerErr(ex)));
         }
     }
     #endregion
 
 
 
-    #region Group Search Methods
-    public async Task<Result<LdapEntryDto?>> GetGroupAsync(
+    #region User Search Methods
+    public async Task<Result<LdapEntryDto?>> GetUserAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapIdentifierAttribute identifierAttribute,
@@ -1286,14 +869,11 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken)
     {
-        const string methodCodeName = "get-group";
-        const string methodFriendlyName = "to get LDAP group";
-
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
         {
-            return Result<LdapEntryDto?>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -1322,13 +902,13 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{catalogType}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
-            var onlyGroupsFilter = AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner();
+            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
 
             var identifierFilter = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
-            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyGroupsFilter, identifierFilter });
+            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, identifierFilter });
 
             var searcher = new Searcher(
                 connectionInfo,
@@ -1336,40 +916,30 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 credentialForSearching,
                 _ldapConnectionFactoryAdapter);
 
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchEntriesAsync);
             var searchResult = await searcher.SearchEntriesAsync(fullFilter, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
             {
-                _logger.LogWarning(
+                _logger.LogError(
                     searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName, componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
                     searchResult.OperationMessage,
-                    identifierFilter,
-                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    catalogType);
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes);                
 
-                var error = Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName} {identifier} using {componentName}.{componentMethod}.", Error.InnerErr(searchResult.OperationMessage));
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetUserAsync)} failed to retrieve directory user for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
 
-                if (searchResult.ErrorObject != null)
+                if (searchResult.HasErrorObject)
                 {
-                    if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
-                    {
-                        error = error.WithInner(Error.InnerErr(ldapEx.LdapErrorMessage));
-                    }
-                    else if (searchResult.ErrorObject is Exception)
-                    {
-                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject.Message));
-                    }
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                 }
 
                 return Result<LdapEntryDto?>.Failure(error);
@@ -1377,6 +947,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             if (searchResult.Entries.Count() > 1)
             {
+                // Log a warning if multiple entries are found for the same identifier
                 return Result<LdapEntryDto?>.Failure(
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
@@ -1391,34 +962,32 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unexpected exception in {ClassName} {MethodName} while {MethodFriendlyName}. " +
-                "ServerProfile: {ProfileId}, CatalogType: {CatalogType}, " +
-                "Identifier: {Identifier}, IdentifierAttribute: {LdapIdentifierAttribute}.",
-                _classCodeName, methodCodeName, methodFriendlyName,
-                ldapServerProfile.ProfileId, catalogType,
-                identifier, identifierAttribute);
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}.",
+                nameof(BitaiLdapHelperProvider),
+                nameof(BitaiLdapHelperProvider.GetUserAsync),
+                ldapServerProfile.ProfileId,
+                identifierAttribute,
+                identifier,
+                resolvedRequiredAttributes);
 
-            return Result<LdapEntryDto>.Failure(
-                Error.BadGateway($"Unexpected exception in {_classFriendlyName} while trying {methodFriendlyName}.", Error.InnerErr(ex.Message)));
+            return Result<LdapEntryDto?>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetUserAsync)}.", Error.InnerErr(ex)));
         }
     }
 
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetUserParentsAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         string identifier,
         LdapIdentifierAttribute identifierAttribute,
         LdapEntryAttributeSet requiredAttributeSet,
+        bool userMustExist,
         CancellationToken cancellationToken)
     {
-        string methodCodeName = "get-group-parents";
-        string methodFriendlyName = "to get group's parent LDAP entries";
-
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
         {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(identifier))
@@ -1447,7 +1016,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{identifier}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             var searcher = new Searcher(
                 connectionInfo,
@@ -1457,56 +1026,76 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             var filterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
 
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchParentEntriesAsync);
+            var entrySearchResult = await searcher.SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel);
+            if (!entrySearchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    entrySearchResult.ErrorObject,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}, UserMustExist: {UserMustExist}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
+                    entrySearchResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes,
+                    userMustExist);                
+
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetUserParentsAsync)} failed to retrieve directory user for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {entrySearchResult.OperationMessage}");
+
+                if (entrySearchResult.HasErrorObject)
+                {
+                    if (entrySearchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(entrySearchResult.ErrorObject));
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            if (entrySearchResult.Entries.Count() == 0)
+            {
+                if (userMustExist)
+                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                        Error.NotFound($"No directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+                else
+                    return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());               
+            }
+
+            if (entrySearchResult.Entries.Count() > 1)
+            {
+                // Log a warning if multiple entries are found for the same identifier
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                    Error.Validation($"More than one directory entry was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+            }
+
             var searchResult = await searcher
-                    .SearchParentEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                    .SearchParentEntriesAsync(entrySearchResult.Entries, resolvedRequiredAttributes, requestLabel)
                     .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
             {
                 _logger.LogError(
                     searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName,
-                    componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}, UserMustExist: {UserMustExist}.",
+                    nameof(Searcher), nameof(Searcher.SearchParentEntriesAsync),
                     searchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    catalogType);
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes,
+                    userMustExist);
 
-                Error error;
-                string errorMsg = $"{_classFriendlyName} failed {methodFriendlyName} with error in {componentName}.";
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetUserParentsAsync)} failed to retrieve directory user parents for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchParentEntriesAsync)}. {searchResult.OperationMessage}");
 
-                if (searchResult.ErrorObject != null)
+                if (searchResult.HasErrorObject)
                 {
-                    if (searchResult.ErrorObject is EntryNotFoundException notFoundEx)
-                    {
-                        error = Error.NotFound($"Directory entry not found for '{identifier}'.", Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(notFoundEx.Message)));
-                    }
-                    else if (searchResult.ErrorObject is Novell.Directory.Ldap.LdapException ldapEx)
-                    {
-                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(ldapEx.LdapErrorMessage)));
-                    }
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
                     else
-                    {
-                        error = Error.BadGateway(errorMsg, Error.InnerErr(searchResult.OperationMessage, null,  Error.InnerErr(searchResult.ErrorObject.Message)));
-                    }
-
-                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
-                }
-
-                // If we reach here, it means the operation was not successful, there was no specific error object, but we still have an operation message.
-                error = Error.BadGateway(errorMsg);
-                if (!string.IsNullOrWhiteSpace(searchResult.OperationMessage))
-                {
-                    error = error.WithInner(Error.InnerErr(searchResult.OperationMessage));
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                 }
 
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
@@ -1520,20 +1109,18 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
-                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
-                "Identifier: {Identifier}, Identifier Attribute {LdapIdentifierAttribute}." +
-                "Required attributes: {RequiredAttributes}",
-                _classFriendlyName, methodFriendlyName,
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}, IdentifierAttribute: {IdentifierAttribute}, RequiredAttributes: {RequiredAttributes}, UserMustExist: {UserMustExist}.",
+                nameof(BitaiLdapHelperProvider), nameof(GetUserParentsAsync),
                 ldapServerProfile.ProfileId, catalogType,
                 identifier, identifierAttribute,
-                requiredAttributeSet);
+                requiredAttributeSet,
+                userMustExist);
 
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(GetUserParentsAsync)}.", Error.InnerErr(ex)));
         }
     }
 
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(
         LdapServerProfileOption ldapServerProfile,
         CatalogType catalogType,
         LdapEntryAttribute filterAttribute,
@@ -1545,14 +1132,14 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         int sizeLimit,
         CancellationToken cancellationToken)
     {
-        string methodCodeName = "get-groups";
-        string methodFriendlyName = "to get LDAP group entries";
+        string methodCodeName = "get-users";
+        string methodFriendlyName = "to get LDAP user entries";
 
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)
         {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("LDAP server profile is required."));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Directory Server Profile is required."));
         }
 
         if (string.IsNullOrWhiteSpace(filterValue))
@@ -1600,7 +1187,410 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
         try
         {
-            var requestLabel = $"{_classCodeName}:{methodCodeName}:{ldapServerProfile.ProfileId}:{DateTime.UtcNow:O}";
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
+            searchLimits.MaxSearchResults = sizeLimit;
+
+            var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
+
+            var combinedFilter = CreateFilterCombiner(
+                false,
+                resolvedFilterAttribute,
+                filterValue,
+                combineFilters,
+                resolvedSecondaryFilterAttribute,
+                secondaryFilterValue);
+
+            var filterObject = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyUsersFilter, combinedFilter });
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                _ldapConnectionFactoryAdapter);
+
+            var searchResult = await searcher
+                .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}, SizeLimit: {SizeLimit}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
+                    searchResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    resolvedFilterAttribute,
+                    filterValue,
+                    resolvedSecondaryFilterAttribute,
+                    secondaryFilterValue,
+                    combineFilters,
+                    resolvedRequiredAttributes,
+                    sizeLimit);
+
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchUsersAsync)} failed to retrieve directory user entries for filter {filterObject} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
+
+                if (searchResult.HasErrorObject)
+                {
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            var mappedEntries = (searchResult.Entries ?? Array.Empty<LDAPEntry>())
+                .Select(MapToDirectoryEntryDto)
+                .ToList();
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Success(mappedEntries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}",
+                nameof(BitaiLdapHelperProvider), nameof(SearchUsersAsync),
+                ldapServerProfile.ProfileId, catalogType,
+                filterAttribute, filterValue,
+                secondaryFilterAttribute, secondaryFilterValue,
+                combineFilters, requiredAttributeSet);
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(SearchUsersAsync)}.", Error.InnerErr(ex)));
+        }
+    }
+    #endregion
+
+
+
+    #region Group Search Methods
+    public async Task<Result<LdapEntryDto?>> GetGroupAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapIdentifierAttribute identifierAttribute,
+        string identifier,
+        LdapEntryAttributeSet requiredAttributeSet,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Directory Server Profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<LdapEntryDto?>.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
+            var onlyGroupsFilter = AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner();
+
+            var identifierFilter = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+
+            var fullFilter = new AttributeFilterCombiner(false, true, new ICombinableFilter[] { onlyGroupsFilter, identifierFilter });
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                _ldapConnectionFactoryAdapter);
+
+            var searchResult = await searcher.SearchEntriesAsync(fullFilter, resolvedRequiredAttributes, requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
+                    searchResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes);
+
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetGroupAsync)} failed to retrieve directory group entry for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
+
+                if (searchResult.HasErrorObject)
+                {
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
+                }
+
+                return Result<LdapEntryDto?>.Failure(error);
+            }
+
+            if (searchResult.Entries.Count() > 1)
+            {
+                return Result<LdapEntryDto?>.Failure(
+                    Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
+            }
+
+            var entry = searchResult.Entries.FirstOrDefault();
+
+            return Result<LdapEntryDto?>.Success(
+                entry is null ? null :
+                MapToDirectoryEntryDto(entry));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}",
+                nameof(BitaiLdapHelperProvider), nameof(GetGroupAsync),
+                ldapServerProfile.ProfileId, catalogType,
+                identifierAttribute, identifier,
+                requiredAttributeSet);            
+
+            return Result<LdapEntryDto?>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(GetGroupAsync)}.", Error.InnerErr(ex)));
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> GetGroupParentsAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        string identifier,
+        LdapIdentifierAttribute identifierAttribute,
+        LdapEntryAttributeSet requiredAttributeSet,
+        bool groupMustExist,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Directory Server Profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Identifier is required."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        var resolvedIdentifierAttribute = ResolveIdentifierAttribute(identifierAttribute);
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = nameof(BitaiLdapHelperProvider);
+
+            var searcher = new Searcher(
+                connectionInfo,
+                searchLimits,
+                credentialForSearching,
+                _ldapConnectionFactoryAdapter);
+
+            var searchFilterObject = CreateFilterCombiner(false, resolvedIdentifierAttribute, identifier);
+
+            var searchGroupResult = await searcher.SearchEntriesAsync(
+                searchFilterObject,
+                resolvedRequiredAttributes,
+                requestLabel)
+                .WaitAsync(cancellationToken);
+
+            if (!searchGroupResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchGroupResult.ErrorObject,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}, GroupMustExist: {GroupMustExist}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
+                    searchGroupResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes,
+                    groupMustExist);
+
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetGroupParentsAsync)} failed to retrieve directory group entry for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchGroupResult.OperationMessage}");
+
+                if (searchGroupResult.HasErrorObject)
+                {
+                    if (searchGroupResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchGroupResult.ErrorObject));
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            if (searchGroupResult.Entries.Count() == 0)
+            {
+                if (groupMustExist)
+                    return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                        Error.NotFound($"No directory group was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+                else
+                    return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());
+            }
+
+            if (searchGroupResult.Entries.Count() > 1)
+            {
+                // Log a warning if multiple entries are found for the same identifier
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(
+                    Error.Validation($"More than one directory group was found in the catalog for {resolvedIdentifierAttribute}='{identifier}'."));
+            }
+
+            // At this point, we have exactly one entry
+            var searchResult = await searcher
+                    .SearchParentEntriesAsync(searchGroupResult.Entries, resolvedRequiredAttributes, requestLabel)
+                    .WaitAsync(cancellationToken);
+
+            if (!searchResult.IsSuccessfulOperation)
+            {
+                _logger.LogError(
+                    searchResult.ErrorObject,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, IdentifierAttribute: {IdentifierAttribute}, Identifier: {Identifier}, RequiredAttributes: {RequiredAttributes}, GroupMustExist: {GroupMustExist}.",
+                    nameof(Searcher), nameof(Searcher.SearchParentEntriesAsync),
+                    searchResult.OperationMessage,
+                    ldapServerProfile.ProfileId,
+                    catalogType,
+                    resolvedIdentifierAttribute,
+                    identifier,
+                    resolvedRequiredAttributes,
+                    groupMustExist);
+
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.GetGroupParentsAsync)} failed to retrieve directory group entry for identifier {identifier} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchParentEntriesAsync)}. {searchGroupResult.OperationMessage}");
+
+                if (searchResult.HasErrorObject)
+                {
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
+                }
+
+                return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
+            }
+
+            var entries = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).ToList();
+
+            return Result<IReadOnlyList<LdapEntryDto>>.Success(ResolveLdapEntries(entries));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Inexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfileId: {DirectoryServerProfileId}, CatalogType: {CatalogType}, Identifier: {Identifier}, IdentifierAttribute: {IdentifierAttribute}, RequiredAttributes: {RequiredAttributes}, GroupMustExist: {GroupMustExist}",
+                nameof(BitaiLdapHelperProvider), nameof(GetGroupParentsAsync), ldapServerProfile.ProfileId, catalogType, identifier, resolvedIdentifierAttribute, resolvedRequiredAttributes, groupMustExist);
+            
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(GetGroupParentsAsync)}.", Error.InnerErr(ex)));
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchGroupsAsync(
+        LdapServerProfileOption ldapServerProfile,
+        CatalogType catalogType,
+        LdapEntryAttribute filterAttribute,
+        string filterValue,
+        LdapEntryAttribute? secondaryFilterAttribute,
+        string? secondaryFilterValue,
+        bool? combineFilters,
+        LdapEntryAttributeSet requiredAttributeSet,
+        int sizeLimit,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ldapServerProfile is null)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Directory Server Profile is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(filterValue))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
+        }
+
+        if (sizeLimit <= 0)
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
+        }
+
+        if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(connectionError));
+        }
+
+        if (!TryCreateSearchLimits(ldapServerProfile, catalogType, out var searchLimits, out var searchLimitsError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(searchLimitsError));
+        }
+
+        if (!TryCreateConnectionCredential(ldapServerProfile, out var credentialForSearching, out var credentialError))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation(credentialError));
+        }
+
+        if (secondaryFilterAttribute.HasValue && (string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters == null))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterValue and CombineFilters are required when SecondaryFilterAttribute is provided."));
+        }
+
+        if (!secondaryFilterAttribute.HasValue && (!string.IsNullOrWhiteSpace(secondaryFilterValue) || combineFilters != null))
+        {
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SecondaryFilterAttribute and CombineFilters are required when SecondaryFilterValue is provided."));
+        }
+
+        var resolvedFilterAttribute = ResolveLdapEntryAttribute(filterAttribute);
+
+        var resolvedSecondaryFilterAttribute = secondaryFilterAttribute.HasValue
+            ? ResolveLdapEntryAttribute(secondaryFilterAttribute.Value)
+            : (EntryAttribute?)null;
+
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
+        try
+        {
+            var requestLabel = nameof(BitaiLdapHelperProvider);
 
             searchLimits.MaxSearchResults = sizeLimit;
 
@@ -1622,45 +1612,34 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 credentialForSearching,
                 _ldapConnectionFactoryAdapter);
 
-            var componentName = nameof(Searcher);
-            var componentMethod = nameof(Searcher.SearchEntriesAsync);
             var searchResult = await searcher
                 .SearchEntriesAsync(filterObject, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
             {
-                _logger.LogWarning(
+                _logger.LogError(
                     searchResult.ErrorObject,
-                    "{ComponentName} failed executing {ComponentMethod}. " +
-                    "OperationMessage: {OperationMessage} " +
-                    "SearchFilter: {SearchFilter}, " +
-                    "RequiredAttributes: {RequiredAttributes}, " +
-                    "ProfileId: {ProfileId}, " +
-                    "CatalogType: {CatalogType}",
-                    componentName, componentMethod,
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}.",
+                    nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
                     searchResult.OperationMessage,
-                    filterObject,
-                    resolvedRequiredAttributes,
                     ldapServerProfile.ProfileId,
-                    catalogType);
+                    catalogType,
+                    resolvedFilterAttribute,
+                    filterValue,
+                    resolvedSecondaryFilterAttribute,
+                    secondaryFilterValue,
+                    combineFilters,
+                    resolvedRequiredAttributes);
 
-                Error error;
-                string errorMsg = $"{_classFriendlyName} failed {methodFriendlyName} using LDAP connector.";
+                var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchGroupsAsync)} failed to retrieve directory group entries for filter {filterObject} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
 
                 if (searchResult.HasErrorObject)
                 {
-                    error = Error.BadGateway(errorMsg,
-                        !string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? Error.InnerErr(searchResult.OperationMessage, null, Error.InnerErr(searchResult.ErrorObject.Message))
-                        : Error.InnerErr(searchResult.ErrorObject.Message));
-                }
-                else
-                {
-                    error = Error.BadGateway(errorMsg,
-                        !string.IsNullOrWhiteSpace(searchResult.OperationMessage)
-                        ? Error.InnerErr(searchResult.OperationMessage)
-                        : null);
+                    if (searchResult.ErrorObject is LdapException ldapExc)
+                        error = error.WithInner(Error.InnerErr(ldapExc.Message, ldapExc.StackTrace));
+                    else
+                        error = error.WithInner(Error.InnerErr(searchResult.ErrorObject));
                 }
 
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
@@ -1676,19 +1655,14 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unexpected exception while {ClassFriendlyName} tried {MethodFriendlyName}. " +
-                "Server profile: {ProfileId}, Catalog type: {CatalogType}, " +
-                "FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, " +
-                "SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, " +
-                "CombineFilters: {CombineFilters}, " +
-                "Required attributes: {RequiredAttributes}",
-                _classFriendlyName, methodFriendlyName,
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}",
+                nameof(BitaiLdapHelperProvider), nameof(SearchGroupsAsync),
                 ldapServerProfile.ProfileId, catalogType,
                 filterAttribute, filterValue,
                 secondaryFilterAttribute, secondaryFilterValue,
                 combineFilters, requiredAttributeSet);
 
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.BadGateway($"{_classFriendlyName} failed {methodFriendlyName}. {ex.Message}"));
+            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(SearchGroupsAsync)}.", Error.InnerErr(ex)));
         }
     }
     #endregion
@@ -1697,13 +1671,13 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
     #region Private Helper Methods
     private Task<Result<T>> NotConfigured<T>(string operation)
     {
-        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
+        _logger.LogError("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
         return Task.FromResult(Result<T>.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
     }
 
     private Task<Result> NotConfigured(string operation)
     {
-        _logger.LogWarning("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
+        _logger.LogError("Bitai.LDAPHelper adapter operation {Operation} is not mapped yet.", operation);
         return Task.FromResult(Result.Failure(Error.BadGateway("Bitai.LDAPHelper adapter is not yet mapped for this operation.")));
     }
     #endregion
