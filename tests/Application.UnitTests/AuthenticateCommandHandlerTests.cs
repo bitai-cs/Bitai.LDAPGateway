@@ -3,30 +3,33 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Abstractions;
 using Bitai.LDAPGateway.Domain.Enums;
+using Bitai.LDAPGateway.Domain.ValueObjects;
 using Moq;
 
 namespace Bitai.LDAPGateway.Application.UnitTests;
 
 public sealed class AuthenticateCommandHandlerTests
 {
-   [Fact]
-   public async Task Handle_ValidRequest_ShouldReturnSuccessAndPublishEvent()
-   {
-      var ldapClientMock = new Mock<IDirectoryServiceConnector>();
-      var publisherMock = new Mock<IDomainEventPublisher>();
+    [Fact]
+    public async Task Handle_ValidRequest_ShouldReturnSuccessAndPublishEvent()
+    {
+        var ldapClientMock = new Mock<IDirectoryServiceConnector>();
+        var publisherMock = new Mock<IDomainEventPublisher>();
 
-      ldapClientMock
-         .Setup(x => x.AuthenticateAsync(It.IsAny<LdapRequestContext>(), "john", "pwd", It.IsAny<CancellationToken>()))
-         .ReturnsAsync(Result<AuthenticationResultDto>.Success(new AuthenticationResultDto(true, "john", "ok")));
+        var credential = new UserCredential("john", new Secret("pwd"));
 
-      var handler = new AuthenticateCommandHandler(ldapClientMock.Object, publisherMock.Object);
+        ldapClientMock
+           .Setup(x => x.AuthenticateAsync(It.IsAny<LdapRequestContext>(), credential, It.IsAny<CancellationToken>()))
+           .ReturnsAsync(Result<AuthenticationResultDto>.Success(new AuthenticationResultDto(true, "john", "ok")));
 
-      var result = await handler.Handle(new AuthenticateCommand("EDU", CatalogType.LC, "john", "pwd"), CancellationToken.None);
+        var handler = new AuthenticateCommandHandler(ldapClientMock.Object, publisherMock.Object);
 
-      Assert.True(result.IsSuccess);
+        var result = await handler.Handle(new AuthenticateCommand("EDU", CatalogType.LC, credential), CancellationToken.None);
 
-      publisherMock.Verify(
-         x => x.PublishAsync(It.IsAny<IDomainEvent>(), It.IsAny<CancellationToken>()),
-         Times.Once);
-   }
+        Assert.True(result.IsSuccess);
+
+        publisherMock.Verify(
+           x => x.PublishAsync(It.IsAny<IDomainEvent>(), It.IsAny<CancellationToken>()),
+           Times.Once);
+    }
 }

@@ -21,9 +21,9 @@ public sealed class ApiRoutesTests : IClassFixture<WebApplicationFactory<Program
    }
 
    [Fact]
-   public async Task GetServerProfileById_ShouldReturnOk_WhenConfiguredProfileExists()
+   public async Task GetServerProfiles_ShouldReturnOk_WhenConfiguredProfileExists()
    {
-      var response = await _client.GetAsync("/api/ServerProfiles/EDU");
+      var response = await _client.GetAsync("/api/ServerProfiles");
 
       Assert.Equal(HttpStatusCode.OK, response.StatusCode);
    }
