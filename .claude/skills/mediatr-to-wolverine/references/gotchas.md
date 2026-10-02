@@ -33,6 +33,11 @@ Diagnose any of these with `Console.WriteLine(opts.DescribeHandlerMatch(typeof(S
 18a. **Double validator registration.** If the Application project calls `services.AddValidatorsFromAssembly(...)`, `opts.UseFluentValidation()` registers them again; use `RegistrationBehavior.ExplicitRegistration` or remove one registration.
 18b. **Validators and handlers in one file/assembly.** Validators must be `public`, and the Application assembly must be included for discovery even if the validators are only registered through FluentValidation's own scan.
 
+## Logging and secrets
+
+18c. **Failed handlers log the message.** When a handler (or validation) throws, Wolverine logs `Invocation of <message.ToString()> failed!` at Error level. A record that carries a secret as a plain `string` (e.g. `SetMsAdUserPasswordCommand.NewPassword`) now writes it **in clear text** to the logs. MediatR behaviors typically logged only the request name, so this is a silent regression. Verified fix: override `PrintMembers` in the record (`private bool PrintMembers(StringBuilder b)`) to mask the member, or type the member as a masking value object. Search every message for password/token/secret/key members and add a test that a failing command does not log the value.
+18d. **Extra Error log on exceptions.** The same failure log duplicates what a global exception middleware or an `UnhandledExceptionBehavior` logged; expect two error entries per exception (and a changed message format) unless the Wolverine log is tuned. Report it as a runtime change.
+
 ## Completeness
 
 18. **Shims left behind.** `using Wolverine.Shims.MediatR;` keeps `IRequest`/`IRequestHandler` in the code. The migration must be complete: remove them and the interfaces. `inventory.py --check` fails while any remain.
@@ -47,6 +52,7 @@ Diagnose any of these with `Console.WriteLine(opts.DescribeHandlerMatch(typeof(S
 
 ## Startup and production
 
+23a. **Runtime compiler package (Wolverine 6.x).** Core `WolverineFx` no longer ships Roslyn: with the default `TypeLoadMode.Dynamic` the host throws `InvalidOperationException: Wolverine is running in TypeLoadMode.Dynamic ... no IAssemblyGenerator` at startup. Add `WolverineFx.RuntimeCompilation` (same version, to the host) or pre-generate with `codegen write` + `TypeLoadMode.Static`. Verified: with the package added, `WebApplicationFactory<Program>` tests start normally.
 24. **Code generation at startup.** Wolverine generates and compiles handler adapters at runtime by default, adding first-call/startup latency. For production, consider pre-generating (`dotnet run -- codegen write`) with `opts.CodeGeneration.TypeLoadMode = TypeLoadMode.Auto/Static`. Not required for correctness; mention it in the report.
 25. **Command-line integration.** `codegen`/`describe` commands need the host to end with `return await app.RunJasperFxCommands(args);` (older: `RunOaktonCommands`). Optional, but very useful for verifying middleware.
 26. **Package version skew.** All `WolverineFx.*` packages must share one version.

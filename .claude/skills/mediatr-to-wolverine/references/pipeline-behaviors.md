@@ -175,7 +175,35 @@ opts.Policies.AddMiddleware(typeof(TimingMiddleware), chain => chain.MessageType
 
 `ILogger` (non-generic) is supplied by Wolverine as `ILogger<MessageType>`.
 
-**Behaviors that inspect the response** (Result pattern: `where TResponse : Result`, log success vs. failure, walk `Error.InnerError`). Move the formatting into a plain helper (`ResultLogger.Log(ILogger, Result)`) and call it from an `After` method whose parameter is the **base** response type (`After(Result result, ILogger logger, Envelope envelope)`). Wolverine binds an `After` parameter to the handler's return value only if the types are compatible, so confirm with `codegen preview` / a log-capturing test that it fires for `Result` **and** `Result<T>` handlers. If binding fails, a message-specific `After` per response type, or logging inside the shared handler base class (e.g. `ExecuteAsync`), is the fallback. Don't drop the failure logging silently: report which option was used.
+**Behaviors that inspect the response** (Result pattern: `where TResponse : Result`, log success vs. failure, walk `Error.InnerError`).
+
+**Verified (Wolverine 6.44): an `After(Result result, ...)` parameter is NOT bound to a handler that returns `Result<T>`.** Wolverine matches middleware parameters by exact variable type, not by base type, and codegen fails at the first call with `UnResolvableVariableException: ... unable to resolve a variable of type ...Result`. Neither the base type nor an interface works. Don't write it that way.
+
+What works: keep `Before`/`Finally` in the middleware class (registered with `AddMiddleware(typeof(...), filter)`), give the response-inspecting method a name Wolverine does not treat as a lifecycle method (`LogResult`, not `After`), and attach it with an `IHandlerPolicy` that feeds it the handler's own return variable:
+
+```csharp
+public sealed class ResultLoggingPolicy : IHandlerPolicy
+{
+    public void Apply(IReadOnlyList<HandlerChain> chains, GenerationRules rules, IServiceContainer container)
+    {
+        foreach (var chain in chains.Where(c => c.MessageType.Namespace!.StartsWith("MyApp.Application")))
+        {
+            var rv = chain.Handlers.Last().ReturnVariable;
+            if (rv is null || !typeof(Result).IsAssignableFrom(rv.VariableType)) continue;
+
+            var call = new MethodCall(typeof(ResultLoggingMiddleware), nameof(ResultLoggingMiddleware.LogResult));
+            call.Arguments[0] = rv;               // Result<T> passed to a Result parameter: plain C# conversion
+            chain.Postprocessors.Add(call);
+        }
+    }
+}
+// opts.Policies.Add<ResultLoggingPolicy>();
+// usings: JasperFx, JasperFx.CodeGeneration, JasperFx.CodeGeneration.Frames, Wolverine.Configuration, Wolverine.Runtime.Handlers
+```
+
+Verified with log-capturing integration tests: success logs `Handling request.` + `Request completed successfully.`, a failed `Result` logs the warning with the error code, for both `Result` and `Result<T>` handlers. Restrict the policy/middleware by namespace so handlers that return `Task` (e.g. notification handlers) are not touched. Differences to report: the logger category becomes the message type (was `ILogger<LoggingBehavior<,>>`), and a `BeginScope` opened in `Before` was not asserted in the tests.
+
+Fallback if `ReturnVariable` is unavailable in the installed version: log inside the shared handler base class (`ExecuteAsync`), which does not cover handlers outside the base. Don't drop the failure logging silently: report which option was used.
 
 ---
 
@@ -243,7 +271,7 @@ Report to the user which queries were affected.
 ## 9. Pre/post processors
 
 - `IRequestPreProcessor<T>.Process(request, ct)` → `Before`/`BeforeAsync(T request, ...)` in a middleware class registered with `ForMessagesOfType<T>()` or globally.
-- `IRequestPostProcessor<T, TResponse>.Process(request, response, ct)` → `After`/`AfterAsync`. To read the handler's response in `After`, take a parameter of the response type; verify the generated code (`codegen preview`) that it's bound to the handler's return value. If the post-processor must run only after the database commit, use `AfterCommit`.
+- `IRequestPostProcessor<T, TResponse>.Process(request, response, ct)` → `After`/`AfterAsync`. To read the handler's response in `After`, take a parameter of the **exact** response type (binding is by exact type, never by base type or interface; see the Result-pattern recipe in §5 for a generic solution) and verify in the generated code (`codegen preview`) that it is bound to the handler's return value. If the post-processor must run only after the database commit, use `AfterCommit`.
 
 ---
 

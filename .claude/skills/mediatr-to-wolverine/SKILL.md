@@ -64,6 +64,7 @@ For each project in the inventory:
 - Remove `MediatR`, `MediatR.Contracts`, `MediatR.Extensions.Microsoft.DependencyInjection`, and MediatR-specific add-ons (e.g. FluentValidation behavior packages built for MediatR).
 - Add `WolverineFx` to the **host** project (the one with `Program.cs`). Projects that only *contain* handlers/messages usually need no package at all, because Wolverine handlers need no interfaces; add `WolverineFx` there only if they use Wolverine types (`IMessageBus`, `HandlerContinuation`, attributes, middleware).
 - Add as needed: `WolverineFx.FluentValidation` (FluentValidation behavior existed), `WolverineFx.Http` (+ `WolverineFx.Http.FluentValidation`) only if going HTTP-endpoint route, `WolverineFx.EntityFrameworkCore` if a transaction behavior wrapped EF Core `SaveChanges`.
+- Add `WolverineFx.RuntimeCompilation` to the host (Wolverine 6.x). Without it the app fails at startup with `no IAssemblyGenerator is registered` (see `references/gotchas.md` 23a); the alternative is pre-generated code with `TypeLoadMode.Static`.
 - Use the latest stable version and keep all `WolverineFx.*` packages on the **same version** (check with `dotnet list package` or NuGet; if central package management is used, edit `Directory.Packages.props`).
 
 ```bash
@@ -121,6 +122,8 @@ Style B extras (static methods, method injection, cascading, compound handlers) 
 
 A request typed `IRequest<Result>` (Result pattern, non-generic `Result`) **does** have a response: use `InvokeAsync<Result>(...)`, never the non-generic overload, or the returned `Result` is cascaded as a message and the caller gets nothing.
 
+Explicit type arguments need their `using`s at the call site: controllers now reference `Result<...>` and every response DTO, plus `using Wolverine;`. Build the request → response map from the original `IRequest<T>` declarations (a small script works), and handle by hand any call that passes a variable (`Send(command, ct)`) instead of `new X(...)`.
+
 Always pass the response type explicitly to `InvokeAsync<T>` when the caller uses the result. `T` must exactly match the handler's return type. Calling the non-generic `InvokeAsync` on a handler that returns an object makes Wolverine treat that object as a **cascading message**, not a return value.
 
 **Classify every `Send` call — don't replace them all mechanically.** Record each in a table (call site → request/response, command, or event → chosen API):
@@ -137,7 +140,7 @@ Only move a call off `InvokeAsync` when the user agrees, because it changes the 
 
 Port every `IPipelineBehavior`, `IRequestPreProcessor`, `IRequestPostProcessor`, `IRequestExceptionHandler` and `IRequestExceptionAction` using `references/pipeline-behaviors.md`. Do not leave behaviors unported: deleting MediatR deletes the behavior, so validation, logging, authorization or transactions would silently stop running.
 
-Before porting, compare each behavior with what the host already does (e.g. an `ExceptionHandlingMiddleware` that already logs unhandled exceptions and maps `ValidationException` → 400). A behavior that only logs-and-rethrows duplicates it and should be deleted, not ported; a validation behavior that throws `FluentValidation.ValidationException` maps to `UseFluentValidation()` with no host change. Behaviors that branch on the response (`where TResponse : Result`, logging success/failure) need the pattern in `references/pipeline-behaviors.md` §5.
+Before porting, compare each behavior with what the host already does (e.g. an `ExceptionHandlingMiddleware` that already logs unhandled exceptions and maps `ValidationException` → 400). A behavior that only logs-and-rethrows duplicates it and should be deleted, not ported; a validation behavior that throws `FluentValidation.ValidationException` maps to `UseFluentValidation()` with no host change. Behaviors that branch on the response (`where TResponse : Result`, logging success/failure) need the verified `IHandlerPolicy` recipe in `references/pipeline-behaviors.md` §5; an `After(Result result)` parameter does **not** bind and breaks codegen.
 
 Two decisions come first, and both go in the final report:
 1. **Where each behavior belongs.** Not every behavior should become Wolverine middleware. Classify each as Wolverine middleware, a built-in Wolverine add-on, ASP.NET Core middleware, an endpoint filter, domain logic, or an infrastructure concern (decision table in `references/pipeline-behaviors.md` §2).
@@ -153,7 +156,8 @@ Follow `references/testing.md`: replace `Mock<IMediator>`/`Substitute.For<ISende
 2. `dotnet build` with no new warnings related to the migration.
 3. `dotnet test` → all tests green, including the new behavior tests.
 4. Confirm handler discovery for at least one handler per assembly: temporarily add `Console.WriteLine(opts.DescribeHandlerMatch(typeof(XHandler)));` inside `UseWolverine`, or run the app's Wolverine CLI (`dotnet run -- describe` / `dotnet run -- codegen preview` when the host ends with `RunJasperFxCommands(args)`; older versions use `RunOaktonCommands`). Remove the temporary line afterwards. If the host ends with plain `app.Run();`, the CLI commands aren't available; prefer `DescribeHandlerMatch` rather than editing the host, or tell the user the one-line change (`return await app.RunJasperFxCommands(args);`) and let them decide.
-5. Walk through `references/gotchas.md` and confirm each item is handled.
+5. Check that failed commands do not log secrets (gotchas 18c) and that handler unit tests calling `Handle(...)` directly still pass unchanged (style A keeps them working).
+6. Walk through `references/gotchas.md` and confirm each item is handled.
 
 ## Reporting back
 
