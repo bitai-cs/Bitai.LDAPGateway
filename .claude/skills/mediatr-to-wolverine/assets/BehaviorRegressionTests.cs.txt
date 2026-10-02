@@ -55,7 +55,11 @@ public sealed class MigrationBehaviorTests : IClassFixture<WebApplicationFactory
    public async Task InvalidCommand_IsRejectedWith400()
    {
       var (client, logs) = CreateClient();
-      var response = await client.PostAsJsonAsync("/api/EDU/LC/Authentications/authenticate", new { Username = "", Password = "x" });   // ADAPT
+      // Configuration (profiles, tenants...) differs per machine: appsettings.Development.json is usually git-ignored.
+      // Discover a valid value through the API instead of hard-coding it.   // ADAPT: route that lists valid ids
+      var profile = (await client.GetFromJsonAsync<string[]>("/api/ServerProfiles/GetProfileIds"))![0];
+      while (logs.Entries.TryDequeue(out _)) { }   // drop the discovery request's log entries
+      var response = await client.PostAsJsonAsync($"/api/{profile}/LC/Authentications/authenticate", new { Username = "", Password = "x" });   // ADAPT
       Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
       Assert.DoesNotContain(logs.Entries, e => e.Message.Contains("Request completed successfully."));
    }
