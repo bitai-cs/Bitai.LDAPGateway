@@ -28,7 +28,7 @@ public static class DependencyInjection
         
         services.AddScoped<IServerProfileReadService, LdapServerProfileReadService>();
 
-        services.AddScoped<IDomainEventPublisher, MediatRDomainEventPublisher>();
+        services.AddScoped<IDomainEventPublisher, WolverineDomainEventPublisher>();
 
         return services;
     }

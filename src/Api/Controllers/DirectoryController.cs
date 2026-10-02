@@ -1,3 +1,5 @@
+using Bitai.LDAPGateway.Application.Common.Models;
+using Wolverine;
 using Bitai.LDAPGateway.Api.Extensions;
 using Bitai.LDAPGateway.Application.Directory.Commands.CreateMsAdUser;
 using Bitai.LDAPGateway.Application.Directory.Commands.DeleteMsAdUser;
@@ -12,7 +14,6 @@ using Bitai.LDAPGateway.Application.Directory.Queries.SearchDirectory;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 using Bitai.LDAPGateway.Domain.Enums;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
@@ -21,14 +22,14 @@ namespace Bitai.LDAPGateway.Api.Controllers;
 [Route("api/{serverProfile:ldapSvrPf}/{catalogType:ldapCatType}/[controller]")]
 public sealed class DirectoryController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMessageBus _bus;
 
 
 
     #region Constructor
-    public DirectoryController(IMediator mediator)
+    public DirectoryController(IMessageBus bus)
     {
-        _mediator = mediator;
+        _bus = bus;
     }
     #endregion
 
@@ -62,7 +63,7 @@ public sealed class DirectoryController : ControllerBase
             Password = request.password
         };
 
-        var result = await _mediator.Send(
+        var result = await _bus.InvokeAsync<Result<LdapEntryDto>>(
            command,
            cancellationToken);
 
@@ -78,7 +79,7 @@ public sealed class DirectoryController : ControllerBase
        [FromBody] SetMsAdUserCredentialRequest request,
        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(
+        var result = await _bus.InvokeAsync<Result>(
            new SetMsAdUserPasswordCommand(serverProfile, catalogType, identifierAttribute, identifier, request.Password, request.MustChangeAtNextLogon),
            cancellationToken);
 
@@ -94,7 +95,7 @@ public sealed class DirectoryController : ControllerBase
        [FromBody] DisableMsAdUserRequest request,
        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new DisableMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier, request.Reason), cancellationToken);
+        var result = await _bus.InvokeAsync<Result>(new DisableMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier, request.Reason), cancellationToken);
         return this.ToActionResult(result);
     }
 
@@ -106,7 +107,7 @@ public sealed class DirectoryController : ControllerBase
        [FromQuery] LdapIdentifierAttribute identifierAttribute,
        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new DeleteMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier), cancellationToken);
+        var result = await _bus.InvokeAsync<Result>(new DeleteMsAdUserCommand(serverProfile, catalogType, identifierAttribute, identifier), cancellationToken);
         return this.ToActionResult(result);
     }
     #endregion
@@ -122,7 +123,7 @@ public sealed class DirectoryController : ControllerBase
        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(
+        var result = await _bus.InvokeAsync<Result<LdapEntryDto?>>(
             new GetDirectoryEntryByIdentifierQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, UserMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
@@ -140,7 +141,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, sizeLimit), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -157,7 +158,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetUserByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<LdapEntryDto?>>(new GetUserByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -171,7 +172,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetUserParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, UserMustExist: true), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new GetUserParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, UserMustExist: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -189,7 +190,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchUsersQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchUsersQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -206,7 +207,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<LdapEntryDto?>>(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -220,7 +221,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, GroupMustExist: true), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new GetGroupParentsQuery(serverProfile, catalogType, identifier, identifierAttribute, requiredAttributeSet, GroupMustExist: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -238,7 +239,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new SearchGroupsQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchGroupsQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
 
         return this.ToActionResult(result);
     }

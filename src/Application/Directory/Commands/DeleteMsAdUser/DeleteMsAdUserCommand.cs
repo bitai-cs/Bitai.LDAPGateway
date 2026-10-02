@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Commands.DeleteMsAdUser;
 
@@ -11,7 +10,7 @@ public sealed record DeleteMsAdUserCommand(
    string ServerProfile,
    CatalogType CatalogType,
    LdapIdentifierAttribute IdentifierAttribute,
-   string Identifier) : IRequest<Result>;
+   string Identifier);
 
 public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsAdUserCommand>
 {
@@ -22,7 +21,7 @@ public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsA
    }
 }
 
-public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DeleteMsAdUserCommand, Result>
+public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

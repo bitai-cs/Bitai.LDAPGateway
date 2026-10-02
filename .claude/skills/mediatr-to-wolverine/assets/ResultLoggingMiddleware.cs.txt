@@ -38,9 +38,11 @@ public static class ResultLoggingMiddleware
 
     public static void Finally(IDisposable? scope) => scope?.Dispose();
 
-    // ADAPT: copy the original LogFailure body (levels, prefixes, inner error chain) from the old behavior.
+    // ADAPT: copy the original LogFailure body (levels, prefixes, inner error chain) from the old behavior
+    // (git show <base>:path/LoggingBehavior.cs). Do NOT keep this stub: it throws on purpose so a migration
+    // that forgets it fails ResultLoggingMiddlewareTests instead of silently logging less than before.
     private static void LogFailure(ILogger logger, Error error)
     {
-        logger.LogWarning("Request failed [{ErrorCode}]: {ErrorMessage}", error.Code, error.Message);
+        throw new NotImplementedException("ADAPT: port the original LogFailure body");
     }
 }

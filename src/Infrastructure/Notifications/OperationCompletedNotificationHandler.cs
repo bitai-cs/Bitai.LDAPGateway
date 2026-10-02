@@ -1,9 +1,8 @@
-using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Bitai.LDAPGateway.Infrastructure.Notifications;
 
-public sealed class OperationCompletedNotificationHandler : INotificationHandler<OperationCompletedNotification>
+public sealed class OperationCompletedNotificationHandler
 {
    private readonly ILogger<OperationCompletedNotificationHandler> _logger;
 

@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Queries.GetGroupByIdentifier;
 
@@ -13,7 +12,7 @@ public sealed record GetGroupByIdentifierQuery(
    LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    LdapEntryAttributeSet RequiredAttributeSet,
-   bool UserMustExists) : IRequest<Result<LdapEntryDto?>>;
+   bool UserMustExists);
 
 public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGroupByIdentifierQuery>
 {
@@ -27,7 +26,7 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
     }
 }
 
-public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupByIdentifierQuery, Result<LdapEntryDto?>>
+public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

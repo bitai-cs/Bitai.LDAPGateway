@@ -12,6 +12,7 @@ Delete every `// ADAPT:` marker once the line is adapted; they must not survive 
 | `ResultLoggingPolicy.cs.txt` | `<Application>/Common/Behaviors/ResultLoggingPolicy.cs` | (needed because `After(Result)` does not bind) |
 | `Program.Wolverine.cs.txt` | host `Program.cs` | `AddMediatR` + behavior registrations |
 | `MaskSecrets.cs.txt` | the message records that carry secrets | (new: Wolverine logs failed messages) |
+| `ResultLoggingMiddlewareTests.cs.txt` | `<Application.UnitTests>/ResultLoggingMiddlewareTests.cs` | (new: fails if `LogFailure` was left as the template stub) |
 | `CapturedLogs.cs.txt` | `<Api.FunctionalTests>/CapturedLogs.cs` | (test helper) |
 | `BehaviorRegressionTests.cs.txt` | `<Api.FunctionalTests>/MigrationBehaviorTests.cs` | (new regression tests) |
 

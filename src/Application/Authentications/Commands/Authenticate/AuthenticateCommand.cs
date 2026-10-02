@@ -4,14 +4,13 @@ using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Domain.ValueObjects;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Authentications.Commands.Authenticate;
 
 public sealed record AuthenticateCommand(
     string ServerProfile,
     CatalogType CatalogType,
-    UserCredential credential) : IRequest<Result<AuthenticationResultDto>>;
+    UserCredential credential);
 
 public sealed class AuthenticateCommandValidator : AbstractValidator<AuthenticateCommand>
 {
@@ -24,7 +23,7 @@ public sealed class AuthenticateCommandValidator : AbstractValidator<Authenticat
     }
 }
 
-public sealed class AuthenticateCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateCommand, Result<AuthenticationResultDto>>
+public sealed class AuthenticateCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

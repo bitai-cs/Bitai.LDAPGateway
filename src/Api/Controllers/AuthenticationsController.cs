@@ -1,9 +1,10 @@
+using Bitai.LDAPGateway.Application.Common.Models;
+using Wolverine;
 using Bitai.LDAPGateway.Api.Extensions;
 using Bitai.LDAPGateway.Application.Authentications.Commands.Authenticate;
 using Bitai.LDAPGateway.Application.Authentications.Commands.AuthenticateWithoutUserLookup;
 using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Domain.ValueObjects;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
@@ -12,11 +13,11 @@ namespace Bitai.LDAPGateway.Api.Controllers;
 [Route("api/{serverProfile:ldapSvrPf}/{catalogType:ldapCatType}/[controller]")]
 public sealed class AuthenticationsController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMessageBus _bus;
 
-    public AuthenticationsController(IMediator mediator)
+    public AuthenticationsController(IMessageBus bus)
     {
-        _mediator = mediator;
+        _bus = bus;
     }
 
     [HttpPost("authenticate")]
@@ -28,7 +29,7 @@ public sealed class AuthenticationsController : ControllerBase
     {
         var credential = new UserCredential(request.Username, new Secret(request.Password));
 
-        var result = await _mediator.Send(
+        var result = await _bus.InvokeAsync<Result<AuthenticationResultDto>>(
             new AuthenticateCommand(serverProfile, catalogType, credential),
             cancellationToken);
 
@@ -44,7 +45,7 @@ public sealed class AuthenticationsController : ControllerBase
     {
         var credential = new UserCredential(request.Username, new Secret(request.Password));
 
-        var result = await _mediator.Send(
+        var result = await _bus.InvokeAsync<Result<AuthenticationResultDto>>(
             new AuthenticateWithoutUserLookupCommand(serverProfile, catalogType, credential),
             cancellationToken);
 

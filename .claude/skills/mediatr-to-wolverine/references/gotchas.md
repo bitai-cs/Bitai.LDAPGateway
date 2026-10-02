@@ -38,6 +38,10 @@ Diagnose any of these with `Console.WriteLine(opts.DescribeHandlerMatch(typeof(S
 18c. **Failed handlers log the message.** When a handler (or validation) throws, Wolverine logs `Invocation of <message.ToString()> failed!` at Error level. A record that carries a secret as a plain `string` (e.g. `SetMsAdUserPasswordCommand.NewPassword`) now writes it **in clear text** to the logs. MediatR behaviors typically logged only the request name, so this is a silent regression. Verified on two cases: a plain record (`SetMsAdUserPasswordCommand.NewPassword`) and a record inheriting a DTO with a `Password` property (`CreateMsAdUserCommand : CreateMsAdUserDto`, whose base record printed the password until `PrintMembers` was overridden). Verified fix: override `PrintMembers` in the record (`private bool PrintMembers(StringBuilder b)`) to mask the member, or type the member as a masking value object. Search every message for password/token/secret/key members and add a test that a failing command does not log the value.
 18d. **Extra Error log on exceptions.** The same failure log duplicates what a global exception middleware or an `UnhandledExceptionBehavior` logged; expect two error entries per exception (and a changed message format) unless the Wolverine log is tuned. Report it as a runtime change.
 
+## Tests
+
+18e. **Tests must not depend on local configuration.** `appsettings.Development.json` is usually git-ignored and differs per machine (here it replaced the `EDU/AIR` profiles with other ids, so a hard-coded `EDU` route returned 404 only on the developer's machine, not in a clean worktree). Discover valid ids through the API or override configuration inside the test host. Also drop log entries produced by setup requests before asserting that something did **not** happen.
+
 ## Completeness
 
 18. **Shims left behind.** `using Wolverine.Shims.MediatR;` keeps `IRequest`/`IRequestHandler` in the code. The migration must be complete: remove them and the interfaces. `inventory.py --check` fails while any remain.

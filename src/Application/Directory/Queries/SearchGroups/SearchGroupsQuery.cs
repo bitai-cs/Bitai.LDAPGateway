@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups;
 
@@ -14,7 +13,7 @@ public sealed record SearchGroupsQuery(
     LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue,
     bool? CombineFilters,
     LdapEntryAttributeSet RequiredAttributeSet,
-    int SizeLimit) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    int SizeLimit);
 
 public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQuery>
 {
@@ -60,7 +59,7 @@ public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQ
     }
 }
 
-public sealed class SearchGroupsQueryHandler : LdapHandlerBase, IRequestHandler<SearchGroupsQuery, Result<IReadOnlyList<LdapEntryDto>>>
+public sealed class SearchGroupsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

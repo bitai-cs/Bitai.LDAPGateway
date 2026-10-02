@@ -1,11 +1,10 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById;
 
-public sealed record GetProfileByIdQuery(string ProfileId) : IRequest<Result<LdapServerProfileDto>>;
+public sealed record GetProfileByIdQuery(string ProfileId);
 
 public sealed class GetProfileByIdQueryValidator : AbstractValidator<GetProfileByIdQuery>
 {
@@ -15,7 +14,7 @@ public sealed class GetProfileByIdQueryValidator : AbstractValidator<GetProfileB
    }
 }
 
-public sealed class GetProfileByIdQueryHandler : IRequestHandler<GetProfileByIdQuery, Result<LdapServerProfileDto>>
+public sealed class GetProfileByIdQueryHandler
 {
    private readonly IServerProfileReadService _serverProfileReadService;
 

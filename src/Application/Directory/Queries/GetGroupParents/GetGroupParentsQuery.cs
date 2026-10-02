@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Queries.GetGroupParents;
 
@@ -13,7 +12,7 @@ public sealed record GetGroupParentsQuery(
     string Identifier,
     LdapIdentifierAttribute IdentifierAttribute,
     LdapEntryAttributeSet RequiredAttributeSet,
-    bool GroupMustExist) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    bool GroupMustExist);
 
 public sealed class GetGroupParentsQueryValidator : AbstractValidator<GetGroupParentsQuery>
 {
@@ -27,7 +26,7 @@ public sealed class GetGroupParentsQueryValidator : AbstractValidator<GetGroupPa
     }
 }
 
-public sealed class GetGroupParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetGroupParentsQuery, Result<IReadOnlyList<LdapEntryDto>>>
+public sealed class GetGroupParentsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

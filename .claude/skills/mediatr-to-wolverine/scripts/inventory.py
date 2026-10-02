@@ -181,6 +181,9 @@ def scan(root: str) -> dict:
             if "Shims" not in m.group(1):
                 findings.append(Finding("mediatr_named", rel, line_of(txt, m.start()), m.group(1),
                                         "Type name still says MediatR (e.g. MediatRDomainEventPublisher); rename it"))
+        for m in re.finditer(r'//\s*ADAPT:', raw):
+            findings.append(Finding("adapt_marker", rel, line_of(raw, m.start()), "// ADAPT:",
+                                    "Template marker left in code: adapt the line and delete the marker"))
         for m in WRAPPER_RE.finditer(txt):
             findings.append(Finding("mediatr_wrapper", rel, line_of(txt, m.start()), m.group(1),
                                     "Home-made MediatR-style abstraction; call IMessageBus directly"))
@@ -300,6 +303,7 @@ ORDER = [
     ("shim_usage", "Wolverine.Shims.MediatR usages (not allowed)"),
     ("mediatr_wrapper", "Home-made IMediator/ISender/IPublisher abstractions"),
     ("mediatr_named", "Types whose name still contains MediatR"),
+    ("adapt_marker", "Template // ADAPT: markers left in code"),
     ("domain_wolverine_reference", "Domain projects referencing WolverineFx"),
     ("wolverine_accidental_handler", "⚠ Classes Wolverine would discover as handlers by accident"),
 ]

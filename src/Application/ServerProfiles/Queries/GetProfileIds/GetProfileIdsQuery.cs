@@ -1,12 +1,11 @@
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds;
 
-public sealed record GetProfileIdsQuery() : IRequest<Result<IReadOnlyList<string>>>;
+public sealed record GetProfileIdsQuery();
 
-public sealed class GetProfileIdsQueryHandler : IRequestHandler<GetProfileIdsQuery, Result<IReadOnlyList<string>>>
+public sealed class GetProfileIdsQueryHandler
 {
    private readonly IServerProfileReadService _serverProfileReadService;
 

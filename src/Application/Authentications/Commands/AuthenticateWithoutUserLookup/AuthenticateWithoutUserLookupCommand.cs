@@ -4,14 +4,13 @@ using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Domain.ValueObjects;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Authentications.Commands.AuthenticateWithoutUserLookup;
 
 public sealed record AuthenticateWithoutUserLookupCommand(
     string ServerProfile,
     CatalogType CatalogType,
-    UserCredential Credential) : IRequest<Result<AuthenticationResultDto>>;
+    UserCredential Credential);
 
 public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractValidator<AuthenticateWithoutUserLookupCommand>
 {
@@ -24,7 +23,7 @@ public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractVali
     }
 }
 
-public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBase, IRequestHandler<AuthenticateWithoutUserLookupCommand, Result<AuthenticationResultDto>>
+public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

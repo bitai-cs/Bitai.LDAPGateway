@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Commands.DisableMsAdUser;
 
@@ -12,7 +11,7 @@ public sealed record DisableMsAdUserCommand(
    CatalogType CatalogType,
    LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
-   string? Reason) : IRequest<Result>;
+   string? Reason);
 
 public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableMsAdUserCommand>
 {
@@ -23,7 +22,7 @@ public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableM
    }
 }
 
-public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<DisableMsAdUserCommand, Result>
+public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

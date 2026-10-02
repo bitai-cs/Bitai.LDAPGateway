@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Queries.GetUserByIdentifier;
 
@@ -13,7 +12,7 @@ public sealed record GetUserByIdentifierQuery(
    LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    LdapEntryAttributeSet RequiredAttributeSet,
-   bool UserMustExists) : IRequest<Result<LdapEntryDto?>>;
+   bool UserMustExists);
 
 public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUserByIdentifierQuery>
 {
@@ -27,7 +26,7 @@ public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUse
     }
 }
 
-public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase, IRequestHandler<GetUserByIdentifierQuery, Result<LdapEntryDto?>>
+public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
