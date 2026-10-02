@@ -64,7 +64,7 @@ For each project in the inventory:
 - Remove `MediatR`, `MediatR.Contracts`, `MediatR.Extensions.Microsoft.DependencyInjection`, and MediatR-specific add-ons (e.g. FluentValidation behavior packages built for MediatR).
 - Add `WolverineFx` to the **host** project (the one with `Program.cs`). Projects that only *contain* handlers/messages usually need no package at all, because Wolverine handlers need no interfaces; add `WolverineFx` there only if they use Wolverine types (`IMessageBus`, `HandlerContinuation`, attributes, middleware).
 - Add as needed: `WolverineFx.FluentValidation` (FluentValidation behavior existed), `WolverineFx.Http` (+ `WolverineFx.Http.FluentValidation`) only if going HTTP-endpoint route, `WolverineFx.EntityFrameworkCore` if a transaction behavior wrapped EF Core `SaveChanges`.
-- Add `WolverineFx.RuntimeCompilation` to the host (Wolverine 6.x). Without it the app fails at startup with `no IAssemblyGenerator is registered` (see `references/gotchas.md` 23a); the alternative is pre-generated code with `TypeLoadMode.Static`.
+- Add `WolverineFx.RuntimeCompilation` to the host (Wolverine 6.x). Without it the app fails at startup with `no IAssemblyGenerator is registered` (see `references/gotchas.md` 23a); for production prefer pre-generated code with `TypeLoadMode.Static` (recipe and verified caveats in `references/gotchas.md` 24).
 - Use the latest stable version and keep all `WolverineFx.*` packages on the **same version** (check with `dotnet list package` or NuGet; if central package management is used, edit `Directory.Packages.props`).
 
 ```bash
