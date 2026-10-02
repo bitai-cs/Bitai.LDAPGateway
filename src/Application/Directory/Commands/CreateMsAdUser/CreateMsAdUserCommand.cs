@@ -3,13 +3,20 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Commands.CreateMsAdUser;
 
 public sealed record CreateMsAdUserCommand(
    string ServerProfile,
-   CatalogType CatalogType) : CreateMsAdUserDto, IRequest<Result<LdapEntryDto>>;
+   CatalogType CatalogType) : CreateMsAdUserDto
+{
+   // Wolverine logs the message (ToString) when a handler fails: never print the password inherited from the DTO.
+   protected override bool PrintMembers(System.Text.StringBuilder builder)
+   {
+      builder.Append($"ServerProfile = {ServerProfile}, CatalogType = {CatalogType}, DistinguishedName = {DistinguishedName}, SAMAccountName = {SAMAccountName}, Password = ***");
+      return true;
+   }
+};
 // public sealed record CreateMsAdUserCommand(
 //    string ServerProfile,
 //    CatalogType CatalogType,
@@ -46,7 +53,7 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
     }
 }
 
-public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase, IRequestHandler<CreateMsAdUserCommand, Result<LdapEntryDto>>
+public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

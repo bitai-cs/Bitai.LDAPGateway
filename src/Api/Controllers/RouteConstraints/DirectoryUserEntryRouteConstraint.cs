@@ -1,6 +1,5 @@
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetUserByIdentifier;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Api.Controllers.RouteConstraints;
 

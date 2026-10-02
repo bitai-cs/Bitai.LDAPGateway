@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Commands.SetMsAdUserPassword;
 
@@ -13,7 +12,15 @@ public sealed record SetMsAdUserPasswordCommand(
    LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    string NewPassword,
-   bool MustChangeAtNextLogon) : IRequest<Result>;
+   bool MustChangeAtNextLogon)
+{
+   // Wolverine logs the message (ToString) when a handler fails: never print the password.
+   private bool PrintMembers(System.Text.StringBuilder builder)
+   {
+      builder.Append($"ServerProfile = {ServerProfile}, CatalogType = {CatalogType}, IdentifierAttribute = {IdentifierAttribute}, Identifier = {Identifier}, NewPassword = ***, MustChangeAtNextLogon = {MustChangeAtNextLogon}");
+      return true;
+   }
+};
 
 public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetMsAdUserPasswordCommand>
 {
@@ -25,7 +32,7 @@ public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetM
    }
 }
 
-public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase, IRequestHandler<SetMsAdUserPasswordCommand, Result>
+public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 

@@ -1,25 +1,25 @@
+using Wolverine;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Domain.Abstractions;
 using Bitai.LDAPGateway.Domain.Events;
 using Bitai.LDAPGateway.Infrastructure.Notifications;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Infrastructure.Services;
 
-public sealed class MediatRDomainEventPublisher : IDomainEventPublisher
+public sealed class WolverineDomainEventPublisher : IDomainEventPublisher
 {
-   private readonly IMediator _mediator;
+   private readonly IMessageBus _bus;
 
-   public MediatRDomainEventPublisher(IMediator mediator)
+   public WolverineDomainEventPublisher(IMessageBus bus)
    {
-      _mediator = mediator;
+      _bus = bus;
    }
 
    public Task PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
    {
       return domainEvent switch
       {
-         OperationCompletedDomainEvent operationCompleted => _mediator.Publish(new OperationCompletedNotification(operationCompleted), cancellationToken),
+         OperationCompletedDomainEvent operationCompleted => _bus.InvokeAsync(new OperationCompletedNotification(operationCompleted), cancellationToken),
          _ => Task.CompletedTask
       };
    }

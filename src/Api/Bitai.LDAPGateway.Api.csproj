@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <PackageReference Include="NSwag.AspNetCore" Version="14.7.1" />
+    <PackageReference Include="WolverineFx" Version="6.44.0" />
+    <PackageReference Include="WolverineFx.FluentValidation" Version="6.44.0" />
+    <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.44.0" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>

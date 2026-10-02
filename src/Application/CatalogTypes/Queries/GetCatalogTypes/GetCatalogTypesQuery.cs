@@ -1,11 +1,10 @@
 using Bitai.LDAPGateway.Application.Common.Models;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes;
 
-public sealed record GetCatalogTypesQuery() : IRequest<Result<IReadOnlyList<string>>>;
+public sealed record GetCatalogTypesQuery();
 
-public sealed class GetCatalogTypesQueryHandler : IRequestHandler<GetCatalogTypesQuery, Result<IReadOnlyList<string>>>
+public sealed class GetCatalogTypesQueryHandler
 {
    public Task<Result<IReadOnlyList<string>>> Handle(GetCatalogTypesQuery request, CancellationToken cancellationToken)
    {

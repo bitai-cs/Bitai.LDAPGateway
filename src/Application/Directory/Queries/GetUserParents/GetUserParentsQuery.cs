@@ -3,7 +3,6 @@ using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
 using FluentValidation;
-using MediatR;
 
 namespace Bitai.LDAPGateway.Application.Directory.Queries.GetUserParents;
 
@@ -13,7 +12,7 @@ public sealed record GetUserParentsQuery(
     string Identifier,
     LdapIdentifierAttribute IdentifierAttribute,
     LdapEntryAttributeSet RequiredAttributeSet,
-    bool UserMustExist) : IRequest<Result<IReadOnlyList<LdapEntryDto>>>;
+    bool UserMustExist);
 
 public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserParentsQuery>
 {
@@ -27,7 +26,7 @@ public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserPare
     }
 }
 
-public sealed class GetUserParentsQueryHandler : LdapHandlerBase, IRequestHandler<GetUserParentsQuery, Result<IReadOnlyList<LdapEntryDto>>>
+public sealed class GetUserParentsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
