@@ -23,7 +23,7 @@
 | `IRequestHandler<TReq>` | `public Task Handle(TReq msg, ...)` | |
 | `INotificationHandler<T>` | `public Task Handle(T msg, ...)` | see `notifications.md` |
 | `IMediator`, `ISender`, `IPublisher` | `IMessageBus` (namespace `Wolverine`) | |
-| `Send(req)` → `TRes` | `InvokeAsync<TRes>(req)` | T must match handler return type exactly |
+| `Send(req)` → `TRes` | `InvokeAsync<TRes>(req)` | keep `T` equal to the handler's declared return type (assignable types work; an unrelated type returns `null` silently) |
 | `Send(req)` (no response) | `InvokeAsync(req)` by default; `SendAsync` only if the command may run in the background | classify each call — see SKILL.md step 7 |
 | `Send(object)` | `InvokeAsync(object)` / `InvokeAsync<T>(object)` | dynamic dispatch works the same |
 | `Publish(notification)` | `InvokeAsync`, `PublishAsync`, or cascading | **semantics differ** — `notifications.md` |

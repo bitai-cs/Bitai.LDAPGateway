@@ -153,7 +153,7 @@ opts.Services.AddSingleton(typeof(IFailureAction<>), typeof(ThrowAppValidationEx
 
 ## 5. Logging / timing
 
-Wolverine logs message execution and emits metrics/OpenTelemetry out of the box. If the old behavior only logged "Handling X / Handled X in N ms", consider deleting it and setting `opts.InvokeTracing = InvokeTracingMode.Full` (newer versions) so `InvokeAsync` calls get the same structured logs as queued messages. If the exact log format matters (dashboards, alerts), port it:
+Wolverine logs message execution and emits metrics/OpenTelemetry out of the box. If the old behavior only logged "Handling X / Handled X in N ms", consider deleting it and setting `opts.InvokeTracing = InvokeTracingMode.Full` (newer versions) so `InvokeAsync` calls get the same structured logs as queued messages. Caveat: if handlers return failures as `Result` values, Wolverine logs them as `Successfully processed message` (verified), so keep a Result-aware port (below) instead of deleting the behavior. If the exact log format matters (dashboards, alerts), port it:
 
 ```csharp
 public static class TimingMiddleware
