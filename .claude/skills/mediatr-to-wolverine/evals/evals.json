@@ -55,7 +55,12 @@
         "Adds WolverineFx.RuntimeCompilation (or static codegen) so the host starts",
         "Does not use an After(Result) parameter; ports the Result-aware logging with an IHandlerPolicy / return-variable postprocessor and proves it with a log-capturing test",
         "Checks that failed commands do not log passwords (masks SetMsAdUserPasswordCommand.NewPassword) and reports the extra Wolverine failure log",
-        "Adds the Application.Common.Models and Wolverine usings to controllers when switching to InvokeAsync<T>"
+        "Adds the Application.Common.Models and Wolverine usings to controllers when switching to InvokeAsync<T>",
+        "Runs scripts/migrate_mechanical.py (dry run, then --apply) and finishes the MANUAL items by hand",
+        "Starts the hand-written code from assets/ (ResultLoggingMiddleware, ResultLoggingPolicy, CapturedLogs, MigrationBehaviorTests) with the documented names and locations",
+        "Masks the password in both SetMsAdUserPasswordCommand and the CreateMsAdUserCommand that inherits CreateMsAdUserDto, each with a test",
+        "Configures Static code generation for Production, commits the generated code and removes RuntimeCompilation from Release",
+        "Starts the Release build in Production and calls a success, a failing and an invalid route; reports the stale-code CI gate"
       ]
     }
   ]

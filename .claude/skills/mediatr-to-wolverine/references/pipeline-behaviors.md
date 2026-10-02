@@ -201,7 +201,7 @@ public sealed class ResultLoggingPolicy : IHandlerPolicy
 // usings: JasperFx, JasperFx.CodeGeneration, JasperFx.CodeGeneration.Frames, Wolverine.Configuration, Wolverine.Runtime.Handlers
 ```
 
-Verified with log-capturing integration tests: success logs `Handling request.` + `Request completed successfully.`, a failed `Result` logs the warning with the error code, for both `Result` and `Result<T>` handlers. Restrict the policy/middleware by namespace so handlers that return `Task` (e.g. notification handlers) are not touched. Differences to report: the logger category becomes the message type (was `ILogger<LoggingBehavior<,>>`), and a `BeginScope` opened in `Before` was not asserted in the tests.
+Verified with log-capturing integration tests: success logs `Handling request.` + `Request completed successfully.`, a failed `Result` logs the warning with the error code, for both `Result` and `Result<T>` handlers. Restrict the policy/middleware by namespace so handlers that return `Task` (e.g. notification handlers) are not touched. Differences to report: the logger category becomes the message type (was `ILogger<LoggingBehavior<,>>`), and the `BeginScope` opened in `Before` is applied (verified: log entries carry `RequestName=<MessageType>`; to assert it, the test logger must implement `ISupportExternalScope` and expand dictionary scopes, see `assets/CapturedLogs.cs.txt`).
 
 Fallback if `ReturnVariable` is unavailable in the installed version: log inside the shared handler base class (`ExecuteAsync`), which does not cover handlers outside the base. Don't drop the failure logging silently: report which option was used.
 

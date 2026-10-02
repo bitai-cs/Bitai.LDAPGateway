@@ -18,6 +18,8 @@ Primary reference: https://wolverinefx.net/introduction/from-mediatr.html (Wolve
 | File | Read it when |
 |---|---|
 | `scripts/inventory.py` | Step 1 (always). Scans the solution and reports every MediatR touch-point; `--check` mode is the final gate. |
+| `scripts/migrate_mechanical.py` | Steps 5-7. Applies the purely syntactic edits deterministically (interfaces, usings, `IMediator` -> `IMessageBus`, `Send` -> `InvokeAsync<T>`); reports what needs hand work. |
+| `assets/*.txt` | Steps 4, 8, 9. Templates for the code that must be written by hand (Result logging middleware + policy, host bootstrap, secret masking, log-capture test helper, regression tests). Start from `assets/README.md`. |
 | `references/api-mapping.md` | Converting requests, handlers, call sites, DI registration. Before/after code for each MediatR construct. |
 | `references/pipeline-behaviors.md` | The inventory shows `IPipelineBehavior`, pre/post processors, or exception handlers/actions. |
 | `references/notifications.md` | The inventory shows `INotification`, `INotificationHandler`, or `Publish(...)` calls. Read before touching them — semantics differ. |
@@ -49,6 +51,20 @@ Both styles below produce a **complete** migration to native Wolverine conventio
 
 If the user hasn't said, ask once. If they aren't available, do **A** and state that choice at the top of your summary. Never do B silently — it changes every file and makes review hard.
 
+**Defaults, so two runs of this skill converge.** Unless the user says otherwise, apply these and list each in the report (they are decisions, not accidents):
+
+| Topic | Default |
+|---|---|
+| Handler style | A (conservative) |
+| Notification / `Publish` | Option 1, `InvokeAsync` (inline, awaited, exceptions reach the caller) |
+| Domain-event publisher port | Keep the port, reimplement over `IMessageBus`, rename `MediatRXxx` -> `WolverineXxx` |
+| FluentValidation behavior | `opts.UseFluentValidation()`; drop `AddValidatorsFromAssembly` |
+| Behavior that only logs and rethrows | Delete it when the host already logs unhandled exceptions |
+| Behavior that logs success/failure from a `Result` | `assets/ResultLoggingMiddleware.cs.txt` + `ResultLoggingPolicy.cs.txt` |
+| Code generation | Dynamic in Development, **Static in Production** (`assets/Program.Wolverine.cs.txt`, `references/gotchas.md` 24), generated code committed |
+| Secrets in messages | Mask with `PrintMembers` (`assets/MaskSecrets.cs.txt`) and test it |
+| Names / places | `ResultLoggingMiddleware`, `ResultLoggingPolicy` in `<Application>/Common/Behaviors`; `MigrationBehaviorTests` and `CapturedLogs` in the functional tests project |
+
 Do not use, in either style:
 - **`Wolverine.Shims.MediatR`.** It keeps `IRequest`/`IRequestHandler` alive under a Wolverine namespace (and doesn't cover notifications or behaviors anyway). The final check fails if any shim usage remains.
 - **A wrapper that imitates MediatR** (`IMediator`/`ISender` reimplemented over `IMessageBus`, a generic `IHandler<T>` base, generic "behaviors" re-created as one catch-all middleware). Call `IMessageBus` directly and apply middleware selectively.
@@ -74,7 +90,7 @@ dotnet add <host-proj> package WolverineFx
 
 ### 4. Bootstrapping
 
-Replace `services.AddMediatR(...)` with Wolverine registration in the host:
+Replace `services.AddMediatR(...)` (and the `IPipelineBehavior<,>` registrations) with Wolverine registration in the host. The complete host snippet, including Production code generation, is `assets/Program.Wolverine.cs.txt`; the core of it is:
 
 ```csharp
 builder.Host.UseWolverine(opts =>
@@ -92,11 +108,22 @@ builder.Host.UseWolverine(opts =>
 
 **Assembly discovery is the #1 migration bug.** MediatR registration usually passes the Application/Core assembly explicitly; Wolverine scans only the *application assembly* (where `UseWolverine` is called) unless told otherwise. In Clean Architecture / DDD solutions handlers live in `*.Application` — add `opts.Discovery.IncludeAssembly(...)` for every assembly the inventory lists as containing handlers, or put `[assembly: Wolverine.Attributes.WolverineModule]` in those assemblies.
 
-### 5. Messages
+### 5. Mechanical pass
+
+Run the script on the solution root (dry run first, then `--apply`), then fix what it lists under MANUAL:
+
+```bash
+python <skill-dir>/scripts/migrate_mechanical.py <solution-root>
+python <skill-dir>/scripts/migrate_mechanical.py <solution-root> --apply
+```
+
+It performs steps 5, 6 (interface removal) and 7 (`IMediator` -> `IMessageBus`, `Send` -> `InvokeAsync<TResponse>` with the right `using`s) identically every time. `Publish` becomes `InvokeAsync` (the default option 1) and is flagged CHECK for the zero-handler rule. It does **not** touch DI registration, behaviors, tests or packages; those stay decisions. Review the diff before continuing, and build.
+
+### 5a. Messages
 
 Remove `IRequest`, `IRequest<T>`, `INotification`, `IBaseRequest`, `IStreamRequest<T>` markers. Messages need no interface. They **must be public** (and so must handlers). Records are fine and idiomatic. `Unit` disappears: a handler that returned `Unit` now returns `void`/`Task`. Details: `references/api-mapping.md`.
 
-### 6. Handlers
+### 6. Handlers (checks after the mechanical pass)
 
 MediatR handlers are usually already Wolverine-compatible after removing the interface, because Wolverine discovers **public** classes whose name ends in `Handler` or `Consumer` with a public method named `Handle`/`HandleAsync`/`Consume`/`ConsumeAsync` whose first parameter is the message. `CancellationToken` as a later parameter is supported.
 
@@ -110,7 +137,7 @@ Handlers that inherit a shared base class (`LdapHandlerBase`-style helpers with 
 
 Style B extras (static methods, method injection, cascading, compound handlers) are in `references/api-mapping.md`.
 
-### 7. Call sites
+### 7. Call sites (checks after the mechanical pass)
 
 | MediatR | Wolverine |
 |---|---|
@@ -146,9 +173,13 @@ Two decisions come first, and both go in the final report:
 1. **Where each behavior belongs.** Not every behavior should become Wolverine middleware. Classify each as Wolverine middleware, a built-in Wolverine add-on, ASP.NET Core middleware, an endpoint filter, domain logic, or an infrastructure concern (decision table in `references/pipeline-behaviors.md` §2).
 2. **Where the transaction boundary is,** if a transaction/unit-of-work behavior existed: the HTTP request, the message handler, the database transaction plus Wolverine's outbox, or the domain operation (§6). Decide once for the solution; don't let it fall out of whichever API was easiest to port.
 
+### 8b. Secrets in messages (mandatory)
+
+Wolverine logs the message (`ToString()`) at Error level when a handler or validator throws, so a secret carried as a plain member would be written in clear text (a regression: MediatR behaviors usually logged only the request name). Search every message and the DTOs it inherits for `Password|Secret|Token|ApiKey|Credential` members, mask each with `PrintMembers` (`assets/MaskSecrets.cs.txt`; works for plain and inherited records) and add the matching regression test. Details: `references/gotchas.md` 18c.
+
 ### 9. Tests
 
-Follow `references/testing.md`: replace `Mock<IMediator>`/`Substitute.For<ISender>()` with `IMessageBus` doubles, update `Verify(m => m.Send(...))` assertions, and add at least one integration test per ported behavior proving it still runs (e.g. an invalid command is rejected).
+Follow `references/testing.md`: replace `Mock<IMediator>`/`Substitute.For<ISender>()` with `IMessageBus` doubles and update `Verify(m => m.Send(...))` assertions. Then add the closed list of regression tests from `assets/BehaviorRegressionTests.cs.txt` (plus `CapturedLogs.cs.txt`): success logged, failed `Result` logged as a warning with the `RequestName` scope, invalid command rejected with 400, no secret in the logs (one per message with a secret), domain event delivered to its notification handler. Drop only the ones whose behavior did not exist, and say so in the report.
 
 ### 10. Verify — do not skip
 
@@ -157,8 +188,10 @@ Follow `references/testing.md`: replace `Mock<IMediator>`/`Substitute.For<ISende
 3. `dotnet test` → all tests green, including the new behavior tests.
 4. Confirm handler discovery for at least one handler per assembly: temporarily add `Console.WriteLine(opts.DescribeHandlerMatch(typeof(XHandler)));` inside `UseWolverine`, or run the app's Wolverine CLI (`dotnet run -- describe` / `dotnet run -- codegen preview` when the host ends with `RunJasperFxCommands(args)`; older versions use `RunOaktonCommands`). Remove the temporary line afterwards. If the host ends with plain `app.Run();`, the CLI commands aren't available; prefer `DescribeHandlerMatch` rather than editing the host, or tell the user the one-line change (`return await app.RunJasperFxCommands(args);`) and let them decide.
 5. Check that failed commands do not log secrets (gotchas 18c) and that handler unit tests calling `Handle(...)` directly still pass unchanged (style A keeps them working).
-6. Walk through `references/gotchas.md` and confirm each item is handled.
+6. **Production run.** With Static code generation: `dotnet run --project <host> -- codegen write` (Debug), build `-c Release` (no Roslyn in the output), start the Release build with `ASPNETCORE_ENVIRONMENT=Production` and call a success route, a failing route and an invalid-command route. The log must say `code generation mode is Static with pre-generated types`.
+7. **Stale-code gate.** Add to CI: `codegen write` followed by a check that `Internal/Generated` did not change (`git diff --exit-code` plus untracked files). `AssertAllPreGeneratedTypesExist` does not catch a new handler that was never generated (gotchas 24).
+8. Walk through `references/gotchas.md` and confirm each item is handled.
 
 ## Reporting back
 
-Finish with a concise summary for the user: handler style used, counts converted per category (from the inventory), the `Send`/`Publish` classification table, where each behavior went, the transaction-boundary decision, every place where runtime semantics changed (notification delivery, error handling, transaction boundaries), anything that needs a human decision (stream requests, open generics, custom exception handlers), and the verification results. Don't recap every file touched — the diff shows that.
+Finish with a concise summary for the user: handler style used, counts converted per category (from the inventory), the `Send`/`Publish` classification table, where each behavior went, the transaction-boundary decision, every place where runtime semantics changed (notification delivery, error handling, transaction boundaries), anything that needs a human decision (stream requests, open generics, custom exception handlers), and the verification results. State which defaults from step 2 were applied or overridden. Don't recap every file touched — the diff shows that.
