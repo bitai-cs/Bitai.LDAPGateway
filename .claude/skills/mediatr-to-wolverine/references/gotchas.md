@@ -28,6 +28,11 @@ Diagnose any of these with `Console.WriteLine(opts.DescribeHandlerMatch(typeof(S
 16. **`SendAsync` with no known route throws**, whereas `PublishAsync` silently drops the message. Neither reaches local handlers under `DurabilityMode.MediatorOnly`.
 17. **Static middleware as a generic argument.** `opts.Policies.AddMiddleware<SomeStaticClass>()` is a compile error (CS0718); use `AddMiddleware(typeof(SomeStaticClass), ...)`.
 
+## Validation
+
+18a. **Double validator registration.** If the Application project calls `services.AddValidatorsFromAssembly(...)`, `opts.UseFluentValidation()` registers them again; use `RegistrationBehavior.ExplicitRegistration` or remove one registration.
+18b. **Validators and handlers in one file/assembly.** Validators must be `public`, and the Application assembly must be included for discovery even if the validators are only registered through FluentValidation's own scan.
+
 ## Completeness
 
 18. **Shims left behind.** `using Wolverine.Shims.MediatR;` keeps `IRequest`/`IRequestHandler` in the code. The migration must be complete: remove them and the interfaces. `inventory.py --check` fails while any remain.

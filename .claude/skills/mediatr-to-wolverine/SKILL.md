@@ -36,6 +36,8 @@ Run the scanner from the solution root:
 python3 <skill-dir>/scripts/inventory.py <solution-root> --format markdown > mediatr-inventory.md
 ```
 
+On Windows the interpreter is usually `python` (or `py -3`), not `python3`. Write the report outside the repo (scratchpad/temp) or delete it afterwards so it isn't committed.
+
 It lists: projects referencing MediatR packages, request/notification types, handlers (including open-generic ones), pipeline behaviors, pre/post processors, exception handlers, stream requests, `Send`/`Publish`/`CreateStream` call sites, `AddMediatR` registrations, and test doubles of `IMediator`/`ISender`/`IPublisher`. Read the report fully before changing anything — the counts determine which reference files you need and how big the job is. Share a short summary with the user (counts per category, anything flagged ⚠).
 
 ### 2. Choose the handler style
@@ -50,6 +52,8 @@ If the user hasn't said, ask once. If they aren't available, do **A** and state 
 Do not use, in either style:
 - **`Wolverine.Shims.MediatR`.** It keeps `IRequest`/`IRequestHandler` alive under a Wolverine namespace (and doesn't cover notifications or behaviors anyway). The final check fails if any shim usage remains.
 - **A wrapper that imitates MediatR** (`IMediator`/`ISender` reimplemented over `IMessageBus`, a generic `IHandler<T>` base, generic "behaviors" re-created as one catch-all middleware). Call `IMessageBus` directly and apply middleware selectively.
+
+An application-level **port** that merely happens to be implemented with MediatR today (e.g. `IDomainEventPublisher` in Application, implemented by `MediatRDomainEventPublisher` in Infrastructure) is **not** an `IMediator` clone: keep the port, replace the implementation with one over `IMessageBus`, and **rename** it (`WolverineDomainEventPublisher`). The final check flags any type still named `*MediatR*`.
 
 Keep Wolverine out of the Domain project: domain entities, value objects and domain events must not reference `WolverineFx`. Messages and handlers belong in the Application layer.
 
@@ -101,6 +105,8 @@ For each handler:
 3. Change `Task<Unit>` → `Task`, delete `return Unit.Value;`.
 4. **Open generic handlers are not supported by Wolverine.** Create one closed handler per concrete message type (the inventory flags these).
 
+Handlers that inherit a shared base class (`LdapHandlerBase`-style helpers with protected `ExecuteAsync` methods) need nothing special: keep the base abstract and do **not** let its name end in `Handler`/`Consumer`, or Wolverine may treat it as a handler. `sealed` handlers are fine.
+
 Style B extras (static methods, method injection, cascading, compound handlers) are in `references/api-mapping.md`.
 
 ### 7. Call sites
@@ -108,10 +114,12 @@ Style B extras (static methods, method injection, cascading, compound handlers) 
 | MediatR | Wolverine |
 |---|---|
 | inject `IMediator` / `ISender` / `IPublisher` | inject `IMessageBus` |
-| `await _mediator.Send(cmd, ct)` (no response) | `await _bus.InvokeAsync(cmd, ct)` (default — see classification below) |
+| `await _mediator.Send(cmd, ct)` (`IRequest` / `IRequest<Unit>`, result not used) | `await _bus.InvokeAsync(cmd, ct)` (default — see classification below) |
 | `var r = await _mediator.Send(query, ct)` | `var r = await _bus.InvokeAsync<TResponse>(query, ct)` |
 | `await _mediator.Publish(evt, ct)` | **depends** — read `references/notifications.md` |
 | `_mediator.CreateStream(...)` | no mediator equivalent — flag for the user |
+
+A request typed `IRequest<Result>` (Result pattern, non-generic `Result`) **does** have a response: use `InvokeAsync<Result>(...)`, never the non-generic overload, or the returned `Result` is cascaded as a message and the caller gets nothing.
 
 Always pass the response type explicitly to `InvokeAsync<T>` when the caller uses the result. `T` must exactly match the handler's return type. Calling the non-generic `InvokeAsync` on a handler that returns an object makes Wolverine treat that object as a **cascading message**, not a return value.
 
@@ -129,6 +137,8 @@ Only move a call off `InvokeAsync` when the user agrees, because it changes the 
 
 Port every `IPipelineBehavior`, `IRequestPreProcessor`, `IRequestPostProcessor`, `IRequestExceptionHandler` and `IRequestExceptionAction` using `references/pipeline-behaviors.md`. Do not leave behaviors unported: deleting MediatR deletes the behavior, so validation, logging, authorization or transactions would silently stop running.
 
+Before porting, compare each behavior with what the host already does (e.g. an `ExceptionHandlingMiddleware` that already logs unhandled exceptions and maps `ValidationException` → 400). A behavior that only logs-and-rethrows duplicates it and should be deleted, not ported; a validation behavior that throws `FluentValidation.ValidationException` maps to `UseFluentValidation()` with no host change. Behaviors that branch on the response (`where TResponse : Result`, logging success/failure) need the pattern in `references/pipeline-behaviors.md` §5.
+
 Two decisions come first, and both go in the final report:
 1. **Where each behavior belongs.** Not every behavior should become Wolverine middleware. Classify each as Wolverine middleware, a built-in Wolverine add-on, ASP.NET Core middleware, an endpoint filter, domain logic, or an infrastructure concern (decision table in `references/pipeline-behaviors.md` §2).
 2. **Where the transaction boundary is,** if a transaction/unit-of-work behavior existed: the HTTP request, the message handler, the database transaction plus Wolverine's outbox, or the domain operation (§6). Decide once for the solution; don't let it fall out of whichever API was easiest to port.
@@ -142,7 +152,7 @@ Follow `references/testing.md`: replace `Mock<IMediator>`/`Substitute.For<ISende
 1. `python3 <skill-dir>/scripts/inventory.py <solution-root> --check` → must exit 0 (no MediatR references and no `Wolverine.Shims.MediatR` usage left).
 2. `dotnet build` with no new warnings related to the migration.
 3. `dotnet test` → all tests green, including the new behavior tests.
-4. Confirm handler discovery for at least one handler per assembly: temporarily add `Console.WriteLine(opts.DescribeHandlerMatch(typeof(XHandler)));` inside `UseWolverine`, or run the app's Wolverine CLI (`dotnet run -- describe` / `dotnet run -- codegen preview` when the host ends with `RunJasperFxCommands(args)`; older versions use `RunOaktonCommands`). Remove the temporary line afterwards.
+4. Confirm handler discovery for at least one handler per assembly: temporarily add `Console.WriteLine(opts.DescribeHandlerMatch(typeof(XHandler)));` inside `UseWolverine`, or run the app's Wolverine CLI (`dotnet run -- describe` / `dotnet run -- codegen preview` when the host ends with `RunJasperFxCommands(args)`; older versions use `RunOaktonCommands`). Remove the temporary line afterwards. If the host ends with plain `app.Run();`, the CLI commands aren't available; prefer `DescribeHandlerMatch` rather than editing the host, or tell the user the one-line change (`return await app.RunJasperFxCommands(args);`) and let them decide.
 5. Walk through `references/gotchas.md` and confirm each item is handled.
 
 ## Reporting back

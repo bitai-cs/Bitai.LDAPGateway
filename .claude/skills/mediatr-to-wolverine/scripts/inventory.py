@@ -177,6 +177,10 @@ def scan(root: str) -> dict:
         for m in SHIM_RE.finditer(txt):
             findings.append(Finding("shim_usage", rel, line_of(txt, m.start()), m.group(0).strip(),
                                     "Shims are not allowed: the migration must end in native Wolverine handlers"))
+        for m in re.finditer(r'\b(?:class|record|struct|interface|enum)\s+(\w*MediatR\w*)', txt):
+            if "Shims" not in m.group(1):
+                findings.append(Finding("mediatr_named", rel, line_of(txt, m.start()), m.group(1),
+                                        "Type name still says MediatR (e.g. MediatRDomainEventPublisher); rename it"))
         for m in WRAPPER_RE.finditer(txt):
             findings.append(Finding("mediatr_wrapper", rel, line_of(txt, m.start()), m.group(1),
                                     "Home-made MediatR-style abstraction; call IMessageBus directly"))
@@ -295,6 +299,7 @@ ORDER = [
     ("using_directive", "using MediatR directives"),
     ("shim_usage", "Wolverine.Shims.MediatR usages (not allowed)"),
     ("mediatr_wrapper", "Home-made IMediator/ISender/IPublisher abstractions"),
+    ("mediatr_named", "Types whose name still contains MediatR"),
     ("domain_wolverine_reference", "Domain projects referencing WolverineFx"),
     ("wolverine_accidental_handler", "⚠ Classes Wolverine would discover as handlers by accident"),
 ]
@@ -340,6 +345,10 @@ def to_markdown(report: dict) -> str:
 
 
 def main() -> int:
+    # Windows consoles/redirects default to cp1252 and crash on the arrows/warning signs below.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("root")
     ap.add_argument("--format", choices=["markdown", "json"], default="markdown")

@@ -39,6 +39,20 @@
         "Records the transaction-boundary decision",
         "inventory --check exits 0"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Migrate this Clean Architecture LDAP gateway from MediatR to Wolverine. Handlers return Result / Result<T>, share an abstract LdapHandlerBase, behaviors are Unhandled/Logging(Result-aware)/Validation, domain events go through IDomainEventPublisher implemented by MediatRDomainEventPublisher, and the host ends with app.Run().",
+      "expectations": [
+        "Uses InvokeAsync<Result> / InvokeAsync<Result<T>> for every Send, never the non-generic overload",
+        "Adds IncludeAssembly for both Application and Infrastructure",
+        "Maps ValidationBehavior to UseFluentValidation and avoids double validator registration",
+        "Deletes the log-and-rethrow UnhandledExceptionBehavior and says the existing ExceptionHandlingMiddleware covers it",
+        "Ports the Result-aware LoggingBehavior and reports how",
+        "Keeps IDomainEventPublisher and renames MediatRDomainEventPublisher to a Wolverine-based implementation",
+        "Does not use Wolverine.Shims.MediatR and does not add WolverineFx to Domain",
+        "inventory --check exits 0 and no type name contains MediatR"
+      ]
     }
   ]
 }

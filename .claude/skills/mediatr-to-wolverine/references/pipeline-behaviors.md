@@ -175,6 +175,8 @@ opts.Policies.AddMiddleware(typeof(TimingMiddleware), chain => chain.MessageType
 
 `ILogger` (non-generic) is supplied by Wolverine as `ILogger<MessageType>`.
 
+**Behaviors that inspect the response** (Result pattern: `where TResponse : Result`, log success vs. failure, walk `Error.InnerError`). Move the formatting into a plain helper (`ResultLogger.Log(ILogger, Result)`) and call it from an `After` method whose parameter is the **base** response type (`After(Result result, ILogger logger, Envelope envelope)`). Wolverine binds an `After` parameter to the handler's return value only if the types are compatible, so confirm with `codegen preview` / a log-capturing test that it fires for `Result` **and** `Result<T>` handlers. If binding fails, a message-specific `After` per response type, or logging inside the shared handler base class (e.g. `ExecuteAsync`), is the fallback. Don't drop the failure logging silently: report which option was used.
+
 ---
 
 ## 6. Transactions / unit of work
