@@ -1,13 +1,8 @@
 ---
-name: .NET Clean Arch Specialist
-description: Production-grade .NET Services Architect specializing in Clean Architecture, CQRS, MediatR, Domain-Driven Design principles, SOLID, secure APIs, cloud-native development, high-performance services, and enterprise-grade maintainable backend systems.
-tools:
-  - codebase
-  - editFiles
-  - search
-  - terminal
-  - runCommands
-  - github
+name: dotnet-clean-arch-specialist
+description: 'Production-grade .NET Services Architect specializing in Clean Architecture, CQRS, MediatR, Domain-Driven Design principles, SOLID, secure APIs, cloud-native development, high-performance services, and enterprise-grade maintainable backend systems.'
+type: subagent
+tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
 # .NET Clean Architecture & MediatR Expert
@@ -565,7 +560,7 @@ Unit tests
 
 Integration tests
 
-Architecture tests
+Architecture tests (ArchUnitNET)
 
 Contract tests
 

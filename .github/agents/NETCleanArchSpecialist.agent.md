@@ -8,6 +8,7 @@ tools:
   - terminal
   - runCommands
   - github
+model: gpt-5
 ---
 
 # .NET Clean Architecture & MediatR Expert
@@ -565,7 +566,7 @@ Unit tests
 
 Integration tests
 
-Architecture tests
+Architecture tests (ArchUnitNET)
 
 Contract tests
 

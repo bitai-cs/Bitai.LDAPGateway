@@ -1,0 +1,44 @@
+{
+  "skill_name": "mediatr-to-wolverine",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our Clean Architecture API (Api, Application, Infrastructure, Domain projects) uses MediatR 12 with a ValidationBehavior and a LoggingBehavior. Migrate it to Wolverine without changing behavior.",
+      "expectations": [
+        "Runs scripts/inventory.py first",
+        "Adds opts.Discovery.IncludeAssembly for the Application assembly",
+        "Ports ValidationBehavior to UseFluentValidation",
+        "Uses InvokeAsync<T> with explicit type arguments",
+        "Runs inventory --check, build and tests at the end"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Replace mediator.Publish(new OrderPlaced(...)) calls with Wolverine. We have three handlers for OrderPlaced and one domain event with no handler.",
+      "expectations": [
+        "Explains InvokeAsync vs PublishAsync vs cascading semantics",
+        "Handles the zero-handler domain event explicitly",
+        "Does not enable DurabilityMode.MediatorOnly if PublishAsync is used"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "After removing MediatR our unit tests with Mock<ISender> don't compile. Fix them.",
+      "expectations": [
+        "Mocks IMessageBus including optional CancellationToken and timeout parameters",
+        "Removes Unit assertions"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Migrate this solution from MediatR to Wolverine. Some files already use Wolverine.Shims.MediatR and there is an AuditMiddleware static class.",
+      "expectations": [
+        "Removes all Wolverine.Shims.MediatR usages and IRequest/IRequestHandler interfaces",
+        "Registers static middleware with the typeof(...) overload",
+        "Classifies each Send call and records InvokeAsync/SendAsync/PublishAsync choices",
+        "Records the transaction-boundary decision",
+        "inventory --check exits 0"
+      ]
+    }
+  ]
+}
