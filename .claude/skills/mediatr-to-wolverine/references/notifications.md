@@ -66,6 +66,13 @@ A very common Clean Architecture pattern: entities collect `IDomainEvent : INoti
 - Avoid injecting `IMessageBus` directly into the `DbContext` constructor if the DbContext is also injected into handlers (circular scope surprises); use an interceptor or a dispatcher service.
 - Idiomatic: Wolverine's EF Core integration has dedicated domain-event support (see https://wolverinefx.net/guide/durability/efcore/domain-events) that publishes collected events through the outbox. It is an improvement, not a requirement for removing MediatR; offer it in the final report unless the user asked for it.
 
+## Domain-event publisher ports
+
+When handlers call an application-level port (`IDomainEventPublisher.PublishAsync(IDomainEvent)`) whose implementation does `mediator.Publish(new XNotification(evt))` behind a `switch`:
+- Keep the port and the notification wrapper type (Domain must not reference Wolverine); change only the implementation to `IMessageBus` and rename it.
+- Use option 1 (`InvokeAsync`) for event types that have a handler, and keep the `_ => Task.CompletedTask` default arm for those that don't, so the zero-handler rule never fires.
+- The wrapper record needs no interface; the notification handler needs only `INotificationHandler<T>` removed. Check it lives in an assembly added with `IncludeAssembly` (here: Infrastructure, not just Application).
+
 ## Polymorphic handlers
 
 `INotificationHandler<INotification>` or handlers for a base event type receive every derived notification in MediatR. Wolverine can bind handlers to interfaces/abstract types, but routing rules differ; for each such handler, write a test that publishes a concrete derived event and asserts the base handler ran.

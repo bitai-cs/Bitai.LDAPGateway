@@ -65,6 +65,12 @@ session.Sent.SingleMessage<OrderPlaced>().OrderId.Should().Be(...);
 
 Without this, tests that passed under MediatR's inline `Publish` become flaky after moving to `PublishAsync`.
 
+### Capturing logs in integration tests
+
+A tiny `ILoggerProvider` that enqueues `(category, level, message, exception)` and is added with `factory.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddLogging(l => l.AddProvider(logs))))` is enough to assert ported logging behaviors, validation rejections and the no-secrets-in-logs rule. For commands that ASP.NET model binding would reject first, invoke through `IMessageBus` from a scope of `factory.Services` instead of HTTP.
+
+Verified on a real migration: with `WolverineFx.RuntimeCompilation` referenced, existing `WebApplicationFactory<Program>` tests (needs `public partial class Program`) and direct `handler.Handle(...)` unit tests ran unchanged.
+
 ## 4. Behavior regression tests (add these)
 
 One per ported behavior, at the integration level (through `IMessageBus` or HTTP):
@@ -75,6 +81,7 @@ One per ported behavior, at the integration level (through `IMessageBus` or HTTP
 | Authorization | unauthorized user → expected exception / 403 |
 | Transaction | handler throws after writes → nothing persisted |
 | Logging/timing | log sink captures expected entry (only if format matters) |
+| Secrets | failing command with a password member → log output does not contain the value |
 | Notification inline semantics | failing notification handler → caller sees exception (option 1) |
 
 ## 5. Architecture tests

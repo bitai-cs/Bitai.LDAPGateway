@@ -1,0 +1,41 @@
+// Host Program.cs: replaces services.AddMediatR(...) and the AddTransient(typeof(IPipelineBehavior<,>), ...) lines.
+using JasperFx;
+using JasperFx.CodeGeneration;
+using Wolverine;
+using Wolverine.FluentValidation;           // only if a FluentValidation behavior existed
+using YourApp.Application.Common.Behaviors; // only if the Result logging pair is used
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseWolverine(opts =>
+{
+    // Dynamic (runtime compilation, needs WolverineFx.RuntimeCompilation) in Development;
+    // pre-generated code in Production (dotnet run -- codegen write; generated files are committed).
+    opts.Services.CritterStackDefaults(x =>
+    {
+        x.Production.GeneratedCodeMode = TypeLoadMode.Static;
+        x.Production.AssertAllPreGeneratedTypesExist = true;
+    });
+
+    // ADAPT: one IncludeAssembly per assembly the inventory lists as containing handlers (use fully qualified
+    // type names if several layers expose a class called DependencyInjection).
+    opts.Discovery.IncludeAssembly(typeof(YourApp.Application.DependencyInjection).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(YourApp.Infrastructure.DependencyInjection).Assembly);
+
+    // Replaces a FluentValidation ValidationBehavior (throws FluentValidation.ValidationException).
+    // Remove services.AddValidatorsFromAssembly(...): UseFluentValidation registers the validators.
+    opts.UseFluentValidation();
+
+    // Result-aware logging (see ResultLoggingMiddleware / ResultLoggingPolicy templates).
+    opts.Policies.AddMiddleware(typeof(ResultLoggingMiddleware),
+        chain => chain.MessageType.Namespace!.StartsWith("YourApp.Application"));
+    opts.Policies.Add<ResultLoggingPolicy>();
+});
+
+// ... the rest of the host unchanged ...
+
+var app = builder.Build();
+// ...
+return await app.RunJasperFxCommands(args);   // instead of app.Run(); enables `codegen write` / `describe`
+
+public partial class Program;   // keep: WebApplicationFactory<Program> needs it
