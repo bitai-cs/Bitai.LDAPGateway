@@ -14,7 +14,7 @@ public sealed record SearchDirectoryQuery(
    LdapEntryAttribute? SecondFilterAttribute,
    string? SecondFilterValue,
    bool? CombineFilters,
-   int SizeLimit);
+   LdapEntryAttributeSet RequiredAttributeSet);
 
 public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDirectoryQuery>
 {
@@ -26,7 +26,7 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
         RuleFor(x => x.FilterValue).NotEmpty();
         RuleFor(x => x.SecondFilterAttribute).NotEmpty().When(x => x.SecondFilterValue != null);
         RuleFor(x => x.SecondFilterValue).NotEmpty().When(x => x.SecondFilterAttribute != null);
-        RuleFor(x => x.SizeLimit).GreaterThan(0).LessThanOrEqualTo(2000);
+        RuleFor(x => x.RequiredAttributeSet).IsInEnum();
     }
 }
 
@@ -44,7 +44,7 @@ public sealed class SearchDirectoryQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchDirectory", context,
-           () => _directoryServiceConnector.SearchDirectoryAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.SizeLimit, cancellationToken),
+           () => _directoryServiceConnector.SearchDirectoryAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
            cancellationToken);
     }
 }

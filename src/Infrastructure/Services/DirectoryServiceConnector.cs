@@ -106,7 +106,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
         return await _directoryServiceProvider.GetDirectoryEntryAsync(profileResult.Value!, context.CatalogType, identifierAttribute, identifier, requiredAttributeSet, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, LdapEntryAttribute FilterAttribute, string FilterValue, LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue, bool? CombineFilters, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchDirectoryAsync(LdapRequestContext context, LdapEntryAttribute FilterAttribute, string FilterValue, LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue, bool? CombineFilters, LdapEntryAttributeSet RequiredAttributeSet, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -114,7 +114,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _directoryServiceProvider.SearchDirectoryAsync(profileResult.Value!, context.CatalogType, FilterAttribute, FilterValue, SecondFilterAttribute, SecondFilterValue, CombineFilters, sizeLimit, cancellationToken);
+        return await _directoryServiceProvider.SearchDirectoryAsync(profileResult.Value!, context.CatalogType, FilterAttribute, FilterValue, SecondFilterAttribute, SecondFilterValue, CombineFilters, RequiredAttributeSet, cancellationToken);
     }
     #endregion
 
@@ -147,7 +147,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
         return await _directoryServiceProvider.GetUserParentsAsync(profileResult.Value!, context.CatalogType, identifier, identifierAttribute, requiredAttributeSet, userMustExist, cancellationToken);
     }
 
-    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(LdapRequestContext context, LdapEntryAttribute filterAttribute, string filterValue, LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue, bool? combineFilters, LdapEntryAttributeSet requiredAttributeSet, int sizeLimit, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LdapEntryDto>>> SearchUsersAsync(LdapRequestContext context, LdapEntryAttribute filterAttribute, string filterValue, LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue, bool? combineFilters, LdapEntryAttributeSet requiredAttributeSet, CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
         if (!profileResult.IsSuccess)
@@ -155,7 +155,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _directoryServiceProvider.SearchUsersAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit, cancellationToken);
+        return await _directoryServiceProvider.SearchUsersAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, cancellationToken);
     }
     #endregion
 
@@ -202,7 +202,6 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken)
     {
         var profileResult = GetLdapServerProfileConfiguration(context.ServerProfile);
@@ -211,7 +210,7 @@ public sealed class DirectoryServiceConnector : IDirectoryServiceConnector
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(profileResult.Error!);
         }
 
-        return await _directoryServiceProvider.SearchGroupsAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondaryFilterAttribute, secondaryFilterValue, combineFilters, requiredAttributeSet, sizeLimit, cancellationToken);
+        return await _directoryServiceProvider.SearchGroupsAsync(profileResult.Value!, context.CatalogType, filterAttribute, filterValue, secondaryFilterAttribute, secondaryFilterValue, combineFilters, requiredAttributeSet, cancellationToken);
     }
     #endregion
 

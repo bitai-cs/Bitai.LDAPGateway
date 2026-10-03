@@ -733,7 +733,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         LdapEntryAttribute? secondaryFilterAttribute,
         string? secondaryFilterValue,
         bool? combineFilters,
-        int sizeLimit,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -746,12 +746,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         if (string.IsNullOrWhiteSpace(filterValue))
         {
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
-        }
-
-        if (sizeLimit <= 0)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
-        }
+        }        
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
         {
@@ -787,8 +782,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         try
         {
             var requestLabel = nameof(BitaiLdapHelperProvider);
-
-            searchLimits.MaxSearchResults = sizeLimit;
 
             var combinedFilter = CreateFilterCombiner(
                 false,
@@ -846,12 +839,12 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             _logger.LogError(
                 ex,
-                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, Filter: {Filter}, SizeLimit: {SizeLimit}.",
+                "Unexpected exception in {ClassName}.{ClassMethodName}. DirectoryServerProfile: {DirectoryServerProfileId}, Filter: {Filter}, RequiredAttributeSet: {RequiredAttributeSet}.",
                 nameof(BitaiLdapHelperProvider),
                 nameof(BitaiLdapHelperProvider.SearchDirectoryAsync),
                 ldapServerProfile.ProfileId,
                 filterValue,
-                sizeLimit);
+                requiredAttributeSet);
 
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Internal($"Unexpected exception in {nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchDirectoryAsync)}.", Error.InnerErr(ex)));
         }
@@ -1129,7 +1122,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken)
     {
         string methodCodeName = "get-users";
@@ -1145,11 +1137,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         if (string.IsNullOrWhiteSpace(filterValue))
         {
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
-        }
-
-        if (sizeLimit <= 0)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
         }
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
@@ -1189,8 +1176,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         {
             var requestLabel = nameof(BitaiLdapHelperProvider);
 
-            searchLimits.MaxSearchResults = sizeLimit;
-
             var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyUsersFilterCombiner();
 
             var combinedFilter = CreateFilterCombiner(
@@ -1217,7 +1202,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             {
                 _logger.LogError(
                     searchResult.ErrorObject,
-                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}, SizeLimit: {SizeLimit}.",
+                    "{ComponentName}.{ComponentMethodName} failed. OperationMessage: {OperationMessage}, DirectoryServerProfile: {DirectoryServerProfileId}, CatalogType: {CatalogType}, FilterAttribute: {FilterAttribute}, FilterValue: {FilterValue}, SecondaryFilterAttribute: {SecondaryFilterAttribute}, SecondaryFilterValue: {SecondaryFilterValue}, CombineFilters: {CombineFilters}, RequiredAttributes: {RequiredAttributes}.",
                     nameof(Searcher), nameof(Searcher.SearchEntriesAsync),
                     searchResult.OperationMessage,
                     ldapServerProfile.ProfileId,
@@ -1227,8 +1212,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                     resolvedSecondaryFilterAttribute,
                     secondaryFilterValue,
                     combineFilters,
-                    resolvedRequiredAttributes,
-                    sizeLimit);
+                    resolvedRequiredAttributes);
 
                 var error = Error.BadGateway($"{nameof(BitaiLdapHelperProvider)}.{nameof(BitaiLdapHelperProvider.SearchUsersAsync)} failed to retrieve directory user entries for filter {filterObject} due to an error in {nameof(Searcher)}.{nameof(Searcher.SearchEntriesAsync)}. {searchResult.OperationMessage}");
 
@@ -1535,7 +1519,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1548,11 +1531,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         if (string.IsNullOrWhiteSpace(filterValue))
         {
             return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("Filter is required."));
-        }
-
-        if (sizeLimit <= 0)
-        {
-            return Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.Validation("SizeLimit must be greater than zero."));
         }
 
         if (!TryCreateConnectionInfo(ldapServerProfile, catalogType, out var connectionInfo, out var connectionError))
@@ -1591,8 +1569,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         try
         {
             var requestLabel = nameof(BitaiLdapHelperProvider);
-
-            searchLimits.MaxSearchResults = sizeLimit;
 
             var onlyUsersFilter = AttributeFilterCombiner.CreateOnlyGroupsFilterCombiner();
 

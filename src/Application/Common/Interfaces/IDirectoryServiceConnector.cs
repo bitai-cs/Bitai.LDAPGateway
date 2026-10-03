@@ -61,7 +61,7 @@ public interface IDirectoryServiceConnector
         LdapEntryAttribute? SecondFilterAttribute,
         string? SecondFilterValue,
         bool? CombineFilters,
-        int sizeLimit,
+        LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken);
     #endregion
 
@@ -87,7 +87,6 @@ public interface IDirectoryServiceConnector
         LdapEntryAttribute? secondFilterAttribute, string? secondFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken);
     #endregion
 
@@ -115,7 +114,6 @@ public interface IDirectoryServiceConnector
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken);
     #endregion
 }
