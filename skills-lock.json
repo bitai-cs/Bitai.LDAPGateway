@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "serilog": {
+      "source": "codewithmukesh/dotnet-claude-kit",
+      "sourceType": "github",
+      "skillPath": "skills/serilog/SKILL.md",
+      "computedHash": "a72517699d93a5d8e385ff1a73a9b0e80c57143a9678e1151a2c38ba7e7785a5"
+    }
+  }
+}

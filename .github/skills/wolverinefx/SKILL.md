@@ -1,6 +1,6 @@
 ---
 name: wolverinefx
-description: Technical reference for WolverineFx in Clean Architecture .NET services: handlers, middleware, validation, EF Core transactions and outbox, idempotency, error policies, logging, OpenTelemetry, and testing.
+description: Technical reference for WolverineFx in Clean Architecture .NET services (handlers, middleware, validation, EF Core transactions and outbox, idempotency, error policies, logging, OpenTelemetry, and testing).
 ---
 # WolverineFx Technical Reference (Clean Architecture)
 

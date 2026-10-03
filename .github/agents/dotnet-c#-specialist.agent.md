@@ -1,5 +1,5 @@
 ---
-name: ".NET C# Expert"
+name: dotnet-c#-specialist
 description: An agent designed to assist with software development tasks for .NET projects.
 # version: 2026-01-20a
 ---

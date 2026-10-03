@@ -1,7 +1,6 @@
 ---
 name: .NET Serilog Production Logger
 description: Design, review, and implement production-grade logging for .NET applications using Serilog.
-version: 2026-01-25
 ---
 
 ## .NET Serilog Production Logger Architect Mission 
