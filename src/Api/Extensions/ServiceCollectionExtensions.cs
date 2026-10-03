@@ -41,6 +41,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddWebApiConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
+        services
+            .AddOptions<WebApiConfigurationOptions>()
+            .BindConfiguration(WebApiConfigurationOptions.SectionName)
+            .Validate(options => !string.IsNullOrWhiteSpace(options.WebApiTitle), "WebApiTitle is required.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.WebApiVersion), "WebApiVersion is required.")
+            .ValidateOnStart();
+
         var webApiConfig = configuration
             .GetSection(WebApiConfigurationOptions.SectionName)
             .Get<WebApiConfigurationOptions>() ?? new();
