@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Api.Options;
+using NSwag;
 
 namespace Bitai.LDAPGateway.Api.Extensions;
 
@@ -33,6 +34,39 @@ public static class ServiceCollectionExtensions
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddWebApiConfiguration(this IServiceCollection services, IConfiguration configuration, out bool useSwaggerUI)
+    {
+        WebApiConfigurationOptions webApiConfig = configuration
+            .GetSection(WebApiConfigurationOptions.SectionName)
+            .Get<WebApiConfigurationOptions>() ?? new();
+
+        useSwaggerUI = webApiConfig.SwaggerUI;
+
+        services.AddOpenApiDocument(config =>
+        {
+            config.DocumentName = webApiConfig.WebApiName;
+
+            config.PostProcess = document =>
+            {
+                document.Info.Title = webApiConfig.WebApiTitle;
+                document.Info.Description = webApiConfig.WebApiDescription;
+                document.Info.Version = webApiConfig.WebApiVersion;
+                document.Info.Contact = new OpenApiContact
+                {
+                    Name = webApiConfig.WebApiContactName,
+                    Email = webApiConfig.WebApiContactMail,
+                    Url = webApiConfig.WebApiContactUrl
+                };
+                document.Info.License = new OpenApiLicense
+                {
+                    Name = webApiConfig.WebApiLicenseName
+                };
+            };
         });
 
         return services;
