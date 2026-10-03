@@ -39,13 +39,13 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddWebApiConfiguration(this IServiceCollection services, IConfiguration configuration, out bool useSwaggerUI)
+    public static IServiceCollection AddWebApiConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        WebApiConfigurationOptions webApiConfig = configuration
+        var webApiConfig = configuration
             .GetSection(WebApiConfigurationOptions.SectionName)
             .Get<WebApiConfigurationOptions>() ?? new();
 
-        useSwaggerUI = webApiConfig.SwaggerUI;
+        services.AddSingleton(webApiConfig);
 
         services.AddOpenApiDocument(config =>
         {
@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
                 {
                     Name = webApiConfig.WebApiContactName,
                     Email = webApiConfig.WebApiContactMail,
-                    Url = webApiConfig.WebApiContactUrl
+                    Url = new Uri(webApiConfig.WebApiContactUrl)
                 };
                 document.Info.License = new OpenApiLicense
                 {

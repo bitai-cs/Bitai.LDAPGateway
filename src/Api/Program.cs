@@ -40,17 +40,13 @@ builder.Services.AddControllers();
 builder.Services.ConfigureRouteConstraints();
 builder.Services.AddCorsConfiguration(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddWebApiConfiguration(builder.Configuration, out var useSwaggerUI);
+builder.Services.AddWebApiConfiguration(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (useSwaggerUI)
-{
-    app.UseOpenApi();
-    app.UseSwaggerUi();
-}
+app.UseSwaggerUiIfConfigured();
 
 app.UseHttpsRedirection();
 app.UseCors();
