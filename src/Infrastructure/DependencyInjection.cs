@@ -23,14 +23,14 @@ public static class DependencyInjection
 
         switch (adapterOptions.AdapterType)
         {
-            case "NovellLdapAdapter":
+            case LdapAdapterType.NovellLdapAdapter:
                 services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter>();
                 break;
-            case "MockAdapter":            
-                services.AddSingleton<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter>();
+            case LdapAdapterType.MockAdapter:
+                services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter>();
                 break;
-            default:               
-                throw new InvalidOperationException($"Unsupported adapter type: {adapterOptions.AdapterType}");     
+            default:
+                throw new InvalidOperationException($"Unsupported adapter type: {adapterOptions.AdapterType}");
         }
 
         services.AddScoped<IDirectoryServiceProvider, BitaiLdapHelperProvider>();
