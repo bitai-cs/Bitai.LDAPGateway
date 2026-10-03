@@ -1,6 +1,9 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPGateway.Infrastructure.Services;
+using Bitai.LDAPHelper.LdapAdapters;
+using Bitai.LDAPHelper.LdapAdapters.LdapHelperMock;
+using Bitai.LDAPHelper.LdapAdapters.Novell;
 using JasperFx.CodeGeneration.Frames;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,10 +35,10 @@ public static class DependencyInjection
         switch (adapterOptions.AdapterType)
         {
             case LdapAdapterType.NovellLdapAdapter:
-                services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter>();
+                services.AddScoped<ILdapConnectionFactoryAdapter, NovellLdapConnectionFactoryAdapter>();
                 break;
             case LdapAdapterType.MockAdapter:
-                services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter>();
+                services.AddScoped<ILdapConnectionFactoryAdapter, MockLdapPersistentConnectionFactoryAdapter>();
                 break;
             default:
                 throw new InvalidOperationException($"Unsupported adapter type: {adapterOptions.AdapterType}");
