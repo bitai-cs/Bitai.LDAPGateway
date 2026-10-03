@@ -6,7 +6,7 @@ public static class ApplicationBuilderExtensions
 {
     public static IApplicationBuilder UseSwaggerUiIfConfigured(this IApplicationBuilder app)
     {
-        var webApiConfig = app.Services.GetRequiredService<WebApiConfigurationOptions>();
+        var webApiConfig = app.ApplicationServices.GetRequiredService<WebApiConfigurationOptions>();
 
         if (webApiConfig.SwaggerUI)
         {

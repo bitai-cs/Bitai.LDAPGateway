@@ -17,6 +17,14 @@ public static class DependencyInjection
             .Validate(options => options.Count > 0, "At least one LDAP server profile must be configured.")
             .ValidateOnStart();
 
+        services
+            .AddOptions<ServiceConnectionAdapterOptions>()
+            .BindConfiguration(ServiceConnectionAdapterOptions.SectionName)
+            .Validate(options => options.AdapterType == LdapAdapterType.NovellLdapAdapter
+                || options.AdapterType == LdapAdapterType.MockAdapter,
+                "AdapterType must be either 'NovellLdapAdapter' or 'MockAdapter'.")
+            .ValidateOnStart();
+
         var adapterOptions = configuration
             .GetSection(ServiceConnectionAdapterOptions.SectionName)
             .Get<ServiceConnectionAdapterOptions>() ?? new();

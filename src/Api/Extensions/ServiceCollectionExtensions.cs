@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
                 {
                     Name = webApiConfig.WebApiContactName,
                     Email = webApiConfig.WebApiContactMail,
-                    Url = new Uri(webApiConfig.WebApiContactUrl)
+                    Url = webApiConfig.WebApiContactUrl
                 };
                 document.Info.License = new OpenApiLicense
                 {
