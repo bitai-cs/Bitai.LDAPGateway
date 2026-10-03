@@ -1,18 +1,26 @@
 ---
 name: wolverinefx
-description: Technical reference for WolverineFx in Clean Architecture .NET services (handlers, middleware, validation, EF Core transactions and outbox, idempotency, error policies, logging, OpenTelemetry, and testing).
+description: Rules and verified pitfalls for WolverineFx (Wolverine) in Clean Architecture .NET services. Use whenever the task involves UseWolverine, IMessageBus, InvokeAsync, message handlers (`*Handler` classes, Handle methods), cascading messages, FluentValidation or other Wolverine middleware, EF Core transactions, the durable inbox/outbox, idempotency or deduplication, error policies and retries, Wolverine logging or OpenTelemetry, codegen (`codegen write`, TypeLoadMode.Static), tracked-session tests, or replacing MediatR with Wolverine. Also use when reviewing code that touches any of these, even if the user only says "handler", "command/query" or "outbox".
 ---
 # WolverineFx Technical Reference (Clean Architecture)
 
-Use this skill before writing, changing or reviewing any code that uses Wolverine (WolverineFx). Source of truth: https://wolverinefx.net. Do not guess: when something here or in the codebase does not settle a decision, ask the user.
+Use this skill before writing, changing or reviewing any code that uses Wolverine (WolverineFx). Source of truth: https://wolverinefx.net. When neither this skill nor the codebase settles a decision, ask the user rather than guessing; a wrong guess in architecture or transaction behavior is expensive to undo.
+
+Detailed material lives in `references/` and is loaded only when needed:
+
+| File | Read when |
+| --- | --- |
+| `references/codegen-production.md` | Preparing for production, `codegen write`, `TypeLoadMode.Static`, startup errors about code generation, the CI gate for generated code |
+| `references/logging-and-results.md` | Configuring Wolverine logging, messages that carry secrets, failures returned as `Result` values |
+| `references/testing.md` | Writing or reviewing tests: handlers, tracked sessions, transports, host and discovery, persistence and outbox |
 
 Verify NuGet package ids and versions on NuGet before adding references. Target the current Wolverine major version unless the project pins another one, and confirm compatibility with the project's target framework before upgrading. ActiveMQ has no Wolverine transport in the documentation reviewed; RabbitMQ, Azure Service Bus and Kafka do. For any other broker or database, ask the user instead of improvising.
 
 ## 1. Wolverine boundary and project profile
 
-Domain NEVER references Wolverine. Domain events are plain records.
+The Domain does not reference Wolverine: that keeps business rules independent of the messaging framework. Domain events are plain records.
 
-How much Wolverine the Application layer may use is a design decision with two valid profiles; the Wolverine documentation pages reviewed (handlers, cascading messages, testing) do not prescribe layer rules. The USER must confirm the profile before you write or review code that touches Wolverine in Application (the `dotnet-clean-arch-specialist-w` agent's confirmation protocol applies; without the agent, ask the user, with pragmatic as the suggested default). Never assume it and never switch it silently.
+How much Wolverine the Application layer may use is a design decision with two valid profiles; the Wolverine documentation pages reviewed (handlers, cascading messages, testing) do not prescribe layer rules. Because the choice shapes every handler and cannot be inferred from the code, the user confirms the profile before you write or review code that touches Wolverine in Application. If the `dotnet-clean-arch-specialist-w` agent is in use, follow its confirmation protocol; otherwise ask directly, suggesting pragmatic as the default. Do not switch profiles silently once confirmed.
 
 | Profile | Application may reference | Typical use of it |
 | --- | --- | --- |
@@ -255,24 +263,7 @@ Before using Wolverine.HTTP's own mediator-style or inline-logic options, read t
 
 ### Code generation and production
 
-Wolverine generates the handler pipeline code. Source: https://wolverinefx.net/guide/codegen.
-
-- **Development (Dynamic, the default).** Handlers are compiled at runtime. From Wolverine 6.0 the runtime compiler is a separate package: with only `WolverineFx` the host fails at startup with `InvalidOperationException ... no IAssemblyGenerator (Roslyn) is registered` (verified in a new host on 6.44.0). Reference `WolverineFx.RuntimeCompilation` (same version as `WolverineFx`) in the host. The startup message `The Wolverine code generation mode is Dynamic` is informational.
-- **Production (Static, recommended by the docs).** Pre-generate the code and load it from the host assembly:
-
-```csharp
-opts.Services.CritterStackDefaults(x =>
-{
-    x.Production.GeneratedCodeMode = TypeLoadMode.Static;       // using JasperFx.CodeGeneration;
-    x.Production.AssertAllPreGeneratedTypesExist = true;
-});
-```
-
-- End `Program.cs` with `return await app.RunJasperFxCommands(args);` (`using JasperFx;`) instead of `app.Run();`, so `dotnet run -- codegen write` exists. Per the docs, `codegen write` blocks or fails if `Program.cs` reaches a database or broker before that line; defer infrastructure setup to hosted services.
-- `dotnet run --project <host> -- codegen write` (Debug build, where RuntimeCompilation is present) writes `Internal/Generated/WolverineHandlers` in the host project. The docs say to commit those files, and to delete the existing ones when handler signatures change or middleware is added or removed.
-- Make the runtime compiler Debug-only so Release has no Roslyn (the docs mention about 100 MB): `<PackageReference Include="WolverineFx.RuntimeCompilation" Version="..." Condition="'$(Configuration)' == 'Debug'" />`. Verified: the Release output had no Roslyn or RuntimeCompilation DLLs and, started with `ASPNETCORE_ENVIRONMENT=Production`, logged `code generation mode is Static with pre-generated types` and served requests.
-- **Stale generated code (verified).** Deleting a generated handler file breaks the build (`GeneratedHandlerRegistry.cs` references every handler type). Adding a handler without regenerating is NOT caught by `AssertAllPreGeneratedTypesExist`: the host boots (the registry log says it is skipping assembly scan) and the new message fails at runtime with `IndeterminateRoutesException`. In CI run `codegen write` and fail if `Internal/Generated` changes (`git diff --exit-code` plus an untracked-files check); regenerating twice produced no diff locally, but this gate was not run in a CI pipeline. Do not use `Auto` in production (docs).
-- `WebApplicationFactory<Program>` tests need `public partial class Program;` and, in Debug, the RuntimeCompilation package in the host.
+Wolverine generates the handler pipeline code at runtime by default. For production use Static mode with the generated code committed, and make `WolverineFx.RuntimeCompilation` Debug-only. Read `references/codegen-production.md` before touching `codegen write`, `TypeLoadMode`, `Program.cs` startup or the CI gate for generated code.
 
 ## 8. Error handling
 
@@ -299,68 +290,7 @@ Limits:
 
 ## 9. Logging
 
-Wolverine already logs message execution through `ILogger<TMessage>`; the category is the MESSAGE type, not the handler type, so filter log levels by message type. Do not write generic logging middleware; the one exception is failures returned as `Result` values (below). Never log passwords, tokens, secrets, connection strings or personal data unless explicitly required, and remember that Wolverine itself logs a failed message (below). Configure in the composition root:
-
-- `opts.Policies.MessageExecutionLogLevel(LogLevel)` and `opts.Policies.MessageSuccessLogLevel(LogLevel)`
-- `opts.Policies.LogMessageStarting(LogLevel)` to log the start of each execution
-- When used as an in-process mediator through `InvokeAsync()`, set `opts.InvokeTracing = InvokeTracingMode.Full;` otherwise inline invocations do not emit the same structured logs as transport-received messages.
-- Business context: `opts.Policies.ForMessagesOfType<IAccountMessage>().Audit(x => x.AccountId)` (direct member access only). Audited members go to logs and telemetry: never audit personal data or secrets.
-- Per-message overrides: use the policy API from the composition root; `[WolverineLogging]` on a message is allowed only under the pragmatic profile.
-
-### Secrets in failure logs (verified on WolverineFx 6.44.0)
-
-When a handler or validator throws, Wolverine logs `Invocation of <message.ToString()> failed!` at Error level. A message record that carries a secret as a plain member writes it in clear text: `Invocation of Register { User = alice, Password = S3cr3t-LeakCheck! } failed!`. This also happens when the secret comes from an inherited DTO. Masking needs no Wolverine reference, so it works under both profiles:
-
-```csharp
-public sealed record SetPasswordCommand(string User, string NewPassword)
-{
-    private bool PrintMembers(StringBuilder builder)       // record ToString uses it
-    {
-        builder.Append($"User = {User}, NewPassword = ***");
-        return true;
-    }
-};
-
-// A record deriving from a non-sealed record DTO that has the secret: override the virtual one.
-public sealed record CreateUserCommand(string Profile) : CreateUserDto
-{
-    protected override bool PrintMembers(StringBuilder builder)
-    {
-        builder.Append($"Profile = {Profile}, UserName = {UserName}, Password = ***");
-        return true;
-    }
-};
-```
-
-Search every message and the DTOs it inherits for `Password`, `Secret`, `Token`, `ApiKey` and `Credential` members, and add a test that a failing command does not write the value to the logs.
-
-### Failures returned as `Result` values (only if the codebase uses a Result type)
-
-A handler that returns a failed `Result` does not throw, so Wolverine treats it as a success: by default `InvokeAsync` logs nothing for it, and with `opts.InvokeTracing = InvokeTracingMode.Full` the log says `Successfully processed message ...` for a failed result (verified). If failures must be visible, log them from a middleware that reads the return value.
-
-An `After(Result result, ...)` parameter does NOT bind: Wolverine matches middleware parameters by exact type, so a handler returning `Result<T>` fails code generation with `UnResolvableVariableException ... unable to resolve a variable of type ...Result`. What works (verified for `Result` and `Result<T>` handlers) is an `IHandlerPolicy` that feeds the handler's own return variable to a method that is not named `After`/`Before`/`Finally`:
-
-```csharp
-public sealed class ResultLoggingPolicy : IHandlerPolicy
-{
-    public void Apply(IReadOnlyList<HandlerChain> chains, GenerationRules rules, IServiceContainer container)
-    {
-        foreach (var chain in chains.Where(c => c.MessageType.Namespace!.StartsWith("MyApp.Application")))
-        {
-            var rv = chain.Handlers.Last().ReturnVariable;
-            if (rv is null || !typeof(Result).IsAssignableFrom(rv.VariableType)) continue;
-
-            var call = new MethodCall(typeof(ResultLoggingMiddleware), nameof(ResultLoggingMiddleware.LogResult));
-            call.Arguments[0] = rv;                    // Result<T> passed to a Result parameter
-            chain.Postprocessors.Add(call);
-        }
-    }
-}
-// opts.Policies.Add<ResultLoggingPolicy>();
-// usings: JasperFx, JasperFx.CodeGeneration, JasperFx.CodeGeneration.Frames, Wolverine.Configuration, Wolverine.Runtime.Handlers
-```
-
-This uses Wolverine types, so under the purist profile (and by preference under pragmatic) both classes live in Infrastructure or the composition root and reference Application's `Result`. Restrict the policy by namespace so handlers that return `Task` are not touched. Check the namespaces on other Wolverine versions.
+Wolverine already logs message execution through `ILogger<TMessage>` (the category is the message type), so do not write generic logging middleware. Configure levels and tracing in the composition root (`MessageExecutionLogLevel`, `MessageSuccessLogLevel`, `InvokeTracing = InvokeTracingMode.Full` when using `InvokeAsync`). Wolverine logs `message.ToString()` when a handler fails, so a message that carries a secret must mask it. Failures returned as `Result` values are treated as success by Wolverine. Read `references/logging-and-results.md` for the configuration list, the masking pattern and the Result logging policy.
 
 ## 10. Observability
 
@@ -376,79 +306,7 @@ The meter is named `Wolverine:{ApplicationName}`, so the wildcard is required; a
 
 ## 11. Testing
 
-Tests mirror the layers. Everything labelled "verified" was run against WolverineFx 6.44.0 (xUnit, a class library with no Wolverine reference hosted by a project that calls `UseWolverine`); APIs and names can change between versions, so check them against the version in use.
-
-| Test project | What it tests | Wolverine in the test project |
-| --- | --- | --- |
-| Domain.UnitTests | entities, value objects, aggregates, domain events | none |
-| Application.UnitTests | handlers (instance or static), validators, plain middleware methods; no host | none (only under the pragmatic profile, if the handlers use Wolverine types) |
-| Infrastructure.IntegrationTests | persistence, outbox, real transports | `WolverineFx` |
-| Api / host integration tests | endpoints, host startup, discovery, cascades | `WolverineFx` (the tracking helpers live in the core package, namespace `Wolverine.Tracking`) |
-
-### 11.1 Handler unit tests (no host)
-
-Handlers are plain classes, so call them directly. Instance handlers get fakes for their Application abstractions; static handlers are pure functions that receive their dependencies as parameters. Both were verified:
-
-```csharp
-var (reply, placed) = new PlaceOrderHandler().Handle(new PlaceOrder(5));   // instance handler
-var pong = PingHandler.Handle(new Ping("a"));                              // static handler
-```
-
-- A handler that returns its effects (a tuple such as `(OrderReply, OrderPlaced)`) is asserted on its return value; do not mock the bus to check what it emits.
-- Middleware written as plain methods is unit tested by calling the method directly (e.g. a `LogResult(Result, ILogger)` method with a fake logger).
-
-### 11.2 Integration tests with tracked sessions
-
-Messages run asynchronously, so integration tests wait with tracked sessions (`using Wolverine.Tracking;`), never with `Task.Delay` or sleeps. Verified:
-
-- `host.InvokeMessageAndWaitAsync(message)` runs the handler inline and waits for the whole cascade; `host.SendMessageAndWaitAsync(message)` goes through the normal pipeline.
-- `host.TrackActivity().Timeout(TimeSpan.FromSeconds(10)).ExecuteAndWaitAsync(...)` for a custom session. Cast an async lambda explicitly, `(Func<IMessageContext, Task>)(async ctx => ...)`: `ExecuteAndWaitAsync` also accepts a `ValueTask` delegate and the plain lambda is ambiguous.
-- Assert on the session: `session.Sent.SingleMessage<OrderPlaced>()`, `session.Executed.SingleMessage<T>()`, `session.Scheduled.SingleMessage<T>()`. The session also exposes `Received`, `MessageSucceeded`, `MessageFailed`, `NoHandlers` and `NoRoutes`.
-- A handler that throws makes the tracked call throw (verified with `SendMessageAndWaitAsync`: an `AggregateException` carrying the handler's exception), so the test fails by default. For an expected failure use `TrackActivity().DoNotAssertOnExceptionsDetected()` and assert on `session.AllExceptions()`.
-- Sending a message with no handler or route throws `IndeterminateRoutesException`, even with `DoNotAssertOnExceptionsDetected`.
-- `DoNotAssertOnTimeout()` exists (XML docs): use it only to assert that something does NOT happen. A timeout normally means a message was never processed (no handler, wrong route), not that the timeout is short.
-- A scheduled message is asserted through `session.Scheduled`, without waiting for the real delay (verified with `ctx.ScheduleAsync(message, TimeSpan.FromMinutes(30))`). Abstract time behind `TimeProvider` when your own logic depends on it.
-
-### 11.3 Isolating transports and durability in tests
-
-- `services.RunWolverineInSoloMode()` and `services.DisableAllExternalWolverineTransports()` (extensions on `IServiceCollection`) start cleanly and tracked sessions work with both (verified). The XML docs say the second one is meant for integration tests that must not leave the process. `opts.StubAllExternalTransports()` exists for the same purpose when a transport package is configured (XML docs).
-- Do NOT use `DurabilityMode.MediatorOnly` in tests that use tracked sessions: `TrackActivity` throws `InvalidOperationException: This operation is not allowed with Wolverine is bootstrapped in MediatorOnly mode` (verified).
-- Keep two levels: most tests with transports disabled or stubbed (fast) and a small separate set against the real broker in a container, enabling external activity explicitly with `TrackActivity().IncludeExternalTransports()`.
-
-### 11.4 Host and HTTP tests
-
-- Bootstrap the real application with `WebApplicationFactory<Program>` or Alba so Wolverine resolves the correct application assembly and handler discovery. The host needs `public partial class Program;` and, in Debug, `WolverineFx.RuntimeCompilation` (section 7). In test processes that start several Wolverine hosts, set `opts.ApplicationAssembly` explicitly or include the handler assembly, because discovery can otherwise silently differ between hosts.
-- Reuse one factory per class or collection fixture: starting the host is expensive.
-- `JasperFxEnvironment.AutoStartHost` (`JasperFx.CommandLine`) was not needed: a `WebApplicationFactory<Program>` host started Wolverine exactly once with and without it. Add it only if a double start is observed.
-- To assert logs (success, failure, secrets not leaked) add an `ILoggerProvider` that implements `ISupportExternalScope` and expand dictionary scopes when printing them (a `Dictionary` scope prints its type name). Tests must not depend on git-ignored local configuration such as `appsettings.Development.json`: discover valid ids through the API or override configuration in the test host. Drop the log entries produced by setup requests before asserting that something did not happen.
-
-### 11.5 Persistence and outbox
-
-- Integration tests that touch persistence or the outbox use xUnit with Testcontainers and a real database engine matching production, not an in-memory substitute, so the transactional behavior is real.
-- Isolate state: each test creates its own data (unique ids) or the database is cleaned between tests; the outbox, in-memory queues and the database persist across tests otherwise. Test classes that share a database run in the same xUnit collection (no parallelism between them). Apply EF Core migrations or create the schema before the host starts.
-
-### 11.6 Host startup and discovery
-
-Test that the host boots and that every message type has a handler: it catches a missing `IncludeAssembly(...)` immediately. `IWolverineRuntime` does not expose the handler graph; the concrete `WolverineRuntime` does (verified):
-
-```csharp
-using Wolverine.Runtime;
-var graph = ((WolverineRuntime)host.Services.GetRequiredService<IWolverineRuntime>()).Handlers;
-Assert.True(graph.CanHandle(typeof(PlaceOrder)));      // also graph.AllMessageTypes(), graph.Chains
-```
-
-The negative case was verified too: a host without `IncludeAssembly` for the handler assembly reports `CanHandle(typeof(PlaceOrder)) == false`. Enumerate the command and query types of the Application assembly and assert each one.
-
-### 11.7 What a Wolverine solution must always test
-
-1. The host boots and discovers a handler for every command and query (11.6).
-2. Each cascading flow and scheduled message through a tracked session (11.2).
-3. An invalid command is rejected (400 at the HTTP edge) and its handler does not run (section 3).
-4. Failures returned as `Result` values are logged by the policy-attached method, if the codebase uses a Result type (section 9).
-5. A failing command does not write secrets to the logs (section 9).
-6. A message with no handler fails with `IndeterminateRoutesException`.
-7. Generated code is up to date: CI regenerates and fails on any change (section 7).
-8. The confirmed Wolverine profile (section 1) with an ArchUnitNET test: Domain does not reference Wolverine; under purist Application does not either, under pragmatic it references no Wolverine package other than the core one; Domain does not reference Application, Infrastructure or Presentation; handlers are public and end with `Handler`.
+Tests mirror the layers: Domain and Application unit tests need no Wolverine host; integration and host tests use tracked sessions (`Wolverine.Tracking`) and never sleeps. Read `references/testing.md` for handler unit tests, tracked sessions, transport isolation, host and discovery tests, persistence and outbox tests, and the list of what a Wolverine solution must always test.
 
 ## 12. Wolverine review checklist
 
