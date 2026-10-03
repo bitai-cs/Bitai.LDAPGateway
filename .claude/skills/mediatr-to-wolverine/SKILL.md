@@ -151,7 +151,7 @@ A request typed `IRequest<Result>` (Result pattern, non-generic `Result`) **does
 
 Explicit type arguments need their `using`s at the call site: controllers now reference `Result<...>` and every response DTO, plus `using Wolverine;`. Build the request → response map from the original `IRequest<T>` declarations (a small script works), and handle by hand any call that passes a variable (`Send(command, ct)`) instead of `new X(...)`.
 
-Always pass the response type explicitly to `InvokeAsync<T>` when the caller uses the result. `T` must exactly match the handler's return type. Calling the non-generic `InvokeAsync` on a handler that returns an object makes Wolverine treat that object as a **cascading message**, not a return value.
+Always pass the response type explicitly to `InvokeAsync<T>` when the caller uses the result. `T` must be compatible with the handler's declared return type: a base type or interface works, but an unrelated `T` returns `null` silently with no exception, so keep `T` equal to the declared return type. Calling the non-generic `InvokeAsync` on a handler that returns an object makes Wolverine treat that object as a **cascading message**, not a return value.
 
 **Classify every `Send` call — don't replace them all mechanically.** Record each in a table (call site → request/response, command, or event → chosen API):
 

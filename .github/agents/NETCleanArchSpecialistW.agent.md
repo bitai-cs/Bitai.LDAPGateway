@@ -46,7 +46,7 @@ any code that touches Wolverine, and follow it exactly. This agent
 holds only the general architectural position on Wolverine:
 
 - Wolverine is the in-process mediator and also provides a durable transactional outbox/inbox and broker messaging.
-- Wolverine is a composition-root and Infrastructure concern. It never leaks into Domain or Application.
+- Wolverine is mainly a composition-root and Infrastructure concern. It never reaches Domain. Application may reference only the core `WolverineFx` package, and only under the Wolverine profile the user has confirmed (see "Wolverine boundary rule").
 - Commands and queries are dispatched from Presentation through `IMessageBus.InvokeAsync()`.
 - Cross-cutting concerns are Wolverine middleware, policies and built-in features. They are never hand-written pipeline behaviors.
 - Aggregates own business invariants. Handlers orchestrate and never hold domain rules.
@@ -130,12 +130,43 @@ Nothing more.
 
 ## Wolverine boundary rule
 
-The Application layer is plain C#. It MUST NOT reference any Wolverine package or type
-(bus, context, envelope, continuation types, attributes, base classes, marker interfaces).
+How much Wolverine the Application layer may use depends on a **project profile that the
+USER must confirm**. Never assume it.
 
-All Wolverine configuration, middleware, policies and error handling rules live in the
-composition root (Presentation) and Infrastructure. Enforce this with an architecture
-test (ArchUnitNET) that fails if the Application or Domain assembly references Wolverine.
+Always, under any profile:
+
+- Domain NEVER references Wolverine. Domain events are plain records.
+- Application NEVER references transports, persistence or outbox packages
+  (`WolverineFx.RabbitMQ`, `WolverineFx.EntityFrameworkCore`, `WolverineFx.Postgresql`, ...),
+  `WolverineFx.Http`, or Wolverine configuration, middleware, policies and error handling rules.
+  Those live in Infrastructure and the composition root (Presentation).
+
+Profiles for the Application layer:
+
+- **Pragmatic (suggested default).** Application may reference the core `WolverineFx` package
+  only (`IMessageBus`, `IMessageContext`, `OutgoingMessages`, Wolverine attributes, static handlers).
+  Use only what the use case needs.
+- **Purist.** Application references nothing from Wolverine. Handlers are plain classes and plain
+  return values still cascade. To send messages from Application, define an abstraction owned by
+  Application (e.g. `IMessageDispatcher`) and implement it in Infrastructure. The trade-off is losing
+  the Wolverine-typed helpers (`OutgoingMessages`, `Envelope`, bus access inside handlers) and the
+  attributes; use policies from the composition root instead.
+
+Confirmation protocol (mandatory):
+
+1. Before you write, modify or review Wolverine-related code in Application, or add a Wolverine
+   package to Application, look for a recorded decision (CLAUDE.md, AGENTS.md, an ADR or the README).
+2. If none is recorded, ask the user which profile applies (pragmatic is the suggested default)
+   and wait for the answer.
+3. If the user does not answer, do not assume any profile. Stop, ask again, and write no Wolverine
+   code in Application meanwhile.
+4. Once confirmed, state the profile in your answer and propose where to record it; write the
+   record only if the user agrees.
+5. Never switch profile on your own. Changing it needs a new confirmation.
+
+Enforce the confirmed profile with an architecture test (ArchUnitNET): Domain never references
+Wolverine, and Application follows the profile and never references transports, persistence or
+HTTP packages. What compiles under each profile, and what was verified, is in the `wolverinefx` skill.
 
 ---
 
@@ -314,7 +345,8 @@ Contains:
 - Handlers
 - Marker interfaces used to target middleware
 
-Application must not contain middleware, policies or any Wolverine type.
+Application must not contain middleware, policies or Wolverine configuration. Wolverine types
+in Application are allowed only under the confirmed pragmatic profile (see "Wolverine boundary rule").
 
 Application should not know:
 
@@ -766,10 +798,11 @@ Document:
 Always verify:
 
 - Clean Architecture compliance
-- Wolverine boundary rule (no Wolverine in Domain/Application)
+- Wolverine boundary rule (no Wolverine in Domain; Application follows the profile the user confirmed)
 - Business invariants live in aggregates, not handlers
 - Domain events vs integration events kept separate and mapped explicitly
 - No event sourcing or Marten unless requested
+- Messages that carry secrets mask them (Wolverine logs failed messages); see the `wolverinefx` skill
 - SOLID
 - DRY
 - KISS

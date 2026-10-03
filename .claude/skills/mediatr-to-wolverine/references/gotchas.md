@@ -16,7 +16,7 @@ Diagnose any of these with `Console.WriteLine(opts.DescribeHandlerMatch(typeof(S
 ## Invocation semantics
 
 7. **Missing type argument.** `InvokeAsync(query)` instead of `InvokeAsync<T>(query)` returns nothing and *cascades* the result as a message.
-8. **Type argument mismatch.** `InvokeAsync<T>` requires `T` to be the handler's return type exactly (e.g. handler returns `List<OrderDto>`, caller asks for `IReadOnlyList<OrderDto>` → failure). Fix the handler signature or the call.
+8. **Type argument mismatch.** An assignable `T` (a base class or interface of the handler's return type, e.g. `IReadOnlyList<OrderDto>` for a handler returning `List<OrderDto>`) works. An unrelated `T` returns `null` silently, with no exception (verified on 6.44.0). Keep `T` equal to the handler's declared return type and assert non-null in tests.
 9. **Tuple / `IEnumerable<object>` / `object` returns** are interpreted as multiple cascading messages, not a response. Wrap in a record.
 10. **More than one handler for a request.** MediatR allowed exactly one `IRequestHandler` per request; Wolverine runs *all* discovered handlers for a message type. Leftover or duplicated handlers will both run.
 11. **Zero handlers for a former notification** → error with `InvokeAsync` (MediatR no-op). See `notifications.md`.
