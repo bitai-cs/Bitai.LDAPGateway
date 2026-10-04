@@ -174,6 +174,69 @@ using (LogContext.PushProperty("TenantId", tenantId))
 
 Requires `.Enrich.FromLogContext()` on the logger configuration.
 
+### Correlation and Trace Context
+
+Propagate a trusted correlation ID at the HTTP boundary so every event generated
+while handling a request can be joined across services. Preserve an existing
+header when it is valid; otherwise generate a new value. Also record the W3C
+trace ID when tracing is active.
+
+```csharp
+using System.Diagnostics;
+using Serilog.Context;
+
+app.Use(async (httpContext, next) =>
+{
+    var correlationId = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(correlationId) ||
+        correlationId.Length > 128 ||
+        correlationId.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not '-' and not '_'))
+    {
+        correlationId = Guid.NewGuid().ToString("N");
+    }
+
+    httpContext.Response.Headers["X-Correlation-ID"] = correlationId;
+
+    using (LogContext.PushProperty("CorrelationId", correlationId))
+    using (LogContext.PushProperty(
+        "TraceId", Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier))
+    {
+        await next();
+    }
+});
+```
+
+Place this before request logging and application middleware. Forward
+`X-Correlation-ID` on outgoing service calls, but validate or replace
+untrusted values to avoid log injection and unbounded property sizes.
+
+### Asynchronous Sinks and Hot Paths
+
+Use a sink's native batching when available. For slow, non-audit sinks that do
+not provide it, `Serilog.Sinks.Async` can isolate application request threads
+from sink I/O:
+
+```csharp
+using Serilog.Debugging;
+
+SelfLog.Enable(Console.Error);
+
+.WriteTo.Async(
+    sink => sink.File("logs/app-.log", rollingInterval: RollingInterval.Day),
+    bufferSize: 10_000,
+    blockWhenFull: false)
+```
+
+`blockWhenFull: false` preserves application responsiveness but can drop events
+when the buffer is exhausted; monitor `SelfLog` and choose a buffer size based
+on the acceptable loss window. `blockWhenFull: true` avoids drops but can
+increase request latency during a sink outage. Do not wrap `AuditTo` sinks:
+audit events are intentionally synchronous and failures must remain visible.
+
+In hot paths, avoid expensive value construction, broad object destructuring,
+and per-item information logs. Prefer aggregate events, appropriate log levels,
+and `[LoggerMessage]` methods for frequently executed messages.
+
 ### OpenTelemetry Sink (OTLP Export)
 
 Export Serilog events directly to any OTLP backend without the OpenTelemetry SDK:
@@ -254,6 +317,23 @@ logger.LogInformation("Login: {Email} with password {Password}", email, password
 logger.LogInformation("Login: {Email}", email);
 ```
 
+### Don't Log Exceptions as Properties
+
+```csharp
+// BAD — the exception is an ordinary property; the stack trace may be absent.
+logger.LogError("Could not process order {OrderId}: {Exception}", orderId, ex);
+
+// GOOD — pass the exception as the first argument.
+logger.LogError(ex, "Could not process order {OrderId}", orderId);
+```
+
+### Don't Let Non-Audit Sink Failures Go Unobserved
+
+Async buffers and networked sinks can fill or fail while the application
+continues running. Enable and monitor Serilog `SelfLog`, decide explicitly
+whether event loss or caller blocking is acceptable, and test the selected
+behavior under sink outage.
+
 ### Don't Destructure Without Limits
 
 ```csharp
@@ -283,6 +363,31 @@ logger.LogInformation("Request: {@Request}", httpContext.Request);
     opts.DataStream = new DataStreamName("logs", "myapp"))
 ```
 
+### Minimize Sensitive Identifiers
+
+Do not log raw secrets, tokens, passwords, or PII. When operations need to be
+correlated by a sensitive identifier, log a keyed fingerprint instead of the
+source value; store the key in a secret store and rotate it according to the
+organization's policy.
+
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+
+static string Fingerprint(string value, byte[] key) =>
+    Convert.ToHexString(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value)));
+
+logger.LogInformation("Login failed for {UserFingerprint}",
+    Fingerprint(email, fingerprintKey));
+```
+
+For audit events that must be written before the caller continues, use
+`AuditTo`. Unlike ordinary sinks, audit sink failures propagate to the caller:
+
+```csharp
+.AuditTo.File("logs/audit-.log", rollingInterval: RollingInterval.Day)
+```
+
 ## Decision Guide
 
 | Scenario | Recommendation |
@@ -292,8 +397,11 @@ logger.LogInformation("Request: {@Request}", httpContext.Request);
 | Log storage (production) | Seq, Elasticsearch (Elastic sink), or OTLP backend |
 | Request logging | `UseSerilogRequestLogging()` (replaces per-request noise) |
 | Scoped properties | `LogContext.PushProperty()` in middleware |
+| Cross-service correlation | Validate or create a correlation ID; enrich it with the active trace ID |
 | Log filtering | `Serilog.Expressions` for expression-based filtering |
 | High-performance paths | `[LoggerMessage]` source generator |
 | Audit trails | `AuditTo` (synchronous, exceptions propagate) |
+| Slow or remote non-audit sink | Prefer native batching; otherwise use a bounded async wrapper and monitor `SelfLog` |
+| Sensitive identifier correlation | Log a keyed HMAC fingerprint, never the raw identifier |
 | Log levels by environment | `MinimumLevel.Override` per namespace in appsettings |
 | OpenTelemetry integration | `Serilog.Sinks.OpenTelemetry` (no SDK dependency) |
