@@ -2,7 +2,7 @@
 
 Read when: writing or reviewing tests for handlers, middleware, host startup, tracked sessions, transports or the outbox.
 
-Tests mirror the layers. Everything labelled "verified" was run against WolverineFx 6.44.0 (xUnit, a class library with no Wolverine reference hosted by a project that calls `UseWolverine`); APIs and names can change between versions, so check them against the version in use.
+Tests mirror the layers. Everything labelled "verified" was run as described in the verification note at the top of SKILL.md; APIs and names can change between versions, so check them against the version in use.
 
 | Test project | What it tests | Wolverine in the test project |
 | --- | --- | --- |

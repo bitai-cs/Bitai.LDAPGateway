@@ -4,7 +4,7 @@ Read when: preparing a Wolverine host for production, running `codegen write`, o
 
 Wolverine generates the handler pipeline code. Source: https://wolverinefx.net/guide/codegen.
 
-- **Development (Dynamic, the default).** Handlers are compiled at runtime. From Wolverine 6.0 the runtime compiler is a separate package: with only `WolverineFx` the host fails at startup with `InvalidOperationException ... no IAssemblyGenerator (Roslyn) is registered` (verified in a new host on 6.44.0). Reference `WolverineFx.RuntimeCompilation` (same version as `WolverineFx`) in the host. The startup message `The Wolverine code generation mode is Dynamic` is informational.
+- **Development (Dynamic, the default).** Handlers are compiled at runtime. From Wolverine 6.0 the runtime compiler is a separate package: with only `WolverineFx` the host fails at startup with `InvalidOperationException ... no IAssemblyGenerator (Roslyn) is registered` (verified in a new host). Reference `WolverineFx.RuntimeCompilation` (same version as `WolverineFx`) in the host. The startup message `The Wolverine code generation mode is Dynamic` is informational.
 - **Production (Static, recommended by the docs).** Pre-generate the code and load it from the host assembly:
 
 ```csharp

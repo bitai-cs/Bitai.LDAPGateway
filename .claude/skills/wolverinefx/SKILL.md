@@ -14,7 +14,9 @@ Detailed material lives in `references/` and is loaded only when needed:
 | `references/logging-and-results.md` | Configuring Wolverine logging, messages that carry secrets, failures returned as `Result` values |
 | `references/testing.md` | Writing or reviewing tests: handlers, tracked sessions, transports, host and discovery, persistence and outbox |
 
-Verify NuGet package ids and versions on NuGet before adding references. Target the current Wolverine major version unless the project pins another one, and confirm compatibility with the project's target framework before upgrading. ActiveMQ has no Wolverine transport in the documentation reviewed; RabbitMQ, Azure Service Bus and Kafka do. For any other broker or database, ask the user instead of improvising.
+Verify NuGet package ids and versions on NuGet before adding references. Target the current Wolverine major version unless the project pins another one, and confirm compatibility with the project's target framework before upgrading. The transports page (https://wolverinefx.net/guide/messaging/transports/) lists RabbitMQ, Azure Service Bus, Amazon SQS and SNS, Google Pub/Sub, Kafka, Pulsar, NATS, MQTT, Redis, SignalR and database-backed transports (SQL Server, PostgreSQL, MySQL, SQLite). ActiveMQ is not among them. Check that page for the broker in use, and if it is not listed, ask the user instead of improvising.
+
+Claims marked "verified" were checked by running code against WolverineFx 6.44.0 (xUnit, a class library with no Wolverine reference hosted by a project that calls `UseWolverine`). Names and behavior can change between versions: re-check them against the version the project uses, especially after an upgrade.
 
 ## 1. Wolverine boundary and project profile
 
@@ -33,7 +35,7 @@ Under both profiles:
 - All Wolverine configuration, middleware, policies and error handling rules live in the composition root (Presentation) and Infrastructure. Prefer Infrastructure or Presentation for middleware classes even where the pragmatic profile would allow them in Application.
 - Enforce the confirmed profile with an ArchUnitNET test: Domain never references Wolverine; under purist neither does Application; under pragmatic Application references no Wolverine package other than the core one.
 
-### What works with zero Wolverine references (verified on WolverineFx 6.44.0)
+### What works with zero Wolverine references (verified)
 
 Checked in a class library with no Wolverine reference, hosted by a project that calls `UseWolverine` with `IncludeAssembly` for that library:
 
@@ -63,18 +65,18 @@ Dependencies point inward: Presentation and Infrastructure depend on Application
 
 Wolverine discovers handlers by convention:
 
-- Public, concrete classes whose name ends with `Handler` (e.g. `CreateUserCommandHandler`); the Wolverine docs also list the `Consumer` suffix. Instance handlers with constructor injection of Application abstractions are the default. Static handler classes and static methods are supported and, on 6.44.0, were discovered by name without `[WolverineHandler]`; use them when the codebase convention or a pure-function handler benefits, and use `[WolverineHandler]` (pragmatic profile only) when the naming does not fit.
+- Public, concrete classes whose name ends with `Handler` (e.g. `CreateUserCommandHandler`); the Wolverine docs also list the `Consumer` suffix. Instance handlers with constructor injection of Application abstractions are the default. Static handler classes and static methods are supported and were verified to be discovered by name without `[WolverineHandler]`; use them when the codebase convention or a pure-function handler benefits, and use `[WolverineHandler]` (pragmatic profile only) when the naming does not fit.
 - Public instance methods named `Handle` / `HandleAsync`. The first parameter is the message.
 - Constructor injection and method injection are both allowed. Prefer constructor injection of Application abstractions.
-- No marker interfaces on messages or handlers. No open generic handlers.
+- Messages and handlers need no marker interface; the docs offer `IWolverineHandler` or `[WolverineHandler]` only as an explicit alternative to naming conventions. Open generic handlers are not supported by Wolverine (stated in the discovery docs).
 - Discovery scans an allow list of assemblies, by default only the host (application) assembly. Handlers live in the Application assembly, so add it in the composition root:
   `opts.Discovery.IncludeAssembly(typeof(IApplicationAssemblyMarker).Assembly);`
 - If a handler is not found, diagnose with `opts.DescribeHandlerMatch(typeof(X))`.
 - Callers dispatch with `IMessageBus.InvokeAsync<TResponse>(message, ct)` from Presentation or Infrastructure; from Application only under the pragmatic profile, and under purist through an abstraction owned by Application (e.g. `IMessageDispatcher`) implemented in Infrastructure.
 - Each handler coordinates only: business logic, persistence through repository abstractions, domain events or messages to emit, and the return value. Validation, authorization, logging, transactions and retries are middleware and policies, not handler code.
-- When a handler must both return a response to the caller and emit messages, a plain tuple `(Response, Message)` was verified on 6.44.0 (`InvokeAsync<Response>` returns the response and the message cascades). For any other shape, do not guess: read the Wolverine return-values docs or ask the user.
+- When a handler must both return a response to the caller and emit messages, a plain tuple `(Response, Message)` was verified (`InvokeAsync<Response>` returns the response and the message cascades). For any other shape, do not guess: read the Wolverine return-values docs or ask the user.
 
-### `InvokeAsync` pitfalls (verified on WolverineFx 6.44.0)
+### `InvokeAsync` pitfalls (verified)
 
 - A message with no handler or route: `InvokeAsync` throws `IndeterminateRoutesException`.
 - Non-generic `InvokeAsync(message)` on a handler that returns a value gives nothing to the caller: the returned value is routed as a cascading message (the log shows `No routes can be determined for Envelope ... (<ReturnType>)` when nobody handles it). Use `InvokeAsync<TResponse>` whenever the caller needs the result. A `Result`-style return value counts as a value.
@@ -98,7 +100,7 @@ Use the `WolverineFx.FluentValidation` middleware. Validators run BEFORE the han
 - Avoid validators with IoC dependencies; they can force service location in generated code. Do infrastructure-dependent checks (e.g. uniqueness) in the handler through an Application abstraction.
 - The middleware is applied only to message types that have registered validators.
 - Wolverine.HTTP: use the HTTP FluentValidation ProblemDetails middleware (`UseFluentValidationProblemDetailMiddleware()` inside `MapWolverineEndpoints`).
-- With `InvokeAsync()` the `ValidationException` propagates to the caller and is mapped to 400 by the centralized exception handler. For broker-received messages, Wolverine's registration discards them on `ValidationException`.
+- With `InvokeAsync()` the `ValidationException` propagates to the caller and is mapped to 400 by the centralized exception handler. For messages received from a queue or broker, `opts.UseFluentValidation()` also registers an error handling policy that discards a message when `ValidationException` is thrown: invalid messages are not retried and do not reach an error queue.
 
 ## 4. Middleware
 
@@ -208,14 +210,14 @@ public void Place()
 }
 ```
 
-Wolverine then scrapes the events inside the transaction (requires the EF Core transactional middleware):
+Wolverine then scrapes the events inside the transaction (requires the EF Core transactional middleware). This registration is NOT verified with the read-only accessor above; the docs only show the documented form `public List<object> Events { get; } = new();`:
 
 ```csharp
 opts.PublishDomainEventsFromEntityFrameworkCore<AggregateRoot>(x => x.Events);
 ```
 
-- The Wolverine docs show the accessor as `List<object> Events` and a parameterless `PublishDomainEventsFromEntityFrameworkCore()` overload. Whether a read-only `IReadOnlyCollection<IDomainEvent>` accessor compiles against the version in use is not confirmed by the docs reviewed: check it, and ask the user if it does not.
-- The docs reviewed do not state whether Wolverine clears the collection after publishing. Ask the user before adding a clearing method to the aggregate.
+- The docs (https://wolverinefx.net/guide/durability/efcore/domain-events.html) show three overloads: `<TEntity>(x => x.Events)`, `<TEntity>()` (a scoped `OutgoingDomainEvents` buffer with `IEventPublisher`) and a non-generic one. Whether a read-only `IReadOnlyCollection<IDomainEvent>` accessor compiles and scrapes correctly against the version in use is not confirmed: test it before relying on it, and if it does not work, tell the user and agree on an alternative (for example the `<TEntity>()` buffer overload) instead of silently changing the Domain.
+- The docs do not state whether Wolverine clears the collection after publishing. Ask the user before adding a clearing method to the aggregate.
 - Scraping depends completely on the EF Core transactional middleware. Before Wolverine 6.41 it ran only on the `Eager` path and silently did nothing for `Lightweight` handlers. Check the version in use.
 - The domain does not know who consumes its events.
 

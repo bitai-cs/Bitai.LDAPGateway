@@ -10,7 +10,7 @@ Wolverine already logs message execution through `ILogger<TMessage>`; the catego
 - Business context: `opts.Policies.ForMessagesOfType<IAccountMessage>().Audit(x => x.AccountId)` (direct member access only). Audited members go to logs and telemetry: never audit personal data or secrets.
 - Per-message overrides: use the policy API from the composition root; `[WolverineLogging]` on a message is allowed only under the pragmatic profile.
 
-### Secrets in failure logs (verified on WolverineFx 6.44.0)
+### Secrets in failure logs (verified)
 
 When a handler or validator throws, Wolverine logs `Invocation of <message.ToString()> failed!` at Error level. A message record that carries a secret as a plain member writes it in clear text: `Invocation of Register { User = alice, Password = S3cr3t-LeakCheck! } failed!`. This also happens when the secret comes from an inherited DTO. Masking needs no Wolverine reference, so it works under both profiles:
 
