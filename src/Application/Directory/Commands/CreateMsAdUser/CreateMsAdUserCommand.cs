@@ -17,25 +17,6 @@ public sealed record CreateMsAdUserCommand(
       return true;
    }
 };
-// public sealed record CreateMsAdUserCommand(
-//    string ServerProfile,
-//    CatalogType CatalogType,
-//    string DistinguishedName,
-//    string DistinguishedNameOfContainer,
-//    string GivenName,
-//    string Surname,
-//    string CommonName,
-//    string Name,
-//    string DisplayName,
-//    string Description,
-//    string[] ObjectClass,
-//    string SamAccountName,
-//    string UserPrincipalName,
-//    string UserAccountControl,
-//    string Department,
-//    string TelephoneNumber,
-//    string Mail,
-//    string Password) : IRequest<Result<LdapEntryDto>>;
 
 public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsAdUserCommand>
 {

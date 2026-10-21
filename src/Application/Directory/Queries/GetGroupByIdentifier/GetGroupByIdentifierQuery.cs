@@ -12,7 +12,7 @@ public sealed record GetGroupByIdentifierQuery(
    LdapIdentifierAttribute IdentifierAttribute,
    string Identifier,
    LdapEntryAttributeSet RequiredAttributeSet,
-   bool UserMustExists);
+   bool GroupMustExists);
 
 public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGroupByIdentifierQuery>
 {
@@ -49,7 +49,7 @@ public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase
             return result;
         }
 
-        if (request.UserMustExists)
+        if (request.GroupMustExists)
             return Result<LdapEntryDto?>.Failure(Error.NotFound($"Group not found in the catalog for {request.IdentifierAttribute}={request.Identifier}"));
         else
             return result;

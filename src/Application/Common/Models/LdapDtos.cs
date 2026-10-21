@@ -38,12 +38,21 @@ public sealed record LdapEntryDto
     public string? userAccountControl { get; init; }
 }
 
-public record CreateMsAdUserDto: Bitai.LDAPHelper.DTO.LDAPMsADUserAccount
+public record CreateMsAdUserDto
 {
-    public CreateMsAdUserDto() : base() { }
+    private const string DefaultUserAccountControl = "NORMAL_ACCOUNT,DONT_EXPIRE_PASSWORD";
+
+    public CreateMsAdUserDto()
+    {
+        UserAccountControl = DefaultUserAccountControl;
+    }
 
     public CreateMsAdUserDto(string distinguishedNameOfContainer)
-        : base(distinguishedNameOfContainer) { }
+        : this()
+    {
+        DistinguishedNameOfContainer = distinguishedNameOfContainer
+            ?? throw new ArgumentNullException(nameof(distinguishedNameOfContainer));
+    }
 
     public CreateMsAdUserDto(
         string distinguishedNameOfContainer,
@@ -62,9 +71,45 @@ public record CreateMsAdUserDto: Bitai.LDAPHelper.DTO.LDAPMsADUserAccount
         string? telephoneNumber = null,
         string? mail = null,
         string? password = null)
-        : base(distinguishedNameOfContainer, givenName, sn, cn, name, displayName, description,
-               distinguishedName, objectClass, samAccountName, userPrincipalName, userAccountControl,
-               department, telephoneNumber, mail, password) { }
+        : this(distinguishedNameOfContainer)
+    {
+        GivenName = givenName;
+        Sn = sn;
+        Cn = cn;
+        Name = name;
+        DisplayName = displayName;
+        Description = description;
+        DistinguishedName = distinguishedName;
+        ObjectClass = objectClass;
+        SAMAccountName = samAccountName;
+        UserPrincipalName = userPrincipalName;
+        Department = department;
+        TelephoneNumber = telephoneNumber;
+        Mail = mail;
+        Password = password;
+
+        if (userAccountControl is not null)
+        {
+            UserAccountControl = userAccountControl;
+        }
+    }
+
+    public string? DistinguishedNameOfContainer { get; init; }
+    public string? GivenName { get; init; }
+    public string? Sn { get; init; }
+    public string? Cn { get; init; }
+    public string? Name { get; init; }
+    public string? DisplayName { get; init; }
+    public string? Description { get; init; }
+    public string? DistinguishedName { get; init; }
+    public string[]? ObjectClass { get; init; }
+    public string? SAMAccountName { get; init; }
+    public string? UserPrincipalName { get; init; }
+    public string? UserAccountControl { get; init; }
+    public string? Department { get; init; }
+    public string? TelephoneNumber { get; init; }
+    public string? Mail { get; init; }
+    public string? Password { get; init; }
 }
 
 public sealed record LdapServerProfileDto(
