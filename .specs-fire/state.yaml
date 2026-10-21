@@ -1,0 +1,19 @@
+project:
+  name: "Bitai.LDAPGateway"
+  description: "Stateless REST gateway exposing configured LDAP server profiles (authentication, search, entry retrieval, MS AD provisioning)"
+  created: "2026-10-21T00:00:00Z"
+  fire_version: "0.1.8"
+
+workspace:
+  type: brownfield
+  structure: monolith
+  autonomy_bias: balanced
+  run_scope_preference: single
+  run_scope_history: []
+  scanned_at: "2026-10-21T00:00:00Z"
+
+intents: []
+
+runs:
+  active: []
+  completed: []
