@@ -799,6 +799,8 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             ? ResolveLdapEntryAttribute(secondaryFilterAttribute.Value)
             : (EntryAttribute?)null;
 
+        var resolvedRequiredAttributes = ResolveRequiredEntryAttributes(requiredAttributeSet);
+
         try
         {
             var requestLabel = nameof(BitaiLdapHelperProvider);
@@ -818,7 +820,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 _ldapConnectionFactoryAdapter);
 
             var searchResult = await searcher
-                .SearchEntriesAsync(combinedFilter, RequiredEntryAttributes.Few, requestLabel)
+                .SearchEntriesAsync(combinedFilter, resolvedRequiredAttributes, requestLabel)
                 .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -1144,9 +1146,6 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
         LdapEntryAttributeSet requiredAttributeSet,
         CancellationToken cancellationToken)
     {
-        string methodCodeName = "get-users";
-        string methodFriendlyName = "to get LDAP user entries";
-
         cancellationToken.ThrowIfCancellationRequested();
 
         if (ldapServerProfile is null)

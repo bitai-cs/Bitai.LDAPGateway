@@ -206,7 +206,7 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _bus.InvokeAsync<Result<LdapEntryDto?>>(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, UserMustExists: true), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<LdapEntryDto?>>(new GetGroupByIdentifierQuery(serverProfile, catalogType, identifierAttribute, identifier, requiredAttributeSet, GroupMustExists: true), cancellationToken);
 
         return this.ToActionResult(result);
     }
