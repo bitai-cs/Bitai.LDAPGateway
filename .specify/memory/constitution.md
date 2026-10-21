@@ -74,6 +74,6 @@ semantic intent: MAJOR for incompatible principle removal or redefinition, MINOR
 or materially expanded requirement, and PATCH for clarifications that preserve obligations. Every
 pull request and review MUST verify applicable principles, API contracts, security decisions,
 configuration validation, and required tests. An approved ADR is required for every temporary
-architectural exception.
+architectural exception. Always use English.
 
 **Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
