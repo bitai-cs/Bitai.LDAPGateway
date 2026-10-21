@@ -138,10 +138,10 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] LdapEntryAttribute? secondFilterAttribute = null,
         [FromQuery] string? secondFilterValue = null,
         [FromQuery] bool? combineFilters = null,
-        [FromQuery] int sizeLimit = 100,
+        [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
         CancellationToken cancellationToken = default)
     {
-        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchDirectoryQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -187,10 +187,9 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] string? secondFilterValue = null,
         [FromQuery] bool? combineFilters = null,
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
-        [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchUsersQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchUsersQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet), cancellationToken);
 
         return this.ToActionResult(result);
     }
@@ -236,10 +235,9 @@ public sealed class DirectoryController : ControllerBase
         [FromQuery] string? secondFilterValue = null,
         [FromQuery] bool? combineFilters = null,
         [FromQuery] LdapEntryAttributeSet requiredAttributeSet = LdapEntryAttributeSet.Few,
-        [FromQuery] int sizeLimit = 100,
         CancellationToken cancellationToken = default)
     {
-        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchGroupsQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet, sizeLimit), cancellationToken);
+        var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapEntryDto>>>(new SearchGroupsQuery(serverProfile, catalogType, filterAttribute, filterValue, secondFilterAttribute, secondFilterValue, combineFilters, requiredAttributeSet), cancellationToken);
 
         return this.ToActionResult(result);
     }

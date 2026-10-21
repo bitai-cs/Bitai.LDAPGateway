@@ -12,8 +12,7 @@ public sealed record SearchGroupsQuery(
     LdapEntryAttribute FilterAttribute, string FilterValue,
     LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue,
     bool? CombineFilters,
-    LdapEntryAttributeSet RequiredAttributeSet,
-    int SizeLimit);
+    LdapEntryAttributeSet RequiredAttributeSet);
 
 public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQuery>
 {
@@ -50,12 +49,7 @@ public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQ
 
         RuleFor(x => x.CombineFilters)
             .Null().WithMessage("Combine filters must be null when Second filter attribute is not provided.")
-            .When(x => !x.SecondFilterAttribute.HasValue);
-
-        // Bounds checking
-        RuleFor(x => x.SizeLimit)
-            .GreaterThan(0).WithMessage("Size limit must be greater than 0.")
-            .LessThanOrEqualTo(2000).WithMessage("Size limit cannot exceed 2000.");
+            .When(x => !x.SecondFilterAttribute.HasValue);        
     }
 }
 
@@ -73,7 +67,7 @@ public sealed class SearchGroupsQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchGroups", context,
-            () => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
+            () => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
         cancellationToken);
     }
 }

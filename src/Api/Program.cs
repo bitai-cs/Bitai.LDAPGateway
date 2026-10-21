@@ -40,21 +40,13 @@ builder.Services.AddControllers();
 builder.Services.ConfigureRouteConstraints();
 builder.Services.AddCorsConfiguration(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApiDocument(config => {
-    config.DocumentName = "v1";
-    config.Title = "BITAI LDAP Gateway API";
-    config.Version = "v1";
-});
+builder.Services.AddWebApiConfiguration(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-	app.UseOpenApi();
-	app.UseSwaggerUi();
-}
+app.UseSwaggerUiIfConfigured();
 
 app.UseHttpsRedirection();
 app.UseCors();

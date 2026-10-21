@@ -1,8 +1,6 @@
 ---
-name: dotnet-clean-arch-specialist
 description: 'Production-grade .NET Services Architect specializing in Clean Architecture, CQRS, MediatR, Domain-Driven Design principles, SOLID, secure APIs, cloud-native development, high-performance services, and enterprise-grade maintainable backend systems.'
-type: subagent
-tools: Read, Edit, Write, Bash, Grep, Glob
+mode: subagent
 ---
 
 # .NET Clean Architecture & MediatR Expert

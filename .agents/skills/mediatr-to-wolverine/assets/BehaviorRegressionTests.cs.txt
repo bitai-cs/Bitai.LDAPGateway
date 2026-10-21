@@ -1,0 +1,93 @@
+using System.Net;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace YourApp.Api.FunctionalTests;
+
+/// <summary>The closed list of regression tests for a MediatR -> Wolverine migration. Adapt routes/types (// ADAPT).
+/// Needs: public partial class Program, WolverineFx.RuntimeCompilation referenced in Debug, CapturedLogs.</summary>
+public sealed class MigrationBehaviorTests : IClassFixture<WebApplicationFactory<Program>>
+{
+   private readonly WebApplicationFactory<Program> _factory;
+
+   public MigrationBehaviorTests(WebApplicationFactory<Program> factory) => _factory = factory;
+
+   private (HttpClient Client, CapturedLogs Logs) CreateClient()
+   {
+      var logs = new CapturedLogs();
+      var client = _factory.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddLogging(l => l.AddProvider(logs)))).CreateClient();
+      return (client, logs);
+   }
+
+   private (IServiceScope Scope, CapturedLogs Logs) CreateScope()
+   {
+      var logs = new CapturedLogs();
+      var scope = _factory.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddLogging(l => l.AddProvider(logs)))).Services.CreateScope();
+      return (scope, logs);
+   }
+
+   // 1) Ported logging: success path (only if a logging behavior existed)
+   [Fact]
+   public async Task Success_IsLogged()
+   {
+      var (client, logs) = CreateClient();
+      var response = await client.GetAsync("/api/CatalogTypes");                    // ADAPT: a route that succeeds
+      Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+      Assert.Contains(logs.Entries, e => e.Message == "Handling request." && e.Level == LogLevel.Information);
+      Assert.Contains(logs.Entries, e => e.Message == "Request completed successfully.");
+   }
+
+   // 2) Ported logging: failed Result is a warning with the error code, and the scope is applied
+   [Fact]
+   public async Task FailureResult_IsLoggedAsWarning_WithRequestNameScope()
+   {
+      var (client, logs) = CreateClient();
+      var response = await client.GetAsync("/api/ServerProfiles/NOPE_PROFILE");    // ADAPT: a route that returns a failed Result
+      Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);                   // ADAPT
+      Assert.Contains(logs.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("Request failed"));
+      Assert.Contains(logs.Entries, e => e.Message == "Handling request." && e.Scopes.Contains("RequestName="));
+   }
+
+   // 3) Validation behavior: invalid command -> 400 and the handler does not run
+   [Fact]
+   public async Task InvalidCommand_IsRejectedWith400()
+   {
+      var (client, logs) = CreateClient();
+      // Configuration (profiles, tenants...) differs per machine: appsettings.Development.json is usually git-ignored.
+      // Discover a valid value through the API instead of hard-coding it.   // ADAPT: route that lists valid ids
+      var profile = (await client.GetFromJsonAsync<string[]>("/api/ServerProfiles/GetProfileIds"))![0];
+      while (logs.Entries.TryDequeue(out _)) { }   // drop the discovery request's log entries
+      var response = await client.PostAsJsonAsync($"/api/{profile}/LC/Authentications/authenticate", new { Username = "", Password = "x" });   // ADAPT
+      Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+      Assert.DoesNotContain(logs.Entries, e => e.Message.Contains("Request completed successfully."));
+   }
+
+   // 4) Secrets: a failing command must not write the secret to the logs (one test per message with a secret)
+   [Fact]
+   public async Task FailedCommand_DoesNotWriteSecretToLogs()
+   {
+      var (scope, logs) = CreateScope();
+      using (scope)
+      {
+         var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
+         var command = new object();   // ADAPT: a command whose validator fails while its secret member is populated
+         await Assert.ThrowsAsync<FluentValidation.ValidationException>(() => bus.InvokeAsync<object>(command));   // ADAPT TResponse
+         Assert.DoesNotContain(logs.Entries, e => e.Message.Contains("THE-SECRET") || (e.Exception?.ToString().Contains("THE-SECRET") ?? false));
+      }
+   }
+
+   // 5) Domain events / notifications: delivered inline to the notification handler
+   [Fact]
+   public async Task DomainEvent_IsDeliveredToNotificationHandler()
+   {
+      var (scope, logs) = CreateScope();
+      using (scope)
+      {
+         // ADAPT: resolve the publisher port, publish a domain event, assert the handler's log line.
+         await Task.CompletedTask;
+         Assert.Contains(logs.Entries, e => e.Message.Contains("ADAPT: text logged by the notification handler"));
+      }
+   }
+}

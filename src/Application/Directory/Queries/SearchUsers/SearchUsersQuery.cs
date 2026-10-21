@@ -12,8 +12,7 @@ public sealed record SearchUsersQuery(
     LdapEntryAttribute FilterAttribute, string FilterValue,
     LdapEntryAttribute? SecondFilterAttribute, string? SecondFilterValue,
     bool? CombineFilters,
-    LdapEntryAttributeSet RequiredAttributeSet,
-    int SizeLimit);
+    LdapEntryAttributeSet RequiredAttributeSet);
 
 public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQuery>
 {
@@ -51,11 +50,6 @@ public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQue
         RuleFor(x => x.CombineFilters)
             .Null().WithMessage("Combine filters must be null when Second filter attribute is not provided.")
             .When(x => !x.SecondFilterAttribute.HasValue);
-
-        // Bounds checking
-        RuleFor(x => x.SizeLimit)
-            .GreaterThan(0).WithMessage("Size limit must be greater than 0.")
-            .LessThanOrEqualTo(2000).WithMessage("Size limit cannot exceed 2000.");
     }
 }
 
@@ -73,7 +67,7 @@ public sealed class SearchUsersQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
         return ExecuteAsync("SearchUsers", context,
-            () => _directoryServiceConnector.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, request.SizeLimit, cancellationToken),
+            () => _directoryServiceConnector.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
         cancellationToken);
     }
 }

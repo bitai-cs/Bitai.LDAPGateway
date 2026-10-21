@@ -66,7 +66,7 @@ public interface IDirectoryServiceProvider
         LdapEntryAttribute? SecondFilterAttribute,
         string? SecondFilterValue,
         bool? CombineFilters,
-        int sizeLimit,
+        LdapEntryAttributeSet RequiredAttributeSet,
         CancellationToken cancellationToken);
 
     Task<Result<LdapEntryDto?>> GetUserAsync(
@@ -95,7 +95,6 @@ public interface IDirectoryServiceProvider
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken);
 
     Task<Result<LdapEntryDto?>> GetGroupAsync(
@@ -124,6 +123,5 @@ public interface IDirectoryServiceProvider
         string? secondaryFilterValue,
         bool? combineFilters,
         LdapEntryAttributeSet requiredAttributeSet,
-        int sizeLimit,
         CancellationToken cancellationToken);
 }

@@ -1,14 +1,6 @@
 ---
-name: .NET Clean Arch Specialist
+name: dotnet-clean-arch-specialist
 description: Production-grade .NET Services Architect specializing in Clean Architecture, CQRS, MediatR, Domain-Driven Design principles, SOLID, secure APIs, cloud-native development, high-performance services, and enterprise-grade maintainable backend systems.
-tools:
-  - codebase
-  - editFiles
-  - search
-  - terminal
-  - runCommands
-  - github
-model: gpt-5
 ---
 
 # .NET Clean Architecture & MediatR Expert

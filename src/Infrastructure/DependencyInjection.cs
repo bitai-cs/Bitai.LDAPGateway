@@ -1,6 +1,10 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPGateway.Infrastructure.Services;
+using Bitai.LDAPHelper.LdapAdapters;
+using Bitai.LDAPHelper.LdapAdapters.LdapHelperMock;
+using Bitai.LDAPHelper.LdapAdapters.Novell;
+using JasperFx.CodeGeneration.Frames;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,11 +20,29 @@ public static class DependencyInjection
             .Validate(options => options.Count > 0, "At least one LDAP server profile must be configured.")
             .ValidateOnStart();
 
-        // For product code, register the real implementation of ILdapConnectionFactory
-        //services.AddScoped<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.Novell.NovellLdapConnectionFactoryAdapter>();
+        services
+            .AddOptions<ServiceConnectionAdapterOptions>()
+            .BindConfiguration(ServiceConnectionAdapterOptions.SectionName)
+            .Validate(options => options.AdapterType == LdapAdapterType.NovellLdapAdapter
+                || options.AdapterType == LdapAdapterType.MockAdapter,
+                "AdapterType must be either 'NovellLdapAdapter' or 'MockAdapter'.")
+            .ValidateOnStart();
 
-        // For testing purposes, we can use a mock connection factory adapter
-        services.AddSingleton<LDAPHelper.LdapAdapters.ILdapConnectionFactoryAdapter, LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter>();
+        var adapterOptions = configuration
+            .GetSection(ServiceConnectionAdapterOptions.SectionName)
+            .Get<ServiceConnectionAdapterOptions>() ?? new();
+
+        switch (adapterOptions.AdapterType)
+        {
+            case LdapAdapterType.NovellLdapAdapter:
+                services.AddScoped<ILdapConnectionFactoryAdapter, NovellLdapConnectionFactoryAdapter>();
+                break;
+            case LdapAdapterType.MockAdapter:
+                services.AddScoped<ILdapConnectionFactoryAdapter, MockLdapPersistentConnectionFactoryAdapter>();
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported adapter type: {adapterOptions.AdapterType}");
+        }
 
         services.AddScoped<IDirectoryServiceProvider, BitaiLdapHelperProvider>();
 

@@ -1,7 +1,6 @@
 ---
-name: README Specialist
-description: An agent focused on producing high-quality `README.md` files for software repositories.
-#version: 2025-10-21
+name: readme-file
+description: Producing high-quality `README.md` files for software repositories.
 ---
 
 ## Mission
