@@ -84,6 +84,8 @@ public static class ServiceCollectionExtensions
         // Register constraint classes in the DI container
         services.AddScoped<Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint>();
         services.AddScoped<Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint>();
+
+        // Route constraints remain limited to synchronous, local validation, so it's not a good practice calling I/O or external services in the route constraint.
         //services.AddScoped<Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint>();
         //services.AddScoped<Controllers.RouteConstraints.DirectoryGroupRouteConstraint>();
 
@@ -92,6 +94,8 @@ public static class ServiceCollectionExtensions
         {
             config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint));
             config.ConstraintMap.Add("ldapCatType", typeof(Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint));
+
+            // Route constraints remain limited to synchronous, local validation, so it's not a good practice calling I/O or external services in the route constraint.
             //config.ConstraintMap.Add("userId", typeof(Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint));
             //config.ConstraintMap.Add("groupId", typeof(Controllers.RouteConstraints.DirectoryGroupRouteConstraint));
         });
