@@ -260,8 +260,28 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                credentialForSearching,
                _ldapConnectionFactoryAdapter);
 
+            var userAccount = new LDAPMsADUserAccount
+            {
+                DistinguishedNameOfContainer = user.DistinguishedNameOfContainer,
+                GivenName = user.GivenName,
+                Sn = user.Sn,
+                Cn = user.Cn,
+                Name = user.Name,
+                DisplayName = user.DisplayName,
+                Description = user.Description,
+                DistinguishedName = user.DistinguishedName,
+                ObjectClass = user.ObjectClass,
+                SAMAccountName = user.SAMAccountName,
+                UserPrincipalName = user.UserPrincipalName,
+                UserAccountControl = user.UserAccountControl,
+                Department = user.Department,
+                TelephoneNumber = user.TelephoneNumber,
+                Mail = user.Mail,
+                Password = user.Password
+            };
+
             var createResult = await accountManager
-               .CreateUserAccountForMsAD(user, requestLabel)
+               .CreateUserAccountForMsAD(userAccount, requestLabel)
                .WaitAsync(cancellationToken);
 
             if (!createResult.IsSuccessfulOperation)
@@ -288,7 +308,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<LdapEntryDto>.Failure(error);
             }
 
-            var createdUser = createResult.UserAccount ?? user;
+            var createdUser = createResult.UserAccount ?? userAccount;
             var createdEntry = new LdapEntryDto
             {
                 distinguishedName = createdUser.DistinguishedName,
