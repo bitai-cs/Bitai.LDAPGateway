@@ -25,7 +25,7 @@ As a gateway operator, I want every API endpoint protected by verified caller cr
 
 **Why this priority**: Default-secure endpoint access is the primary protection for all directory-facing capabilities.
 
-**Independent Test**: Request representative read and modifying endpoints with missing, invalid, expired, wrong-authority, wrong-resource, and valid credentials.
+**Independent Test**: Enumerate every mapped API endpoint and request it with missing, invalid, expired, wrong-authority, wrong-resource, insufficient-scope, and valid credentials.
 
 **Acceptance Scenarios**:
 
@@ -37,7 +37,7 @@ As a gateway operator, I want every API endpoint protected by verified caller cr
 
 ### User Story 2 - Apply Scope-Based Access (Priority: P1)
 
-As an API operator, I want a configurable administrator scope to grant access to all endpoints and a configurable reader scope to grant read-data access only so that callers receive the least access needed for their duties.
+As an API operator, I want a configurable administrator scope to grant access to all endpoints and a configurable reader scope to grant reader-accessible endpoint access only so that callers receive the least access needed for their duties.
 
 **Why this priority**: Administrator and reader access must remain distinct to protect directory-modifying operations.
 
@@ -111,7 +111,8 @@ As a gateway operator, I want to configure the trusted authority, intended API r
 ### Key Entities
 
 - **Caller Credential**: Evidence of caller identity, issuing authority, intended API resource, expiry, and granted access scopes.
-- **Access Scope**: A configurable named permission; administrator scope grants every endpoint, while reader scope grants read-data endpoints only.
+- **Access Scope**: A configurable named permission; administrator scope grants every endpoint, while reader scope grants reader-accessible endpoints only.
+- **Reader-Accessible Endpoint**: Any HTTP GET endpoint, plus `/api/{serverProfile}/{catalogType}/Authentications/authenticate` and `/api/{serverProfile}/{catalogType}/Authentications/authenticateWithoutUserLookup`.
 - **Security Configuration**: Operator-managed authority, API resource, metadata transport, scope-name, and bypass settings.
 - **Security Mode**: Either standard protected mode or explicit API-wide bypass mode.
 - **Endpoint Classification**: An endpoint's administrator-only, reader-accessible HTTP GET, or reader-accessible authentication category. The reader-accessible authentication endpoints are `/api/{serverProfile}/{catalogType}/Authentications/authenticate` and `/api/{serverProfile}/{catalogType}/Authentications/authenticateWithoutUserLookup`.

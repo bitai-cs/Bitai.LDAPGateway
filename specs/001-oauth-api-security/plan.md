@@ -16,7 +16,7 @@ Secure every `Bitai.LDAPGateway.Api` endpoint with Duende IdentityServer-issued 
 
 **Storage**: N/A; the gateway remains stateless and uses configured LDAP profiles only.
 
-**Testing**: xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` 10.0, functional tests with a mock LDAP adapter; add JWT-policy test credentials/handlers that do not require a live Duende instance.
+**Testing**: xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` 10.0, functional tests with a mock LDAP adapter; use a local OIDC discovery/JWKS fixture and signed JWTs to prove JwtBearer issuer, audience, expiry, and scope validation without a live Duende instance. A controllable test-authentication handler may be retained only for focused authorization-policy routing tests.
 
 **Target Platform**: Cross-platform ASP.NET Core web service.
 
