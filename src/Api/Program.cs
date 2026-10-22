@@ -29,17 +29,8 @@ app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.LogSecurityByPassConfiguration();
 app.MapControllers();
-
-var apiScopesConfiguration = app.Services.GetRequiredService<IOptions<ApiScopesConfiguration>>().Value;
-if (apiScopesConfiguration.BypassApiScopesAuthorization)
-{
-    app.Logger.LogWarning("API OAuth/OIDC authorization bypass is enabled. All API endpoints allow unauthenticated callers.");
-}
-else
-{
-    app.Logger.LogInformation("API OAuth/OIDC authorization is enabled.");
-}
 
 return await app.RunJasperFxCommands(args);
 
