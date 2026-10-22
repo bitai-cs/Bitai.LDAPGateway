@@ -1,10 +1,90 @@
 using Bitai.LDAPGateway.Api.Options;
+using Bitai.LDAPGateway.Api.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using NSwag;
 
 namespace Bitai.LDAPGateway.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddApiSecurity(this IServiceCollection services, IConfiguration configuration)
+    {
+        var scopesConfiguration = configuration
+            .GetSection(ApiScopesConfiguration.SectionName)
+            .Get<ApiScopesConfiguration>() ?? new ApiScopesConfiguration();
+
+        services
+            .AddOptions<ApiScopesConfiguration>()
+            .BindConfiguration(ApiScopesConfiguration.SectionName)
+            .Validate(
+                options => options.BypassApiScopesAuthorization ||
+                           (!string.IsNullOrWhiteSpace(options.AdminApiScopeName) &&
+                            !string.IsNullOrWhiteSpace(options.ReaderApiScopeName) &&
+                            !string.Equals(
+                                options.AdminApiScopeName,
+                                options.ReaderApiScopeName,
+                                StringComparison.Ordinal)),
+                "Administrator and reader API scopes must be non-blank and distinct when API security bypass is disabled.")
+            .ValidateOnStart();
+
+        if (scopesConfiguration.BypassApiScopesAuthorization)
+        {
+            services.AddAuthentication();
+            services.AddAuthorization(options =>
+            {
+                var allowAll = new AuthorizationPolicyBuilder()
+                    .RequireAssertion(_ => true)
+                    .Build();
+
+                options.FallbackPolicy = allowAll;
+                options.AddPolicy(ApiAuthorizationPolicies.Administrator, allowAll);
+                options.AddPolicy(ApiAuthorizationPolicies.ReaderOrAdministrator, allowAll);
+            });
+
+            return services;
+        }
+
+        var authorityConfiguration = configuration
+            .GetSection(AuthorityConfiguration.SectionName)
+            .Get<AuthorityConfiguration>() ?? new AuthorityConfiguration();
+
+        services
+            .AddOptions<AuthorityConfiguration>()
+            .BindConfiguration(AuthorityConfiguration.SectionName)
+            .Validate(
+                options => Uri.TryCreate(options.Authority, UriKind.Absolute, out _),
+                "Authority must be an absolute URI when API security bypass is disabled.")
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.ApiResource),
+                "API resource is required when API security bypass is disabled.")
+            .ValidateOnStart();
+
+        services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = authorityConfiguration.Authority;
+                options.Audience = authorityConfiguration.ApiResource;
+                options.RequireHttpsMetadata = authorityConfiguration.RequireHttpsMetadata;
+            });
+
+        services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = CreateScopePolicy(scopesConfiguration.AdminApiScopeName);
+            options.AddPolicy(
+                ApiAuthorizationPolicies.Administrator,
+                CreateScopePolicy(scopesConfiguration.AdminApiScopeName));
+            options.AddPolicy(
+                ApiAuthorizationPolicies.ReaderOrAdministrator,
+                CreateScopePolicy(
+                    scopesConfiguration.AdminApiScopeName,
+                    scopesConfiguration.ReaderApiScopeName));
+        });
+
+        return services;
+    }
+
     public static IServiceCollection AddCorsConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         // It is not necessary in this scenario
@@ -101,5 +181,16 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    private static AuthorizationPolicy CreateScopePolicy(params string[] acceptedScopes)
+    {
+        return new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .RequireAssertion(context => context.User.Claims
+                .Where(claim => claim.Type == "scope")
+                .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Any(scope => acceptedScopes.Contains(scope, StringComparer.Ordinal)))
+            .Build();
     }
 }

@@ -6,6 +6,8 @@ using Bitai.LDAPGateway.Application.Authentications.Commands.AuthenticateWithout
 using Bitai.LDAPGateway.Domain.Enums;
 using Bitai.LDAPGateway.Domain.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Bitai.LDAPGateway.Api.Authorization;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -21,6 +23,7 @@ public sealed class AuthenticationsController : ControllerBase
     }
 
     [HttpPost("authenticate")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> Authenticate(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -37,6 +40,7 @@ public sealed class AuthenticationsController : ControllerBase
     }
 
     [HttpPost("authenticateWithoutUserLookup")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> AuthenticateWithoutUserLookup(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,

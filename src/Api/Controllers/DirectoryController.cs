@@ -15,6 +15,8 @@ using Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 using Bitai.LDAPGateway.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Bitai.LDAPGateway.Api.Authorization;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -115,6 +117,7 @@ public sealed class DirectoryController : ControllerBase
 
     #region Generic Search Endpoints
     [HttpGet("{identifier}")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> GetByIdentifier(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -130,6 +133,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpGet("filterBy")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> FilterBy(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -150,6 +154,7 @@ public sealed class DirectoryController : ControllerBase
 
     #region User Search Endpoints
     [HttpGet("Users/{identifier}")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> GetUser(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -164,6 +169,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpGet("Users/{identifier}/Parents")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> GetUserParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -178,6 +184,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpGet("Users/filterBy")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> FilterUsersBy(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -198,6 +205,7 @@ public sealed class DirectoryController : ControllerBase
 
     #region Group Search Endpoints
     [HttpGet("Groups/{identifier}")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> GetGroup(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -212,6 +220,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpGet("Groups/{identifier}/Parents")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> GetGroupParents(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,
@@ -226,6 +235,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpGet("Groups/filterBy")]
+    [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
     public async Task<IActionResult> FilterGroupsBy(
         [FromRoute] string serverProfile,
         [FromRoute] CatalogType catalogType,

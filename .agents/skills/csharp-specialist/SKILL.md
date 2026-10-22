@@ -36,6 +36,134 @@ Follow the project's own conventions first, then common C# conventions. If the p
 - Move user-facing strings into resource files; keep error and help text localizable.
 - Prefer records over classes for DTOs.
 
+## Extension methods for application composition
+
+Keep `Program.cs` focused on application composition rather than implementation
+details. Use extension methods to encapsulate cohesive service registrations
+and middleware configuration when doing so makes startup code easier to read.
+
+### When to create an extension method
+
+- Extract configuration that represents a meaningful application capability, such as infrastructure registration, Web API configuration, or Swagger UI setup.
+- An extension method does not need multiple callers to be useful: simplifying application composition is a valid reason to create one.
+- Do not extract every statement mechanically or introduce unnecessary layers merely to reduce the number of lines in `Program.cs`.
+- Reuse existing extension methods before adding new ones.
+- Follow the project's existing conventions for names, placement, and visibility.
+
+### Placement and naming
+
+- Place service registration extensions in `Extensions/ServiceCollectionExtensions.cs` and middleware configuration extensions in `Extensions/ApplicationBuilderExtensions.cs`, unless the project uses another convention.
+- Use static container classes and static extension methods.
+- Use purpose-specific names:
+    - `AddWebApiConfiguration` for Web API service registration and configuration.
+    - `UseSwaggerUiIfConfigured` for conditionally enabling Swagger middleware.
+- Make conditional behavior clear in the method name or at the call site.
+- Return the extended `IServiceCollection` or `IApplicationBuilder` when appropriate to support fluent composition.
+- Use the least visibility required and document public extension methods.
+- Split extension classes by capability if they accumulate unrelated responsibilities.
+
+### Expected usage in Program.cs
+
+Keep the high-level configuration steps visible:
+
+```csharp
+builder.Services.AddWebApiConfiguration(builder.Configuration);
+
+// Build the application and configure the middleware pipeline.
+
+app.UseSwaggerUiIfConfigured();
+```
+
+### Service registration example
+
+In `Extensions/ServiceCollectionExtensions.cs`, group related options binding,
+validation, service registration, and OpenAPI document configuration:
+
+```csharp
+/// <summary>
+/// Registers Web API options and configures the OpenAPI document.
+/// </summary>
+public static IServiceCollection AddWebApiConfiguration(
+    this IServiceCollection services,
+    IConfiguration configuration)
+{
+    services
+        .AddOptions<WebApiConfigurationOptions>()
+        .BindConfiguration(WebApiConfigurationOptions.SectionName)
+        .Validate(
+            options => !string.IsNullOrWhiteSpace(options.WebApiTitle),
+            "WebApiTitle is required.")
+        .Validate(
+            options => !string.IsNullOrWhiteSpace(options.WebApiVersion),
+            "WebApiVersion is required.")
+        .ValidateOnStart();
+
+    var webApiConfig = configuration
+        .GetSection(WebApiConfigurationOptions.SectionName)
+        .Get<WebApiConfigurationOptions>() ?? new();
+
+    services.AddSingleton(webApiConfig);
+
+    services.AddOpenApiDocument(config =>
+    {
+        config.DocumentName = webApiConfig.WebApiName;
+
+        config.PostProcess = document =>
+        {
+            document.Info.Title = webApiConfig.WebApiTitle;
+            document.Info.Description = webApiConfig.WebApiDescription;
+            document.Info.Version = webApiConfig.WebApiVersion;
+            document.Info.Contact = new OpenApiContact
+            {
+                Name = webApiConfig.WebApiContactName,
+                Email = webApiConfig.WebApiContactMail,
+                Url = webApiConfig.WebApiContactUrl
+            };
+            document.Info.License = new OpenApiLicense
+            {
+                Name = webApiConfig.WebApiLicenseName
+            };
+        };
+    });
+
+    return services;
+}
+```
+
+### Middleware configuration example
+
+In `Extensions/ApplicationBuilderExtensions.cs`, encapsulate the configuration
+check and its related middleware calls:
+
+```csharp
+/// <summary>
+/// Enables OpenAPI and Swagger UI when enabled in the Web API configuration.
+/// </summary>
+public static IApplicationBuilder UseSwaggerUiIfConfigured(
+    this IApplicationBuilder app)
+{
+    var webApiConfig = app.ApplicationServices
+        .GetRequiredService<WebApiConfigurationOptions>();
+
+    if (webApiConfig.SwaggerUI)
+    {
+        app.UseOpenApi();
+        app.UseSwaggerUi();
+    }
+
+    return app;
+}
+```
+
+### Implementation boundaries
+
+- Treat these examples as an organization pattern, not as mandatory dependencies or configuration for every application.
+- Preserve middleware ordering when extracting existing pipeline configuration. Keep order-sensitive steps understandable from `Program.cs`.
+- Keep each extension focused on the capability expressed by its name.
+- Do not hide unrelated service registrations, middleware, or business logic inside a convenient existing extension method.
+- Do not change configuration semantics, service lifetimes, validation behavior, or environment restrictions merely as part of extracting an extension method.
+- Follow the project's target framework, C# version, and installed package APIs. Do not upgrade dependencies or language versions to apply this pattern.
+
 ## Error handling
 
 - Null checks: `ArgumentNullException.ThrowIfNull(x)`; `string.IsNullOrWhiteSpace(x)` for strings; guard early; avoid blanket `!`.

@@ -1,19 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Bitai.LDAPGateway.Api.FunctionalTests;
 
 /// <summary>Regression tests proving the ported MediatR behaviors still run under Wolverine.</summary>
-public sealed class MigrationBehaviorTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class MigrationBehaviorTests : IClassFixture<OAuthSecurityWebApplicationFactory>
 {
    private const string Secret = "LeakCheck-9f3a!";
 
-   private readonly WebApplicationFactory<Program> _factory;
+   private readonly OAuthSecurityWebApplicationFactory _factory;
 
-   public MigrationBehaviorTests(WebApplicationFactory<Program> factory) => _factory = factory;
+   public MigrationBehaviorTests(OAuthSecurityWebApplicationFactory factory) => _factory = factory;
 
    private (HttpClient Client, CapturedLogs Logs) CreateClient()
    {
