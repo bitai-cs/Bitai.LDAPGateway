@@ -3,6 +3,8 @@ using Wolverine;
 using Bitai.LDAPGateway.Api.Extensions;
 using Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Bitai.LDAPGateway.Api.Authorization;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -18,6 +20,7 @@ public sealed class CatalogTypesController : ControllerBase
    }
 
    [HttpGet]
+   [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
    public async Task<IActionResult> Get(CancellationToken cancellationToken)
    {
       var result = await _bus.InvokeAsync<Result<IReadOnlyList<string>>>(new GetCatalogTypesQuery(), cancellationToken);

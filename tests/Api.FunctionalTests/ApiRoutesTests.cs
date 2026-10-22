@@ -3,11 +3,11 @@ using System.Net;
 
 namespace Bitai.LDAPGateway.Api.FunctionalTests;
 
-public sealed class ApiRoutesTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiRoutesTests : IClassFixture<OAuthSecurityWebApplicationFactory>
 {
    private readonly HttpClient _client;
 
-   public ApiRoutesTests(WebApplicationFactory<Program> factory)
+   public ApiRoutesTests(OAuthSecurityWebApplicationFactory factory)
    {
       _client = factory.CreateClient();
    }

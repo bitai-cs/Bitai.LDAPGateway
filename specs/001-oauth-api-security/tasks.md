@@ -22,9 +22,9 @@ description: "Executable task list for OAuth API Security"
 
 **Purpose**: Add the authentication dependency and secure-mode configuration defaults.
 
-- [ ] T001 Add the .NET 10-compatible `Microsoft.AspNetCore.Authentication.JwtBearer` package reference in `src/Api/Bitai.LDAPGateway.Api.csproj`
-- [ ] T002 [P] Add the default-disabled `ApiScopesConfiguration` and `AuthorityConfiguration` examples in `src/Api/appsettings.json`
-- [ ] T003 [P] Add the default-disabled `ApiScopesConfiguration` and local Duende authority examples in `src/Api/appsettings.Development.json`
+- [X] T001 Add the .NET 10-compatible `Microsoft.AspNetCore.Authentication.JwtBearer` package reference in `src/Api/Bitai.LDAPGateway.Api.csproj`
+- [X] T002 [P] Add the default-disabled `ApiScopesConfiguration` and `AuthorityConfiguration` examples in `src/Api/appsettings.json`
+- [X] T003 [P] Add the default-disabled `ApiScopesConfiguration` and local Duende authority examples in `src/Api/appsettings.Development.json`
 
 ---
 
@@ -34,12 +34,12 @@ description: "Executable task list for OAuth API Security"
 
 **CRITICAL**: Complete this phase before implementing any user story.
 
-- [ ] T004 [P] Create `AuthorityConfiguration` options with `Authority`, `ApiResource`, and `RequireHttpsMetadata` properties in `src/Api/Options/AuthorityConfiguration.cs`
-- [ ] T005 [P] Create `ApiScopesConfiguration` options with `BypassApiScopesAuthorization` defaulting to `false` when omitted, plus `AdminApiScopeName` and `ReaderApiScopeName` properties in `src/Api/Options/ApiScopesConfiguration.cs`
-- [ ] T006 Create named authorization-policy constants for administrator and reader-or-administrator access in `src/Api/Authorization/ApiAuthorizationPolicies.cs`
-- [ ] T007 Extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with conditional options validation: when bypass is disabled require non-blank authority/resource/scope values and distinct administrator/reader scopes; when bypass is enabled require only a valid bypass setting
-- [ ] T008 Extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with standard-mode JWT bearer registration using the Duende authority, configured API resource audience, HTTPS metadata setting, administrator fallback policy, and reader-or-administrator policy
-- [ ] T009 Update middleware order in `src/Api/Program.cs` to invoke authentication before authorization and register the security services from `ServiceCollectionExtensions`
+- [X] T004 [P] Create `AuthorityConfiguration` options with `Authority`, `ApiResource`, and `RequireHttpsMetadata` properties in `src/Api/Options/AuthorityConfiguration.cs`
+- [X] T005 [P] Create `ApiScopesConfiguration` options with `BypassApiScopesAuthorization` defaulting to `false` when omitted, plus `AdminApiScopeName` and `ReaderApiScopeName` properties in `src/Api/Options/ApiScopesConfiguration.cs`
+- [X] T006 Create named authorization-policy constants for administrator and reader-or-administrator access in `src/Api/Authorization/ApiAuthorizationPolicies.cs`
+- [X] T007 Extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with conditional options validation: when bypass is disabled require non-blank authority/resource/scope values and distinct administrator/reader scopes; when bypass is enabled require only a valid bypass setting
+- [X] T008 Extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with standard-mode JWT bearer registration using the Duende authority, configured API resource audience, HTTPS metadata setting, administrator fallback policy, and reader-or-administrator policy
+- [X] T009 Update middleware order in `src/Api/Program.cs` to invoke authentication before authorization and register the security services from `ServiceCollectionExtensions`
 
 **Checkpoint**: The API has configuration validation, a Duende-compatible bearer-validation path, and named policy infrastructure.
 
@@ -53,7 +53,7 @@ description: "Executable task list for OAuth API Security"
 
 - [ ] T010 [P] [US1] Create a local OIDC discovery/JWKS fixture, signed-JWT issuer, and test web-application-factory configuration in `tests/Api.FunctionalTests/OAuthSecurityWebApplicationFactory.cs`; retain a controllable test-authentication handler only for focused policy-routing cases
 - [ ] T011 [US1] Build an endpoint inventory from mapped API controller metadata and add functional cases proving every endpoint rejects absent, invalid, expired, wrong-authority, wrong-resource, and insufficient-scope JWTs before endpoint processing; separately verify valid administrator JWT access for every endpoint in `tests/Api.FunctionalTests/OAuthSecurityTests.cs`
-- [ ] T012 [US1] Apply administrator fallback authorization to all API controller endpoints through `src/Api/Extensions/ServiceCollectionExtensions.cs` and verify no controller action remains unintentionally unprotected
+- [X] T012 [US1] Apply administrator fallback authorization to all API controller endpoints through `src/Api/Extensions/ServiceCollectionExtensions.cs` and verify no controller action remains unintentionally unprotected
 - [ ] T013 [US1] Update existing anonymous-route assertions to use an administrator-scoped test identity in `tests/Api.FunctionalTests/ApiRoutesTests.cs`
 
 **Checkpoint**: Standard mode denies invalid callers across the gateway and still permits authorized administrator callers.
@@ -66,8 +66,8 @@ description: "Executable task list for OAuth API Security"
 
 **Independent Test**: With bypass disabled, execute a GET action and each approved authentication route with reader scope, then execute a modifying non-GET action with the same identity and verify denial without a directory change.
 
-- [ ] T014 [P] [US2] Add reader-or-administrator authorization metadata to all HTTP GET actions in `src/Api/Controllers/CatalogTypesController.cs`, `src/Api/Controllers/ServerProfilesController.cs`, and `src/Api/Controllers/DirectoryController.cs`
-- [ ] T015 [P] [US2] Add reader-or-administrator authorization metadata to only `authenticate` and `authenticateWithoutUserLookup` in `src/Api/Controllers/AuthenticationsController.cs`
+- [X] T014 [P] [US2] Add reader-or-administrator authorization metadata to all HTTP GET actions in `src/Api/Controllers/CatalogTypesController.cs`, `src/Api/Controllers/ServerProfilesController.cs`, and `src/Api/Controllers/DirectoryController.cs`
+- [X] T015 [P] [US2] Add reader-or-administrator authorization metadata to only `authenticate` and `authenticateWithoutUserLookup` in `src/Api/Controllers/AuthenticationsController.cs`
 - [ ] T016 [US2] Add reader-only functional cases for HTTP GET actions, both authentication routes, a modifying non-GET denial, and no-scope denial in `tests/Api.FunctionalTests/OAuthSecurityTests.cs`
 
 **Checkpoint**: Reader permissions are explicit, limited to the agreed endpoint set, and independently validated.
@@ -80,7 +80,7 @@ description: "Executable task list for OAuth API Security"
 
 **Independent Test**: Start a bypass-configured test host with only a valid bypass setting, call representative GET, authentication, and modifying routes without credentials, and confirm invalid payloads still use established validation failures.
 
-- [ ] T017 [US3] After T012 is complete, extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with bypass-mode permissive authorization policies that allow anonymous callers without registering JWT bearer validation or requiring authority/scope configuration
+- [X] T017 [US3] After T012 is complete, extend `src/Api/Extensions/ServiceCollectionExtensions.cs` with bypass-mode permissive authorization policies that allow anonymous callers without registering JWT bearer validation or requiring authority/scope configuration
 - [ ] T018 [US3] Use the T011 endpoint inventory to add bypass-mode functional startup and unauthenticated coverage for every API endpoint; also verify invalid credentials do not deny access and invalid input preserves existing validation behavior in `tests/Api.FunctionalTests/OAuthSecurityTests.cs`
 
 **Checkpoint**: Bypass mode is isolated to an explicit startup configuration and does not alter non-security endpoint behavior.
@@ -93,7 +93,7 @@ description: "Executable task list for OAuth API Security"
 
 **Independent Test**: Verify standard-mode startup rejects missing, blank, malformed, and conflicting authority/scope settings; verify bypass-mode startup accepts only the bypass setting; inspect captured diagnostics for each mode.
 
-- [ ] T019 [US4] Add safe standard-mode and bypass-mode startup diagnostics, including an explicit warning for API-wide bypass activation, in `src/Api/Program.cs`
+- [X] T019 [US4] Add safe standard-mode and bypass-mode startup diagnostics, including an explicit warning for API-wide bypass activation, in `src/Api/Program.cs`
 - [ ] T020 [US4] Add functional configuration-validation and non-secret security-mode diagnostic assertions in `tests/Api.FunctionalTests/OAuthSecurityConfigurationTests.cs`, including an omitted `BypassApiScopesAuthorization` setting that selects standard mode and requires standard-mode security configuration
 
 **Checkpoint**: Operators can identify the active security mode and invalid standard-mode configuration blocks startup.

@@ -5,6 +5,8 @@ using Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById;
 using Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds;
 using Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfiles;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Bitai.LDAPGateway.Api.Authorization;
 
 namespace Bitai.LDAPGateway.Api.Controllers;
 
@@ -20,6 +22,7 @@ public sealed class ServerProfilesController : ControllerBase
    }
 
    [HttpGet("GetProfileIds")]
+   [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
    public async Task<IActionResult> GetProfileIds(CancellationToken cancellationToken)
    {
       var result = await _bus.InvokeAsync<Result<IReadOnlyList<string>>>(new GetProfileIdsQuery(), cancellationToken);
@@ -27,6 +30,7 @@ public sealed class ServerProfilesController : ControllerBase
    }
 
    [HttpGet("{profileId}")]
+   [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
    public async Task<IActionResult> GetById([FromRoute] string profileId, CancellationToken cancellationToken)
    {
       var result = await _bus.InvokeAsync<Result<LdapServerProfileDto>>(new GetProfileByIdQuery(profileId), cancellationToken);
@@ -34,6 +38,7 @@ public sealed class ServerProfilesController : ControllerBase
    }
 
    [HttpGet]
+   [Authorize(Policy = ApiAuthorizationPolicies.ReaderOrAdministrator)]
    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
    {
       var result = await _bus.InvokeAsync<Result<IReadOnlyList<LdapServerProfileDto>>>(new GetProfilesQuery(), cancellationToken);
