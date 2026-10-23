@@ -2,12 +2,16 @@ using Bitai.LDAPGateway.Api.Options;
 using Bitai.LDAPGateway.Api.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using NSwag;
 
 namespace Bitai.LDAPGateway.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>Name of the OAuth2 security scheme declared in the OpenAPI document.</summary>
+    public const string SwaggerOAuth2SchemeName = "oauth2";
+
     public static IServiceCollection AddApiSecurity(this IServiceCollection services, IConfiguration configuration)
     {
         var scopesConfiguration = configuration
@@ -58,6 +62,27 @@ public static class ServiceCollectionExtensions
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.ApiResource),
                 "API resource is required when API security bypass is disabled.")
+            .ValidateOnStart();
+
+        services
+            .AddOptions<SwaggerUIApiClientOptions>()
+            .BindConfiguration(SwaggerUIApiClientOptions.SectionName)
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SwaggerUIClientId),
+                "Swagger UI client id is required when API security bypass is disabled.")
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SwaggerUIClientSecret),
+                "Swagger UI client secret is required when API security bypass is disabled.")
+            .Validate(
+                options => options.SwaggerUITargetApiScopes.Count > 0 &&
+                           options.SwaggerUITargetApiScopes.All(
+                               scope => !string.IsNullOrWhiteSpace(scope.SwaggerUITargetApiScopeName)),
+                "At least one Swagger UI target API scope with a non-blank name is required when API security bypass is disabled.")
+            .Validate(
+                options => options.SwaggerUITargetApiScopes.All(
+                    scope => string.Equals(scope.SwaggerUITargetApiScopeName, scopesConfiguration.AdminApiScopeName, StringComparison.Ordinal) ||
+                             string.Equals(scope.SwaggerUITargetApiScopeName, scopesConfiguration.ReaderApiScopeName, StringComparison.Ordinal)),
+                "Swagger UI target API scopes must match the configured administrator or reader API scope names.")
             .ValidateOnStart();
 
         services
@@ -134,9 +159,29 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(webApiConfig);
 
-        services.AddOpenApiDocument(config =>
+        services.AddOpenApiDocument((config, serviceProvider) =>
         {
             config.DocumentName = webApiConfig.WebApiName;
+
+            var apiScopesConfiguration = serviceProvider.GetRequiredService<IOptions<ApiScopesConfiguration>>().Value;
+            if (!apiScopesConfiguration.BypassApiScopesAuthorization)
+            {
+                var authorityConfiguration = serviceProvider.GetRequiredService<IOptions<AuthorityConfiguration>>().Value;
+                var swaggerUiClient = serviceProvider.GetRequiredService<IOptions<SwaggerUIApiClientOptions>>().Value;
+                var authority = authorityConfiguration.Authority.TrimEnd('/');
+
+                config.AddSecurity(SwaggerOAuth2SchemeName, Enumerable.Empty<string>(), new OpenApiSecurityScheme
+                {
+                    Type = OpenApiSecuritySchemeType.OAuth2,
+                    Description = "OAuth/OIDC authorization code flow against the configured authority.",
+                    Flow = OpenApiOAuth2Flow.AccessCode,
+                    AuthorizationUrl = $"{authority}/connect/authorize",
+                    TokenUrl = $"{authority}/connect/token",
+                    Scopes = swaggerUiClient.SwaggerUITargetApiScopes.ToDictionary(
+                        scope => scope.SwaggerUITargetApiScopeName,
+                        scope => scope.SwaggerUITargetApiScopeTitle)
+                });
+            }
 
             config.PostProcess = document =>
             {

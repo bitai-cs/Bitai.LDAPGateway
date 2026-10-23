@@ -1,19 +1,74 @@
 project:
-  name: "Bitai.LDAPGateway"
-  description: "Stateless REST gateway exposing configured LDAP server profiles (authentication, search, entry retrieval, MS AD provisioning)"
-  created: "2026-10-21T00:00:00Z"
-  fire_version: "0.1.8"
-
+  name: Bitai.LDAPGateway
+  description: Stateless REST gateway exposing configured LDAP server profiles
+    (authentication, search, entry retrieval, MS AD provisioning)
+  created: 2026-10-21T00:00:00Z
+  fire_version: 0.1.8
 workspace:
   type: brownfield
   structure: monolith
   autonomy_bias: balanced
   run_scope_preference: single
   run_scope_history: []
-  scanned_at: "2026-10-21T00:00:00Z"
-
-intents: []
-
+  scanned_at: 2026-10-21T00:00:00Z
+intents:
+  - id: swagger-ui-oauth-integration
+    title: Swagger UI OAuth/OIDC Integration
+    status: in_progress
+    work_items:
+      - id: swagger-ui-client-options
+        title: Swagger UI client options and configuration
+        status: completed
+        complexity: low
+        mode: autopilot
+        depends_on: []
+        run_id: run-bitai-ldapgateway-001
+        completed_at: 2026-10-23T01:30:43.759Z
+      - id: swagger-ui-oauth-security-scheme
+        title: OpenAPI OAuth2 authorization code scheme and Swagger UI settings
+        status: completed
+        complexity: high
+        mode: validate
+        design_doc:
+          path: .specs-fire/intents/swagger-ui-oauth-integration/work-items/swagger-ui-oauth-security-scheme-design.md
+          checkpoint_1: approved
+        depends_on:
+          - swagger-ui-client-options
+        run_id: run-bitai-ldapgateway-002
+        completed_at: 2026-10-23T02:02:15.968Z
+      - id: swagger-ui-oauth-tests
+        title: Tests for Swagger UI OAuth integration
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on:
+          - swagger-ui-oauth-security-scheme
+        run_id: run-bitai-ldapgateway-003
+        completed_at: 2026-10-23T03:13:02.143Z
 runs:
   active: []
-  completed: []
+  completed:
+    - id: run-bitai-ldapgateway-001
+      scope: single
+      work_items:
+        - id: swagger-ui-client-options
+          intent: swagger-ui-oauth-integration
+          mode: autopilot
+      started: 2026-10-23T01:28:43.338Z
+      completed: 2026-10-23T01:30:43.759Z
+    - id: run-bitai-ldapgateway-002
+      scope: single
+      work_items:
+        - id: swagger-ui-oauth-security-scheme
+          intent: swagger-ui-oauth-integration
+          mode: validate
+      started: 2026-10-23T01:55:01.494Z
+      completed: 2026-10-23T02:02:15.968Z
+    - id: run-bitai-ldapgateway-003
+      scope: single
+      work_items:
+        - id: swagger-ui-oauth-tests
+          intent: swagger-ui-oauth-integration
+          mode: confirm
+      started: 2026-10-23T02:59:42.593Z
+      completed: 2026-10-23T03:13:02.143Z

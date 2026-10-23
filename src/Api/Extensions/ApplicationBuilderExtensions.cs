@@ -11,8 +11,24 @@ public static class ApplicationBuilderExtensions
 
         if (webApiConfig.SwaggerUI)
         {
+            var apiScopesConfiguration = app.ApplicationServices.GetRequiredService<IOptions<ApiScopesConfiguration>>().Value;
+
             app.UseOpenApi();
-            app.UseSwaggerUi();
+            app.UseSwaggerUi(settings =>
+            {
+                if (apiScopesConfiguration.BypassApiScopesAuthorization)
+                {
+                    return;
+                }
+
+                var swaggerUiClient = app.ApplicationServices.GetRequiredService<IOptions<SwaggerUIApiClientOptions>>().Value;
+                settings.OAuth2Client = new NSwag.AspNetCore.OAuth2ClientSettings
+                {
+                    ClientId = swaggerUiClient.SwaggerUIClientId,
+                    ClientSecret = swaggerUiClient.SwaggerUIClientSecret,
+                    UsePkceWithAuthorizationCodeGrant = true
+                };
+            });
         }
 
         return app;
