@@ -14,11 +14,21 @@ public sealed class EndpointAuthorizationMetadataTests
             .GetTypes()
             .Where(type => type.IsClass && !type.IsAbstract && type.IsSubclassOf(typeof(ControllerBase)))
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
-            .Where(method => method.GetCustomAttributes<HttpMethodAttribute>().Any())
-            .Where(method => !method.GetCustomAttributes()
-                .OfType<IAuthorizeData>()
-                .Any(authorization => !string.IsNullOrWhiteSpace(authorization.Policy)))
-            .Select(method => $"{method.DeclaringType!.Name}.{method.Name}")
+            .Select(method => new
+            {
+                Method = method,
+                Metadata = method.DeclaringType!
+                    .GetCustomAttributes()
+                    .Concat(method.GetCustomAttributes())
+                    .ToArray(),
+            })
+            .Where(action => action.Metadata.OfType<IActionHttpMethodProvider>().Any()
+                || action.Metadata.OfType<IRouteTemplateProvider>().Any())
+            .Where(action => action.Metadata.OfType<IAllowAnonymous>().Any()
+                || !action.Metadata
+                    .OfType<IAuthorizeData>()
+                    .Any(authorization => !string.IsNullOrWhiteSpace(authorization.Policy)))
+            .Select(action => $"{action.Method.DeclaringType!.Name}.{action.Method.Name}")
             .ToArray();
 
         Assert.Empty(unprotectedActions);

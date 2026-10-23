@@ -1,7 +1,7 @@
 ---
 id: swagger-ui-oauth-integration
 title: Swagger UI OAuth/OIDC Integration
-status: in_progress
+status: completed
 created: 2026-10-22T00:00:00Z
 ---
 
