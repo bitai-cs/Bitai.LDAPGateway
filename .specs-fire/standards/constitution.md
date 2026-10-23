@@ -1,35 +1,67 @@
 # Constitution — Bitai.LDAPGateway
 
-## 1. Purpose and scope
+## Core Principles
 
-Bitai.LDAPGateway is a single REST entry point that exposes every LDAP server profile configured in `appsettings.json`, so consuming services never implement LDAP themselves. The directory remains the source of truth. The gateway is stateless: it owns no identity data, synchronizes nothing, and does not manage profiles at runtime.
+### I. Stateless, Directory-Neutral Gateway
+Bitai.LDAPGateway MUST expose configured LDAP server profiles through one REST entry point without
+owning identity data, synchronizing directory data, or managing profiles at runtime. LDAPv3-neutral
+authentication, search, and entry-retrieval paths MUST remain independent of directory products.
+Active Directory-specific provisioning and LC/GC catalog behavior MUST apply only to compatible
+servers and MUST NOT leak into neutral paths. This preserves the directory as the source of truth
+and prevents product-specific behavior from reducing protocol compatibility.
 
-The gateway targets **LDAPv3-compatible directories**. Capabilities are layered: authentication, search, and entry retrieval are directory-neutral; MS AD provisioning and the LC/GC catalog split rely on Active Directory–compatible features and apply only to servers that provide them. Product-specific behaviour never leaks into the neutral paths, and neutral paths are never generalized at the expense of the protocol.
+### II. Clean Architecture and Explicit Use Cases
+Dependencies MUST point inward: Domain <- Application <- Infrastructure <- Api. Domain and
+Application MUST NOT depend on LDAP, HTTP, configuration, or logging; Application defines its
+required ports and Infrastructure implements them. Api MUST translate HTTP requests to use cases
+and use-case results to responses without business logic. Every capability MUST be one explicit
+command or query with one handler, one validator, and one result; shared behavior MUST be applied
+uniformly rather than copied. This keeps business rules independently testable and infrastructure
+replaceable.
 
-## 2. Architecture
+### III. Intentional Domain Modelling
+Directory concepts, including profiles, catalogs, entries, and identifiers, MUST be represented in
+the domain language when they support a business rule or use case. The codebase MUST NOT add
+aggregates, repositories, persistence, or other abstractions that the stateless gateway does not
+need. This applies Domain-Driven Design where it improves clarity while preserving a small,
+maintainable service.
 
-The project follows Clean Architecture. Dependencies point inward: **Domain ← Application ← Infrastructure ← Api**. Domain and Application never depend on LDAP, HTTP, configuration, or logging. Application defines the ports it needs; Infrastructure implements them. Api only translates HTTP into use cases and results into responses.
+### IV. Stable, Safe API Contracts
+Successful and failed use-case outcomes MUST be explicit values, not exception-driven control flow.
+Failures MUST be returned as RFC 7807 problem details with a stable code and a safe message; stack
+traces, infrastructure details, and other internal information MUST NOT be exposed. The REST API
+MUST be described by OpenAPI. This gives clients predictable contracts without disclosing service
+internals.
 
-## 3. Domain modelling
+### V. Security by Design
+Credentials and other secrets MUST NOT be committed, logged, or returned in API responses. Bind
+accounts MUST use least privilege, every endpoint MUST have a documented trust decision describing
+who may call it and why, and all caller input MUST be treated as hostile. These requirements protect
+directory access and limit the impact of malformed or malicious requests.
 
-Domain-Driven Design is applied where it earns its keep: directory concepts are modelled explicitly as a domain language (profiles, catalogs, entries, identifiers), and every use case expresses intent. We do not add aggregates, repositories, or persistence the gateway does not need.
+## Configuration and Operations
 
-## 4. Use cases
+Directory server profiles MUST be static `appsettings.json` entries managed by operators. Adding or
+changing a directory server MUST be a configuration change rather than a code change. Configuration
+MUST be validated during startup, and invalid configuration MUST prevent the service from running.
+This makes deployed behavior explicit and prevents a partially configured gateway from serving
+directory requests.
 
-Every capability is one explicit use case: a command that changes state or a query that reads it. Controllers contain no logic. One use case, one handler, one validator, one result. Shared behaviour is applied uniformly, never copy-pasted.
+## Quality and Evolution
 
-## 5. Contracts
+The gateway MUST be verifiable without a live directory: CI tests MUST use a mock adapter, and each
+new use case MUST have at least one boundary test. Builds MUST be clean, warnings MUST be treated as
+failures, and generated artifacts MUST be committed with the change that produced them. Architectural
+exceptions MUST be documented in an ADR, explicitly time-bounded, and removed or ratified before
+their expiry. This constitution takes precedence over conflicting project guidance.
 
-Success and failure are explicit values, not exceptions. Failures are returned as RFC 7807 problem details with a stable code and a safe message. Internal details, stack traces, and infrastructure errors never leave the service. The API is described by OpenAPI.
+## Governance
 
-## 6. Security
-
-Credentials and secrets are never stored in source control, never logged, and never returned. Bind accounts follow least privilege. Every endpoint has a recorded trust decision: who may call it and why. Caller input is treated as hostile.
-
-## 7. Configuration
-
-Directory server profiles are static `appsettings.json` entries managed by operators. Adding or changing a directory server is a configuration change, never a code change. Configuration is validated at startup, and invalid configuration prevents the service from running.
-
-## 8. Quality and evolution
-
-The gateway is verifiable without a live directory: tests run against a mock adapter in CI, and every new use case has at least one test at its boundary. The build is clean, warnings are treated as failures, and generated artifacts are committed with the change that produced them. Architectural exceptions are explicit, documented as an ADR, and temporary. When this document and any other guidance disagree, this document wins.
+This constitution governs implementation, review, and operational changes in Bitai.LDAPGateway.
+Proposed amendments MUST document the affected principles, rationale, migration impact, and semantic
+version change; maintainers approve and record them by updating this file. Versioning follows
+semantic intent: MAJOR for incompatible principle removal or redefinition, MINOR for a new principle
+or materially expanded requirement, and PATCH for clarifications that preserve obligations. Every
+pull request and review MUST verify applicable principles, API contracts, security decisions,
+configuration validation, and required tests. An approved ADR is required for every temporary
+architectural exception. Always use English.

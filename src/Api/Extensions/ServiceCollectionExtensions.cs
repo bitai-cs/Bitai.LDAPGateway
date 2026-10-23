@@ -61,6 +61,22 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services
+            .AddOptions<SwaggerUIApiClientOptions>()
+            .BindConfiguration(SwaggerUIApiClientOptions.SectionName)
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SwaggerUIClientId),
+                "Swagger UI client id is required when API security bypass is disabled.")
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SwaggerUIClientSecret),
+                "Swagger UI client secret is required when API security bypass is disabled.")
+            .Validate(
+                options => options.SwaggerUITargetApiScopes.Count > 0 &&
+                           options.SwaggerUITargetApiScopes.All(
+                               scope => !string.IsNullOrWhiteSpace(scope.SwaggerUITargetApiScopeName)),
+                "At least one Swagger UI target API scope with a non-blank name is required when API security bypass is disabled.")
+            .ValidateOnStart();
+
+        services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
