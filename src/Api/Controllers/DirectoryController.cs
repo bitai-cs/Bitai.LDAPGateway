@@ -39,6 +39,7 @@ public sealed class DirectoryController : ControllerBase
 
     #region User Provisioning Endpoints
     [HttpPost("MsADUsers")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Administrator)]
     public async Task<IActionResult> CreateMsAdUser(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -73,6 +74,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpPatch("MsADUsers/{identifier}/Credential")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Administrator)]
     public async Task<IActionResult> SetCredential(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -89,6 +91,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpPatch("MsADUsers/{identifier}/disableBy")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Administrator)]
     public async Task<IActionResult> DisableBy(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
@@ -102,6 +105,7 @@ public sealed class DirectoryController : ControllerBase
     }
 
     [HttpDelete("MsADUsers/{identifier}")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Delete(
        [FromRoute] string serverProfile,
        [FromRoute] CatalogType catalogType,
