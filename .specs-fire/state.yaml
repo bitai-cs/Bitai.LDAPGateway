@@ -38,11 +38,13 @@ intents:
         completed_at: 2026-10-23T02:02:15.968Z
       - id: swagger-ui-oauth-tests
         title: Tests for Swagger UI OAuth integration
-        status: pending
+        status: completed
         complexity: medium
         mode: confirm
         depends_on:
           - swagger-ui-oauth-security-scheme
+        run_id: run-bitai-ldapgateway-003
+        completed_at: 2026-10-23T03:13:02.143Z
 runs:
   active: []
   completed:
@@ -62,3 +64,11 @@ runs:
           mode: validate
       started: 2026-10-23T01:55:01.494Z
       completed: 2026-10-23T02:02:15.968Z
+    - id: run-bitai-ldapgateway-003
+      scope: single
+      work_items:
+        - id: swagger-ui-oauth-tests
+          intent: swagger-ui-oauth-integration
+          mode: confirm
+      started: 2026-10-23T02:59:42.593Z
+      completed: 2026-10-23T03:13:02.143Z
