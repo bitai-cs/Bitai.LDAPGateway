@@ -14,7 +14,7 @@ workspace:
 intents:
   - id: swagger-ui-oauth-integration
     title: Swagger UI OAuth/OIDC Integration
-    status: in_progress
+    status: completed
     work_items:
       - id: swagger-ui-client-options
         title: Swagger UI client options and configuration
@@ -45,6 +45,18 @@ intents:
           - swagger-ui-oauth-security-scheme
         run_id: run-bitai-ldapgateway-003
         completed_at: 2026-10-23T03:13:02.143Z
+  - id: endpoint-authorization-metadata-test-hardening
+    title: Endpoint Authorization Metadata Test Hardening
+    status: in_progress
+    work_items:
+      - id: harden-controller-authorization-metadata-guard
+        title: Harden controller authorization metadata guard
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on: []
+        run_id: run-bitai-ldapgateway-004
+        completed_at: 2026-10-23T23:09:19.060Z
 runs:
   active: []
   completed:
@@ -72,3 +84,11 @@ runs:
           mode: confirm
       started: 2026-10-23T02:59:42.593Z
       completed: 2026-10-23T03:13:02.143Z
+    - id: run-bitai-ldapgateway-004
+      scope: single
+      work_items:
+        - id: harden-controller-authorization-metadata-guard
+          intent: endpoint-authorization-metadata-test-hardening
+          mode: confirm
+      started: 2026-10-23T23:02:32.660Z
+      completed: 2026-10-23T23:09:19.060Z
