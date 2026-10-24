@@ -13,13 +13,15 @@ namespace Internal.Generated.WolverineHandlers
     {
         private readonly FluentValidation.IValidator<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> _validatorOfGetProfileByIdQuery;
         private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> _loggerForMessage;
+        private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> _loggerOfWolverineDomainEventPublisher;
         private readonly Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> _optionsMonitorOfLdapServerProfilesOptions;
         private readonly Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> _failureActionOfGetProfileByIdQuery;
 
-        public GetProfileByIdQueryHandler502537271(FluentValidation.IValidator<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> validatorOfGetProfileByIdQuery, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> loggerForMessage, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions, Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> failureActionOfGetProfileByIdQuery)
+        public GetProfileByIdQueryHandler502537271(FluentValidation.IValidator<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> validatorOfGetProfileByIdQuery, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> loggerForMessage, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> loggerOfWolverineDomainEventPublisher, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions, Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery> failureActionOfGetProfileByIdQuery)
         {
             _validatorOfGetProfileByIdQuery = validatorOfGetProfileByIdQuery;
             _loggerForMessage = loggerForMessage;
+            _loggerOfWolverineDomainEventPublisher = loggerOfWolverineDomainEventPublisher;
             _optionsMonitorOfLdapServerProfilesOptions = optionsMonitorOfLdapServerProfilesOptions;
             _failureActionOfGetProfileByIdQuery = failureActionOfGetProfileByIdQuery;
         }
@@ -28,6 +30,7 @@ namespace Internal.Generated.WolverineHandlers
 
         public override async System.Threading.Tasks.Task HandleAsync(Wolverine.Runtime.MessageContext context, System.Threading.CancellationToken cancellation)
         {
+            var wolverineDomainEventPublisher = new Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher(context, _loggerOfWolverineDomainEventPublisher);
             var ldapServerProfileReadService = new Bitai.LDAPGateway.Infrastructure.Services.LdapServerProfileReadService(_optionsMonitorOfLdapServerProfilesOptions);
             // The actual message body
             var getProfileByIdQuery = (Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery)context.Envelope.Message;
@@ -38,7 +41,7 @@ namespace Internal.Generated.WolverineHandlers
                 System.Diagnostics.Activity.Current?.SetTag("message.handler", "Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQueryHandler");
                 System.Diagnostics.Activity.Current?.SetTag("handler.type", "Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQueryHandler");
                 await Wolverine.FluentValidation.Internals.FluentValidationExecutor.ExecuteOne<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQuery>(_validatorOfGetProfileByIdQuery, _failureActionOfGetProfileByIdQuery, getProfileByIdQuery).ConfigureAwait(false);
-                var getProfileByIdQueryHandler = new Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQueryHandler(ldapServerProfileReadService);
+                var getProfileByIdQueryHandler = new Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileById.GetProfileByIdQueryHandler(ldapServerProfileReadService, wolverineDomainEventPublisher);
                 
                 // The actual message execution
                 var outgoing1 = await getProfileByIdQueryHandler.Handle(getProfileByIdQuery, cancellation).ConfigureAwait(false);

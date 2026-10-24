@@ -21,6 +21,7 @@ public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsA
    }
 }
 
+/// <summary>Handles <see cref="DeleteMsAdUserCommand"/>.</summary>
 public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;

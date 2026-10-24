@@ -32,6 +32,7 @@ public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetM
    }
 }
 
+/// <summary>Handles <see cref="SetMsAdUserPasswordCommand"/>.</summary>
 public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;

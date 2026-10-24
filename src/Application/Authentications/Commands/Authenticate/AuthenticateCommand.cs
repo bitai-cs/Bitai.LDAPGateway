@@ -19,10 +19,11 @@ public sealed class AuthenticateCommandValidator : AbstractValidator<Authenticat
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.CatalogType).IsInEnum();
         RuleFor(x => x.credential.Username).NotEmpty();
-        RuleFor(x => x.credential.Password).NotNull();
+        RuleFor(x => x.credential.Password.DangerousGetSecret()).NotEmpty().OverridePropertyName("Password");
     }
 }
 
+/// <summary>Handles <see cref="AuthenticateCommand"/>.</summary>
 public sealed class AuthenticateCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

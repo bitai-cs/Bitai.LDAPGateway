@@ -26,6 +26,7 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
     }
 }
 
+/// <summary>Handles <see cref="GetDirectoryEntryByIdentifierQuery"/>.</summary>
 public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

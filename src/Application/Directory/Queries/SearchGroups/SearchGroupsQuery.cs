@@ -53,6 +53,7 @@ public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQ
     }
 }
 
+/// <summary>Handles <see cref="SearchGroupsQuery"/>.</summary>
 public sealed class SearchGroupsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

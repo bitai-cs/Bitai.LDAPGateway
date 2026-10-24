@@ -1,5 +1,6 @@
 namespace Bitai.LDAPGateway.Api.Options;
 
+/// <summary>Configuration options: api scopes configuration.</summary>
 public sealed class ApiScopesConfiguration
 {
     public const string SectionName = "ApiScopesConfiguration";

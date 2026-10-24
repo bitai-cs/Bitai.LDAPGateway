@@ -9,16 +9,19 @@ namespace Internal.Generated.WolverineHandlers
     public sealed class GetCatalogTypesQueryHandler1532649048 : Wolverine.Runtime.Handlers.MessageHandler
     {
         private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQuery> _loggerForMessage;
+        private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> _loggerOfWolverineDomainEventPublisher;
 
-        public GetCatalogTypesQueryHandler1532649048(Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQuery> loggerForMessage)
+        public GetCatalogTypesQueryHandler1532649048(Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQuery> loggerForMessage, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> loggerOfWolverineDomainEventPublisher)
         {
             _loggerForMessage = loggerForMessage;
+            _loggerOfWolverineDomainEventPublisher = loggerOfWolverineDomainEventPublisher;
         }
 
 
 
         public override async System.Threading.Tasks.Task HandleAsync(Wolverine.Runtime.MessageContext context, System.Threading.CancellationToken cancellation)
         {
+            var wolverineDomainEventPublisher = new Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher(context, _loggerOfWolverineDomainEventPublisher);
             // The actual message body
             var getCatalogTypesQuery = (Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQuery)context.Envelope.Message;
 
@@ -27,7 +30,7 @@ namespace Internal.Generated.WolverineHandlers
             {
                 System.Diagnostics.Activity.Current?.SetTag("message.handler", "Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQueryHandler");
                 System.Diagnostics.Activity.Current?.SetTag("handler.type", "Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQueryHandler");
-                var getCatalogTypesQueryHandler = new Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQueryHandler();
+                var getCatalogTypesQueryHandler = new Bitai.LDAPGateway.Application.CatalogTypes.Queries.GetCatalogTypes.GetCatalogTypesQueryHandler(wolverineDomainEventPublisher);
                 
                 // The actual message execution
                 var outgoing1 = await getCatalogTypesQueryHandler.Handle(getCatalogTypesQuery, cancellation).ConfigureAwait(false);

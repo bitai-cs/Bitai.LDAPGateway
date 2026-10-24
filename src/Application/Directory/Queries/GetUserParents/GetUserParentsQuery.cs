@@ -26,6 +26,7 @@ public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserPare
     }
 }
 
+/// <summary>Handles <see cref="GetUserParentsQuery"/>.</summary>
 public sealed class GetUserParentsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

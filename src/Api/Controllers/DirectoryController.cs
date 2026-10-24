@@ -258,6 +258,7 @@ public sealed class DirectoryController : ControllerBase
     #endregion
 }
 
+/// <summary>Request body for the create ms ad user operation.</summary>
 public sealed record CreateMsAdUserRequest(
     string distinguishedName,
     string distinguishedNameOfContainer,
@@ -276,6 +277,8 @@ public sealed record CreateMsAdUserRequest(
     string mail,
     string password);
 
+/// <summary>Request body for the set ms ad user credential operation.</summary>
 public sealed record SetMsAdUserCredentialRequest(string Password, bool MustChangeAtNextLogon = false);
 
+/// <summary>Request body for the disable ms ad user operation.</summary>
 public sealed record DisableMsAdUserRequest(string? Reason);

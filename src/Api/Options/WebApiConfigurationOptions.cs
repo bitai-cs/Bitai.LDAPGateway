@@ -1,5 +1,6 @@
 namespace Bitai.LDAPGateway.Api.Options;
 
+/// <summary>Configuration options: web api configuration options.</summary>
 public sealed class WebApiConfigurationOptions
 {
     public const string SectionName = "WebApiConfiguration";

@@ -1,5 +1,6 @@
 namespace Bitai.LDAPGateway.Api.Options;
 
+/// <summary>Configuration options: authority configuration.</summary>
 public sealed class AuthorityConfiguration
 {
     public const string SectionName = "AuthorityConfiguration";

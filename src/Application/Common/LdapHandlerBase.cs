@@ -34,6 +34,28 @@ public abstract class LdapHandlerBase
         return result;
     }
 
+    /// <summary>Executes an operation that does not target a directory catalog (e.g. configuration reads) and publishes the completion event without one.</summary>
+    protected async Task<Result<T>> ExecuteWithoutCatalogAsync<T>(
+        string operationName,
+        string? serverProfile,
+        Func<Task<Result<T>>> operation,
+        CancellationToken cancellationToken)
+    {
+        var result = await operation();
+
+        await _domainEventPublisher.PublishAsync(
+            new OperationCompletedDomainEvent(
+                operationName,
+                serverProfile,
+                null,
+                result.IsSuccess,
+                result.IsSuccess ? "Operation completed" : result.Error?.Message ?? "Operation failed",
+                DateTime.UtcNow),
+            cancellationToken);
+
+        return result;
+    }
+
     protected async Task<Result> ExecuteAsync(
         string operationName,
         LdapRequestContext context,

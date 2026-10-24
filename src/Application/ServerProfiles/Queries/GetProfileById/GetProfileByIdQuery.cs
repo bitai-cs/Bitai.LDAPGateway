@@ -1,3 +1,4 @@
+using Bitai.LDAPGateway.Application.Common;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using FluentValidation;
@@ -14,20 +15,25 @@ public sealed class GetProfileByIdQueryValidator : AbstractValidator<GetProfileB
    }
 }
 
-public sealed class GetProfileByIdQueryHandler
+/// <summary>Handles <see cref="GetProfileByIdQuery"/>.</summary>
+public sealed class GetProfileByIdQueryHandler : LdapHandlerBase
 {
    private readonly IServerProfileReadService _serverProfileReadService;
 
-   public GetProfileByIdQueryHandler(IServerProfileReadService serverProfileReadService)
+   public GetProfileByIdQueryHandler(IServerProfileReadService serverProfileReadService, IDomainEventPublisher domainEventPublisher)
+      : base(domainEventPublisher)
    {
       _serverProfileReadService = serverProfileReadService;
    }
 
-   public async Task<Result<LdapServerProfileDto>> Handle(GetProfileByIdQuery request, CancellationToken cancellationToken)
+   public Task<Result<LdapServerProfileDto>> Handle(GetProfileByIdQuery request, CancellationToken cancellationToken)
    {
-      var profile = _serverProfileReadService.GetProfile(request.ProfileId);
-      return profile is null
-         ? Result<LdapServerProfileDto>.Failure(Error.NotFound($"LDAP server profile '{request.ProfileId}' was not found."))
-         : Result<LdapServerProfileDto>.Success(profile);
+      return ExecuteWithoutCatalogAsync("GetProfileById", request.ProfileId, () =>
+      {
+         var profile = _serverProfileReadService.GetProfile(request.ProfileId);
+         return Task.FromResult(profile is null
+            ? Result<LdapServerProfileDto>.Failure(Error.NotFound($"LDAP server profile '{request.ProfileId}' was not found."))
+            : Result<LdapServerProfileDto>.Success(profile));
+      }, cancellationToken);
    }
 }

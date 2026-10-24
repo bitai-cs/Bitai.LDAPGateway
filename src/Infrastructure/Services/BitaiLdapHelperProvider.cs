@@ -960,14 +960,14 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<LdapEntryDto?>.Failure(error);
             }
 
-            if (searchResult.Entries.Count() > 1)
+            if ((searchResult.Entries ?? Array.Empty<LDAPEntry>()).Count() > 1)
             {
                 // Log a warning if multiple entries are found for the same identifier
                 return Result<LdapEntryDto?>.Failure(
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
 
-            var entry = searchResult.Entries.FirstOrDefault();
+            var entry = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).FirstOrDefault();
 
             return Result<LdapEntryDto?>.Success(
                 entry is null ? null :
@@ -1069,7 +1069,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
             }
 
-            if (entrySearchResult.Entries.Count() == 0)
+            if ((entrySearchResult.Entries ?? Array.Empty<LDAPEntry>()).Count() == 0)
             {
                 if (userMustExist)
                     return Result<IReadOnlyList<LdapEntryDto>>.Failure(
@@ -1078,7 +1078,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                     return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());               
             }
 
-            if (entrySearchResult.Entries.Count() > 1)
+            if ((entrySearchResult.Entries ?? Array.Empty<LDAPEntry>()).Count() > 1)
             {
                 // Log a warning if multiple entries are found for the same identifier
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(
@@ -1086,7 +1086,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
             }
 
             var searchResult = await searcher
-                    .SearchParentEntriesAsync(entrySearchResult.Entries, resolvedRequiredAttributes, requestLabel)
+                    .SearchParentEntriesAsync(entrySearchResult.Entries ?? Array.Empty<LDAPEntry>(), resolvedRequiredAttributes, requestLabel)
                     .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)
@@ -1355,13 +1355,13 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<LdapEntryDto?>.Failure(error);
             }
 
-            if (searchResult.Entries.Count() > 1)
+            if ((searchResult.Entries ?? Array.Empty<LDAPEntry>()).Count() > 1)
             {
                 return Result<LdapEntryDto?>.Failure(
                     Error.Validation($"More than one LDAP entry was found for {identifierAttribute}='{identifier}'."));
             }
 
-            var entry = searchResult.Entries.FirstOrDefault();
+            var entry = (searchResult.Entries ?? Array.Empty<LDAPEntry>()).FirstOrDefault();
 
             return Result<LdapEntryDto?>.Success(
                 entry is null ? null :
@@ -1466,7 +1466,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(error);
             }
 
-            if (searchGroupResult.Entries.Count() == 0)
+            if ((searchGroupResult.Entries ?? Array.Empty<LDAPEntry>()).Count() == 0)
             {
                 if (groupMustExist)
                     return Result<IReadOnlyList<LdapEntryDto>>.Failure(
@@ -1475,7 +1475,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
                     return Result<IReadOnlyList<LdapEntryDto>>.Success(Array.Empty<LdapEntryDto>());
             }
 
-            if (searchGroupResult.Entries.Count() > 1)
+            if ((searchGroupResult.Entries ?? Array.Empty<LDAPEntry>()).Count() > 1)
             {
                 // Log a warning if multiple entries are found for the same identifier
                 return Result<IReadOnlyList<LdapEntryDto>>.Failure(
@@ -1484,7 +1484,7 @@ public sealed class BitaiLdapHelperProvider : IDirectoryServiceProvider
 
             // At this point, we have exactly one entry
             var searchResult = await searcher
-                    .SearchParentEntriesAsync(searchGroupResult.Entries, resolvedRequiredAttributes, requestLabel)
+                    .SearchParentEntriesAsync(searchGroupResult.Entries ?? Array.Empty<LDAPEntry>(), resolvedRequiredAttributes, requestLabel)
                     .WaitAsync(cancellationToken);
 
             if (!searchResult.IsSuccessfulOperation)

@@ -26,6 +26,7 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
     }
 }
 
+/// <summary>Handles <see cref="GetGroupByIdentifierQuery"/>.</summary>
 public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

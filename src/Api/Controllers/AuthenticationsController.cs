@@ -57,4 +57,5 @@ public sealed class AuthenticationsController : ControllerBase
     }
 }
 
+/// <summary>Request body for the authenticate operation.</summary>
 public sealed record AuthenticateRequest(string Username, string Password);

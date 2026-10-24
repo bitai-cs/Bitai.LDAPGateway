@@ -111,6 +111,22 @@ public sealed class MigrationBehaviorTests : IClassFixture<OAuthSecurityWebAppli
       }
    }
 
+   private sealed record UnknownDomainEvent(DateTime OccurredOnUtc) : Domain.Abstractions.IDomainEvent;
+
+   [Fact]
+   public async Task UnknownDomainEvent_IsNotSilentlyDropped()
+   {
+      var (scope, logs) = CreateScope();
+      using (scope)
+      {
+         var publisher = scope.ServiceProvider.GetRequiredService<Application.Common.Interfaces.IDomainEventPublisher>();
+
+         await publisher.PublishAsync(new UnknownDomainEvent(DateTime.UtcNow), CancellationToken.None);
+
+         Assert.Contains(logs.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("UnknownDomainEvent"));
+      }
+   }
+
    [Fact]
    public async Task DomainEvent_IsDeliveredToNotificationHandlerInline()
    {

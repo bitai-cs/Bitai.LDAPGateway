@@ -53,6 +53,7 @@ public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQue
     }
 }
 
+/// <summary>Handles <see cref="SearchUsersQuery"/>.</summary>
 public sealed class SearchUsersQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

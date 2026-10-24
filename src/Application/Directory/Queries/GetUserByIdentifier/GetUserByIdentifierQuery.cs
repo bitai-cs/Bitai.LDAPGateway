@@ -26,6 +26,7 @@ public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUse
     }
 }
 
+/// <summary>Handles <see cref="GetUserByIdentifierQuery"/>.</summary>
 public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

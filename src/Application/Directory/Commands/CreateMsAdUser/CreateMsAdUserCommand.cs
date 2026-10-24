@@ -34,6 +34,7 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
     }
 }
 
+/// <summary>Handles <see cref="CreateMsAdUserCommand"/>.</summary>
 public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

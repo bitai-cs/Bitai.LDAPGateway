@@ -10,11 +10,13 @@ namespace Internal.Generated.WolverineHandlers
     public sealed class GetProfileIdsQueryHandler238263573 : Wolverine.Runtime.Handlers.MessageHandler
     {
         private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQuery> _loggerForMessage;
+        private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> _loggerOfWolverineDomainEventPublisher;
         private readonly Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> _optionsMonitorOfLdapServerProfilesOptions;
 
-        public GetProfileIdsQueryHandler238263573(Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQuery> loggerForMessage, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions)
+        public GetProfileIdsQueryHandler238263573(Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQuery> loggerForMessage, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> loggerOfWolverineDomainEventPublisher, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions)
         {
             _loggerForMessage = loggerForMessage;
+            _loggerOfWolverineDomainEventPublisher = loggerOfWolverineDomainEventPublisher;
             _optionsMonitorOfLdapServerProfilesOptions = optionsMonitorOfLdapServerProfilesOptions;
         }
 
@@ -22,6 +24,7 @@ namespace Internal.Generated.WolverineHandlers
 
         public override async System.Threading.Tasks.Task HandleAsync(Wolverine.Runtime.MessageContext context, System.Threading.CancellationToken cancellation)
         {
+            var wolverineDomainEventPublisher = new Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher(context, _loggerOfWolverineDomainEventPublisher);
             var ldapServerProfileReadService = new Bitai.LDAPGateway.Infrastructure.Services.LdapServerProfileReadService(_optionsMonitorOfLdapServerProfilesOptions);
             // The actual message body
             var getProfileIdsQuery = (Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQuery)context.Envelope.Message;
@@ -31,7 +34,7 @@ namespace Internal.Generated.WolverineHandlers
             {
                 System.Diagnostics.Activity.Current?.SetTag("message.handler", "Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQueryHandler");
                 System.Diagnostics.Activity.Current?.SetTag("handler.type", "Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQueryHandler");
-                var getProfileIdsQueryHandler = new Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQueryHandler(ldapServerProfileReadService);
+                var getProfileIdsQueryHandler = new Bitai.LDAPGateway.Application.ServerProfiles.Queries.GetProfileIds.GetProfileIdsQueryHandler(ldapServerProfileReadService, wolverineDomainEventPublisher);
                 
                 // The actual message execution
                 var outgoing1 = await getProfileIdsQueryHandler.Handle(getProfileIdsQuery, cancellation).ConfigureAwait(false);

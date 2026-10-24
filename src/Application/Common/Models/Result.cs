@@ -29,10 +29,7 @@ public sealed class Result<T> : Result
 
 
 
-    public static Result<T> Success(T value) //=> new(true, value, null);
-    {
-        return new (true, value, null);
-    }
+    public static Result<T> Success(T value) => new(true, value, null);
 
     public static new Result<T> Failure(Error error) => new(false, default, error);
 }

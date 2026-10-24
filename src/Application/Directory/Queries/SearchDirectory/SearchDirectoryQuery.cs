@@ -30,6 +30,7 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
     }
 }
 
+/// <summary>Handles <see cref="SearchDirectoryQuery"/>.</summary>
 public sealed class SearchDirectoryQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

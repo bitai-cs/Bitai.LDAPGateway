@@ -26,6 +26,7 @@ public sealed class GetGroupParentsQueryValidator : AbstractValidator<GetGroupPa
     }
 }
 
+/// <summary>Handles <see cref="GetGroupParentsQuery"/>.</summary>
 public sealed class GetGroupParentsQueryHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;

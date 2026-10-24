@@ -112,13 +112,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddCorsConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        // It is not necessary in this scenario
-        // services
-        //     .AddOptions<WebApiCorsConfiguration>()
-        //     .BindConfiguration(WebApiCorsConfiguration.SectionName)
-        //     .Validate(configuration => configuration.AllowAnyOrigin || configuration.AllowedOrigins.Count > 0,
-        //         "At least one allowed origin must be configured when AllowAnyOrigin is false.")
-        //     .ValidateOnStart();
+        // CORS options are read directly below; startup validation of the origins list is intentionally not registered in this scenario.
 
         var webApiCorsConfiguration =
             configuration.GetSection(WebApiCorsConfiguration.SectionName).Get<WebApiCorsConfiguration>()
@@ -210,19 +204,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint>();
         services.AddScoped<Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint>();
 
-        // Route constraints remain limited to synchronous, local validation, so it's not a good practice calling I/O or external services in the route constraint.
-        //services.AddScoped<Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint>();
-        //services.AddScoped<Controllers.RouteConstraints.DirectoryGroupRouteConstraint>();
+        // Route constraints are limited to synchronous, local validation: no I/O or external calls.
 
         // Register constraints in the routing system
         services.Configure<RouteOptions>(config =>
         {
             config.ConstraintMap.Add("ldapSvrPf", typeof(Controllers.RouteConstraints.DirectoryServerProfileRouteConstraint));
             config.ConstraintMap.Add("ldapCatType", typeof(Controllers.RouteConstraints.DirectoryCatalogTypeRouteConstraint));
-
-            // Route constraints remain limited to synchronous, local validation, so it's not a good practice calling I/O or external services in the route constraint.
-            //config.ConstraintMap.Add("userId", typeof(Controllers.RouteConstraints.DirectoryUserEntryRouteConstraint));
-            //config.ConstraintMap.Add("groupId", typeof(Controllers.RouteConstraints.DirectoryGroupRouteConstraint));
         });
 
         return services;

@@ -18,12 +18,6 @@ public sealed record Error(string Code, string Message, int StatusCode, string? 
 
 
 
-    //// Old version of the factory methods
-    //public static Error Validation(string message) => new("validation_error", message, 400);
-    //public static Error NotFound(string message) => new("not_found", message, 404);
-    //public static Error Conflict(string message) => new("conflict", message, 409);
-    //public static Error Internal(string message) => new("internal_error", message, 500);
-    //public static Error BadGateway(string message) => new("bad_gateway", message, 502);
     // New version of the factory methods with optional innerError parameter
     public static Error Validation(string message, Error? innerError = null) => new("validation_error", message, 400, null, innerError);
 

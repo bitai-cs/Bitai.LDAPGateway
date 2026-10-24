@@ -22,6 +22,7 @@ public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableM
    }
 }
 
+/// <summary>Handles <see cref="DisableMsAdUserCommand"/>.</summary>
 public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;

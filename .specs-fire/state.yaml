@@ -57,6 +57,57 @@ intents:
         depends_on: []
         run_id: run-bitai-ldapgateway-004
         completed_at: 2026-10-23T23:09:19.060Z
+  - id: code-review-20251023-remediation
+    title: Code Review 2025-10-23 Remediation
+    status: in_progress
+    work_items:
+      - id: remove-secrets-from-appsettings
+        title: Remove secrets from appsettings.json
+        status: pending
+        complexity: high
+        mode: validate
+        depends_on: []
+      - id: mask-set-password-command-logging
+        title: Mask new password in SetMsAdUserPasswordCommand logging
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on: []
+        run_id: run-bitai-ldapgateway-005
+        completed_at: 2026-10-24T01:06:40.131Z
+      - id: harden-validators-and-null-guards
+        title: Harden validators and null guards
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on: []
+        run_id: run-bitai-ldapgateway-006
+        completed_at: 2026-10-24T01:22:25.679Z
+      - id: uniform-domain-events-for-profile-handlers
+        title: Uniform domain events for profile and catalog handlers
+        status: completed
+        complexity: medium
+        mode: confirm
+        depends_on: []
+        run_id: run-bitai-ldapgateway-007
+        completed_at: 2026-10-24T01:47:41.371Z
+      - id: remove-dead-code-and-add-xml-docs
+        title: Remove dead code and add XML docs
+        status: completed
+        complexity: low
+        mode: autopilot
+        depends_on: []
+        run_id: run-bitai-ldapgateway-008
+        completed_at: 2026-10-24T02:53:10.840Z
+      - id: use-case-boundary-tests
+        title: Boundary tests for untested use cases
+        status: pending
+        complexity: medium
+        mode: confirm
+        depends_on:
+          - mask-set-password-command-logging
+          - harden-validators-and-null-guards
+          - uniform-domain-events-for-profile-handlers
 runs:
   active: []
   completed:
@@ -92,3 +143,35 @@ runs:
           mode: confirm
       started: 2026-10-23T23:02:32.660Z
       completed: 2026-10-23T23:09:19.060Z
+    - id: run-bitai-ldapgateway-005
+      scope: single
+      work_items:
+        - id: mask-set-password-command-logging
+          intent: code-review-20251023-remediation
+          mode: confirm
+      started: 2026-10-24T00:51:34.514Z
+      completed: 2026-10-24T01:06:40.131Z
+    - id: run-bitai-ldapgateway-006
+      scope: single
+      work_items:
+        - id: harden-validators-and-null-guards
+          intent: code-review-20251023-remediation
+          mode: confirm
+      started: 2026-10-24T01:17:36.083Z
+      completed: 2026-10-24T01:22:25.679Z
+    - id: run-bitai-ldapgateway-007
+      scope: single
+      work_items:
+        - id: uniform-domain-events-for-profile-handlers
+          intent: code-review-20251023-remediation
+          mode: confirm
+      started: 2026-10-24T01:43:01.060Z
+      completed: 2026-10-24T01:47:41.371Z
+    - id: run-bitai-ldapgateway-008
+      scope: single
+      work_items:
+        - id: remove-dead-code-and-add-xml-docs
+          intent: code-review-20251023-remediation
+          mode: autopilot
+      started: 2026-10-24T02:50:13.919Z
+      completed: 2026-10-24T02:53:10.840Z

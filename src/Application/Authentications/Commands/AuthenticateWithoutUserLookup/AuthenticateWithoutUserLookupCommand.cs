@@ -19,10 +19,11 @@ public sealed class AuthenticateWithoutUserLookupCommandValidator : AbstractVali
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.Credential).NotNull();
         RuleFor(x => x.Credential.Username).NotEmpty();
-        RuleFor(x => x.Credential.Password).NotNull();
+        RuleFor(x => x.Credential.Password.DangerousGetSecret()).NotEmpty().OverridePropertyName("Password");
     }
 }
 
+/// <summary>Handles <see cref="AuthenticateWithoutUserLookupCommand"/>.</summary>
 public sealed class AuthenticateWithoutUserLookupCommandHandler : LdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
