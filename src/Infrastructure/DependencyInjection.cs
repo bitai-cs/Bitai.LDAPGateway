@@ -7,6 +7,8 @@ using Bitai.LDAPHelper.LdapAdapters.Novell;
 using JasperFx.CodeGeneration.Frames;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Bitai.LDAPGateway.Infrastructure;
 
@@ -19,6 +21,8 @@ public static class DependencyInjection
             .BindConfiguration(LdapServerProfilesOptions.SectionName)
             .Validate(options => options.Count > 0, "At least one LDAP server profile must be configured.")
             .ValidateOnStart();
+
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<LdapServerProfilesOptions>, LdapServerProfilesValidator>());
 
         services
             .AddOptions<ServiceConnectionAdapterOptions>()

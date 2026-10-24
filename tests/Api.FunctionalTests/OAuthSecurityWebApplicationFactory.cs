@@ -13,7 +13,7 @@ namespace Bitai.LDAPGateway.Api.FunctionalTests;
 public sealed class OAuthSecurityWebApplicationFactory : WebApplicationFactory<Program>
 {
     private const string Issuer = "https://test-authority";
-    private const string Audience = "Bitai.LDAPGateway.Resource";
+    private const string Audience = "Bitai.LDAPGateway.Resource.Api";
     private static readonly SymmetricSecurityKey SigningKey = new(Encoding.UTF8.GetBytes("OAuthSecurityTestsSigningKeyMustBeAtLeastThirtyTwoBytes"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

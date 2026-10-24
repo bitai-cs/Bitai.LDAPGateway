@@ -100,7 +100,7 @@ public sealed class SwaggerUiOAuthTests : IClassFixture<OAuthSecurityWebApplicat
         ["ApiScopesConfiguration:AdminApiScopeName"] = AdminScope,
         ["ApiScopesConfiguration:ReaderApiScopeName"] = ReaderScope,
         ["AuthorityConfiguration:Authority"] = Authority,
-        ["AuthorityConfiguration:ApiResource"] = "Bitai.LDAPGateway.Resource",
+        ["AuthorityConfiguration:ApiResource"] = "Bitai.LDAPGateway.Resource.Api",
         ["SwaggerUIApiClient:SwaggerUIClientId"] = "test-swagger-client",
         ["SwaggerUIApiClient:SwaggerUIClientSecret"] = "test-secret",
         ["SwaggerUIApiClient:SwaggerUITargetApiScopes:0:SwaggerUITargetApiScopeName"] = ReaderScope,

@@ -63,10 +63,15 @@ intents:
     work_items:
       - id: remove-secrets-from-appsettings
         title: Remove secrets from appsettings.json
-        status: pending
+        status: completed
         complexity: high
         mode: validate
+        design_doc:
+          path: .specs-fire/intents/code-review-20251023-remediation/work-items/remove-secrets-from-appsettings-design.md
+          checkpoint_1: approved
         depends_on: []
+        run_id: run-bitai-ldapgateway-009
+        completed_at: 2026-10-24T05:19:12.920Z
       - id: mask-set-password-command-logging
         title: Mask new password in SetMsAdUserPasswordCommand logging
         status: completed
@@ -175,3 +180,11 @@ runs:
           mode: autopilot
       started: 2026-10-24T02:50:13.919Z
       completed: 2026-10-24T02:53:10.840Z
+    - id: run-bitai-ldapgateway-009
+      scope: single
+      work_items:
+        - id: remove-secrets-from-appsettings
+          intent: code-review-20251023-remediation
+          mode: validate
+      started: 2026-10-24T05:00:19.317Z
+      completed: 2026-10-24T05:19:12.920Z

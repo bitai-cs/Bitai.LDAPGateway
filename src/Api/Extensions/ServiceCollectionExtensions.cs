@@ -14,7 +14,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApiSecurity(this IServiceCollection services, IConfiguration configuration)
     {
-        var scopesConfiguration = configuration
+        var apiScopesConfiguration = configuration
             .GetSection(ApiScopesConfiguration.SectionName)
             .Get<ApiScopesConfiguration>() ?? new ApiScopesConfiguration();
 
@@ -32,7 +32,7 @@ public static class ServiceCollectionExtensions
                 "Administrator and reader API scopes must be non-blank and distinct when API security bypass is disabled.")
             .ValidateOnStart();
 
-        if (scopesConfiguration.BypassApiScopesAuthorization)
+        if (apiScopesConfiguration.BypassApiScopesAuthorization)
         {
             services.AddAuthentication();
             services.AddAuthorization(options =>
@@ -80,8 +80,8 @@ public static class ServiceCollectionExtensions
                 "At least one Swagger UI target API scope with a non-blank name is required when API security bypass is disabled.")
             .Validate(
                 options => options.SwaggerUITargetApiScopes.All(
-                    scope => string.Equals(scope.SwaggerUITargetApiScopeName, scopesConfiguration.AdminApiScopeName, StringComparison.Ordinal) ||
-                             string.Equals(scope.SwaggerUITargetApiScopeName, scopesConfiguration.ReaderApiScopeName, StringComparison.Ordinal)),
+                    scope => string.Equals(scope.SwaggerUITargetApiScopeName, apiScopesConfiguration.AdminApiScopeName, StringComparison.Ordinal) ||
+                             string.Equals(scope.SwaggerUITargetApiScopeName, apiScopesConfiguration.ReaderApiScopeName, StringComparison.Ordinal)),
                 "Swagger UI target API scopes must match the configured administrator or reader API scope names.")
             .ValidateOnStart();
 
@@ -96,15 +96,15 @@ public static class ServiceCollectionExtensions
 
         services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = CreateScopePolicy(scopesConfiguration.AdminApiScopeName);
+            options.FallbackPolicy = CreateScopePolicy(apiScopesConfiguration.AdminApiScopeName);
             options.AddPolicy(
                 ApiAuthorizationPolicies.Administrator,
-                CreateScopePolicy(scopesConfiguration.AdminApiScopeName));
+                CreateScopePolicy(apiScopesConfiguration.AdminApiScopeName));
             options.AddPolicy(
                 ApiAuthorizationPolicies.ReaderOrAdministrator,
                 CreateScopePolicy(
-                    scopesConfiguration.AdminApiScopeName,
-                    scopesConfiguration.ReaderApiScopeName));
+                    apiScopesConfiguration.AdminApiScopeName,
+                    apiScopesConfiguration.ReaderApiScopeName));
         });
 
         return services;

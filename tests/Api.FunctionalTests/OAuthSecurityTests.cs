@@ -35,7 +35,7 @@ public sealed class OAuthSecurityTests : IClassFixture<OAuthSecurityWebApplicati
     }
 
     [Theory]
-    [InlineData("https://wrong-authority", "Bitai.LDAPGateway.Resource")]
+    [InlineData("https://wrong-authority", "Bitai.LDAPGateway.Resource.Api")]
     [InlineData("https://test-authority", "wrong-resource")]
     public async Task StandardMode_RejectsWrongIssuerOrAudience(string issuer, string audience)
     {
