@@ -55,6 +55,12 @@ failures, and generated artifacts MUST be committed with the change that produce
 exceptions MUST be documented in an ADR, explicitly time-bounded, and removed or ratified before
 their expiry. This constitution takes precedence over conflicting project guidance.
 
+## Desarrollo Asistido y Metodologia Spec-Drive Development
+
+If you are using tools that assist with agent orchestration, defining change or implementation plans, organizing tasks or specifications, or managing implementation or testing—such as Spec-kit, Specs.md, etc.—always update the work plan to reflect the progress of the solution.
+
+For example, when using Specs.md, once the code has been applied and the tests verified, you must update the `plan.md` or `tasks.md` file by changing the status of tasks from "pending" to "completed" and marking the executed tasks with `[x]` before considering the change complete.
+
 ## Governance
 
 This constitution governs implementation, review, and operational changes in Bitai.LDAPGateway.
@@ -65,3 +71,5 @@ or materially expanded requirement, and PATCH for clarifications that preserve o
 pull request and review MUST verify applicable principles, API contracts, security decisions,
 configuration validation, and required tests. An approved ADR is required for every temporary
 architectural exception. Always use English.
+
+**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21

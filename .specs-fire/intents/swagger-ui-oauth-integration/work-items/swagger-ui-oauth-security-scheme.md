@@ -4,7 +4,7 @@ title: OpenAPI OAuth2 authorization code scheme and Swagger UI settings
 intent: swagger-ui-oauth-integration
 complexity: high
 mode: validate
-status: pending
+status: completed
 depends_on: [swagger-ui-client-options]
 created: 2026-10-22T00:00:00Z
 ---

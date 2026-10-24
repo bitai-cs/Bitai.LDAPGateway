@@ -4,7 +4,7 @@ title: Tests for Swagger UI OAuth integration
 intent: swagger-ui-oauth-integration
 complexity: medium
 mode: confirm
-status: pending
+status: completed
 depends_on: [swagger-ui-oauth-security-scheme]
 created: 2026-10-22T00:00:00Z
 ---

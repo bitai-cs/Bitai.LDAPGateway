@@ -47,7 +47,7 @@ intents:
         completed_at: 2026-10-23T03:13:02.143Z
   - id: endpoint-authorization-metadata-test-hardening
     title: Endpoint Authorization Metadata Test Hardening
-    status: in_progress
+    status: completed
     work_items:
       - id: harden-controller-authorization-metadata-guard
         title: Harden controller authorization metadata guard

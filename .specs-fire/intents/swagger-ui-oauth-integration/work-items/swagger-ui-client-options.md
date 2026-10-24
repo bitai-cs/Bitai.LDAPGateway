@@ -4,7 +4,7 @@ title: Swagger UI client options and configuration
 intent: swagger-ui-oauth-integration
 complexity: low
 mode: autopilot
-status: pending
+status: completed
 depends_on: []
 created: 2026-10-22T00:00:00Z
 ---

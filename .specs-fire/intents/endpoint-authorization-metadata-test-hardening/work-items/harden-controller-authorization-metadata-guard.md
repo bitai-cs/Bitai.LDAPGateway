@@ -4,7 +4,7 @@ title: Harden controller authorization metadata guard
 intent: endpoint-authorization-metadata-test-hardening
 complexity: medium
 mode: confirm
-status: pending
+status: completed
 depends_on: []
 created: 2026-10-23T22:50:41Z
 ---
