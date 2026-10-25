@@ -22,10 +22,13 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
     {
         RuleFor(x => x.ServerProfile).NotEmpty();
         RuleFor(x => x.CatalogType).IsInEnum();
-        RuleFor(x => x.FilterAttribute).NotEmpty();
+        RuleFor(x => x.FilterAttribute).IsInEnum();
         RuleFor(x => x.FilterValue).NotEmpty();
         RuleFor(x => x.SecondFilterAttribute).NotEmpty().When(x => x.SecondFilterValue != null);
         RuleFor(x => x.SecondFilterValue).NotEmpty().When(x => x.SecondFilterAttribute != null);
+        RuleFor(x => x.CombineFilters).NotNull().When(x => x.SecondFilterAttribute != null);
+        RuleFor(x => x.SecondFilterValue).Null().When(x => x.SecondFilterAttribute == null);
+        RuleFor(x => x.CombineFilters).Null().When(x => x.SecondFilterAttribute == null);
         RuleFor(x => x.RequiredAttributeSet).IsInEnum();
     }
 }
