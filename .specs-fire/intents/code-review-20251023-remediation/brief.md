@@ -1,8 +1,9 @@
 ---
 id: code-review-20251023-remediation
 title: Code Review 2025-10-23 Remediation
-status: in_progress
+status: completed
 created: 2026-10-24T00:00:00Z
+completed_at: 2026-10-25T01:34:50.966Z
 ---
 
 # Intent: Code Review 2025-10-23 Remediation

@@ -42,4 +42,4 @@ approved_at: 2026-10-24T01:00:00Z
 - No production behavior changes beyond the log text.
 
 ---
-*Plan awaiting approval.*
+*Plan approved.*
