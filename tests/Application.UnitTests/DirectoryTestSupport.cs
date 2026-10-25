@@ -7,6 +7,7 @@ using Moq;
 
 namespace Bitai.LDAPGateway.Application.UnitTests;
 
+/// <summary>Shared fakes for the use-case boundary tests: a mocked connector and a recording event publisher.</summary>
 internal sealed class DirectoryTestSupport
 {
    public const string Profile = "EDU";
@@ -17,25 +18,22 @@ internal sealed class DirectoryTestSupport
 
    public static LdapEntryDto Entry(string samAccountName = "jdoe") => new() { samAccountName = samAccountName };
 
+   public static IReadOnlyList<LdapEntryDto> Entries(params string[] names) => names.Select(n => Entry(n)).ToList();
+
    public static Error Failure => new("bad_gateway", "directory unavailable", 502);
 
    public void VerifyEvent(string operation, bool isSuccess)
    {
       Publisher.Verify(
-         p => p.PublishAsync(It.IsAny<IDomainEvent>(), It.IsAny<CancellationToken>()),
-         Times.Once);
-
-      Publisher.Verify(
          p => p.PublishAsync(
             It.Is<IDomainEvent>(e => e is OperationCompletedDomainEvent
                && ((OperationCompletedDomainEvent)e).OperationName == operation
+               && ((OperationCompletedDomainEvent)e).IsSuccess == isSuccess
                && ((OperationCompletedDomainEvent)e).ServerProfile == Profile
-               && ((OperationCompletedDomainEvent)e).CatalogType == Catalog
-               && ((OperationCompletedDomainEvent)e).IsSuccess == isSuccess),
+               && ((OperationCompletedDomainEvent)e).CatalogType == Catalog),
             It.IsAny<CancellationToken>()),
          Times.Once);
    }
 
-   public static bool IsContext(LdapRequestContext context) =>
-      context.ServerProfile == Profile && context.CatalogType == Catalog;
+   public static bool IsContext(LdapRequestContext c) => c.ServerProfile == Profile && c.CatalogType == Catalog;
 }

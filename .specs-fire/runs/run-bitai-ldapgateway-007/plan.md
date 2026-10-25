@@ -52,4 +52,4 @@ approved_at: 2026-10-24T01:40:00Z
 - Risk: the generated-code diff will be large-ish; I will review it and mention it in the report.
 
 ---
-*Plan awaiting approval.*
+*Plan approved.*

@@ -4,9 +4,14 @@ title: Boundary tests for untested use cases
 intent: code-review-20251023-remediation
 complexity: medium
 mode: confirm
-status: pending
-depends_on: [mask-set-password-command-logging, harden-validators-and-null-guards, uniform-domain-events-for-profile-handlers]
+status: completed
+depends_on:
+  - mask-set-password-command-logging
+  - harden-validators-and-null-guards
+  - uniform-domain-events-for-profile-handlers
 created: 2026-10-24T00:00:00Z
+run_id: run-bitai-ldapgateway-010
+completed_at: 2026-10-25T01:34:50.946Z
 ---
 
 # Work Item: Boundary tests for untested use cases
