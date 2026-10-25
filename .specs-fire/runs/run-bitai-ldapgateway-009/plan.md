@@ -4,6 +4,7 @@ work_item: remove-secrets-from-appsettings
 intent: code-review-20251023-remediation
 mode: validate
 checkpoint: plan
+checkpoint_state: approved
 ---
 
 # Implementation Plan: Remove secrets from appsettings.json
@@ -49,3 +50,6 @@ checkpoint: plan
 - Env var form: `LDAPServerProfiles__0__BindAccountPassword`, where `0` is the profile's array index.
 - Regenerated Wolverine code is not expected to change (no handler changes).
 - `appsettings.Development.json` (ignored) is not touched.
+
+---
+*Plan approved.*

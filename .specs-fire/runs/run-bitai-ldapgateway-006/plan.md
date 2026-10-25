@@ -43,4 +43,4 @@ approved_at: 2026-10-24T01:20:00Z
 - Out of scope per the intent: `DisableMsAdUserCommand.Reason` validation.
 
 ---
-*Plan awaiting approval.*
+*Plan approved.*

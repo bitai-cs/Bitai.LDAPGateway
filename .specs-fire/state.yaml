@@ -59,7 +59,7 @@ intents:
         completed_at: 2026-10-23T23:09:19.060Z
   - id: code-review-20251023-remediation
     title: Code Review 2025-10-23 Remediation
-    status: in_progress
+    status: completed
     work_items:
       - id: remove-secrets-from-appsettings
         title: Remove secrets from appsettings.json
@@ -106,13 +106,15 @@ intents:
         completed_at: 2026-10-24T02:53:10.840Z
       - id: use-case-boundary-tests
         title: Boundary tests for untested use cases
-        status: pending
+        status: completed
         complexity: medium
         mode: confirm
         depends_on:
           - mask-set-password-command-logging
           - harden-validators-and-null-guards
           - uniform-domain-events-for-profile-handlers
+        run_id: run-bitai-ldapgateway-010
+        completed_at: 2026-10-25T01:34:50.946Z
 runs:
   active: []
   completed:
@@ -188,3 +190,11 @@ runs:
           mode: validate
       started: 2026-10-24T05:00:19.317Z
       completed: 2026-10-24T05:19:12.920Z
+    - id: run-bitai-ldapgateway-010
+      scope: single
+      work_items:
+        - id: use-case-boundary-tests
+          intent: code-review-20251023-remediation
+          mode: confirm
+      started: 2026-10-25T01:21:55.248Z
+      completed: 2026-10-25T01:34:50.946Z
