@@ -4,6 +4,7 @@ using Bitai.LDAPGateway.Api.Options;
 using Bitai.LDAPGateway.Application;
 using Bitai.LDAPGateway.Infrastructure;
 using JasperFx;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,14 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.LogSecurityByPassConfiguration();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).AllowAnonymous();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+}).AllowAnonymous();
 app.MapControllers();
 
 return await app.RunJasperFxCommands(args);

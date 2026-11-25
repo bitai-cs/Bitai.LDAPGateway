@@ -24,7 +24,10 @@ public sealed class OAuthSecurityWebApplicationFactory : WebApplicationFactory<P
     public WebApplicationFactory<Program> WithStandardSecurity() =>
         WithWebHostBuilder(builder =>
         {
-            builder.UseEnvironment("Development");
+            // Dedicated environment: it uses the base appsettings.json (API security enabled) and disables the
+            // cache, so the tests never need Redis. appsettings.Development.json is not versioned and must not
+            // influence the test outcome.
+            builder.UseEnvironment("TestingStandard");
             builder.ConfigureServices(services =>
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {

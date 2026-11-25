@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -27,12 +28,15 @@ public sealed class GetGroupByIdentifierQueryValidator : AbstractValidator<GetGr
 }
 
 /// <summary>Handles <see cref="GetGroupByIdentifierQuery"/>.</summary>
-public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase
+public sealed class GetGroupByIdentifierQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetGroupByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+    public GetGroupByIdentifierQueryHandler(
+       IDirectoryServiceConnector directoryServiceConnector,
+       IDomainEventPublisher domainEventPublisher,
+       DirectoryCache cache)
+       : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -41,8 +45,13 @@ public sealed class GetGroupByIdentifierQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
-        var result = await ExecuteAsync("GetGroupByIdentifier", context,
-           () => _directoryServiceConnector.GetGroupAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
+        var result = await ExecuteCachedQueryAsync(
+           "GetGroupByIdentifier",
+           context,
+           CacheKeys.Group(request),
+           CachePolicies.Entry(),
+           cacheNullAsNotFound: true,
+           token => _directoryServiceConnector.GetGroupAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, token),
            cancellationToken);
 
         if (!result.IsSuccess || (result.IsSuccess && result.Value != null))

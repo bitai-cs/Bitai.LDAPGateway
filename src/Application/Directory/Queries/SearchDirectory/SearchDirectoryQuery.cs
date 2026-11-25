@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -34,12 +35,15 @@ public sealed class SearchDirectoryQueryValidator : AbstractValidator<SearchDire
 }
 
 /// <summary>Handles <see cref="SearchDirectoryQuery"/>.</summary>
-public sealed class SearchDirectoryQueryHandler : LdapHandlerBase
+public sealed class SearchDirectoryQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public SearchDirectoryQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+    public SearchDirectoryQueryHandler(
+       IDirectoryServiceConnector directoryServiceConnector,
+       IDomainEventPublisher domainEventPublisher,
+       DirectoryCache cache)
+       : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -47,8 +51,22 @@ public sealed class SearchDirectoryQueryHandler : LdapHandlerBase
     public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(SearchDirectoryQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-        return ExecuteAsync("SearchDirectory", context,
-           () => _directoryServiceConnector.SearchDirectoryAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
-           cancellationToken);
+
+        if (request.FilterAttribute is LdapEntryAttribute.userPassword or LdapEntryAttribute.unicodePwd)
+        {
+            return ExecuteAsync("SearchDirectory", context,
+               () => _directoryServiceConnector.SearchDirectoryAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
+               cancellationToken);
+        }
+
+        return ExecuteCachedQueryAsync(
+            "SearchDirectory",
+            context,
+            CacheKeys.SearchDirectory(request),
+            CachePolicies.Search(),
+            cacheNullAsNotFound: false,
+            token => _directoryServiceConnector.SearchDirectoryAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, token),
+            cancellationToken,
+            allowDistributedCache: value => value.Count <= CachePolicies.MaxEntriesToCache);
     }
 }

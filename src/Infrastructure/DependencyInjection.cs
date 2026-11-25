@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common.Interfaces;
+using Bitai.LDAPGateway.Infrastructure.Caching;
 using Bitai.LDAPGateway.Infrastructure.Options;
 using Bitai.LDAPGateway.Infrastructure.Services;
 using Bitai.LDAPHelper.LdapAdapters;
@@ -23,6 +24,8 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<LdapServerProfilesOptions>, LdapServerProfilesValidator>());
+
+        services.AddCaching(configuration);
 
         services
             .AddOptions<ServiceConnectionAdapterOptions>()

@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -54,12 +55,15 @@ public sealed class SearchGroupsQueryValidator : AbstractValidator<SearchGroupsQ
 }
 
 /// <summary>Handles <see cref="SearchGroupsQuery"/>.</summary>
-public sealed class SearchGroupsQueryHandler : LdapHandlerBase
+public sealed class SearchGroupsQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public SearchGroupsQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-        : base(domainEventPublisher)
+    public SearchGroupsQueryHandler(
+        IDirectoryServiceConnector directoryServiceConnector,
+        IDomainEventPublisher domainEventPublisher,
+        DirectoryCache cache)
+        : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -67,8 +71,22 @@ public sealed class SearchGroupsQueryHandler : LdapHandlerBase
     public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(SearchGroupsQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-        return ExecuteAsync("SearchGroups", context,
-            () => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
-        cancellationToken);
+
+        if (request.FilterAttribute is LdapEntryAttribute.userPassword or LdapEntryAttribute.unicodePwd)
+        {
+            return ExecuteAsync("SearchGroups", context,
+                () => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
+                cancellationToken);
+        }
+
+        return ExecuteCachedQueryAsync(
+            "SearchGroups",
+            context,
+            CacheKeys.SearchGroups(request),
+            CachePolicies.Search(),
+            cacheNullAsNotFound: false,
+            token => _directoryServiceConnector.SearchGroupsAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, token),
+            cancellationToken,
+            allowDistributedCache: value => value.Count <= CachePolicies.MaxEntriesToCache);
     }
 }

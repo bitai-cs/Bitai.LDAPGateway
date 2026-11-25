@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -22,12 +23,15 @@ public sealed class DeleteMsAdUserCommandValidator : AbstractValidator<DeleteMsA
 }
 
 /// <summary>Handles <see cref="DeleteMsAdUserCommand"/>.</summary>
-public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase
+public sealed class DeleteMsAdUserCommandHandler : DirectoryLdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public DeleteMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-      : base(domainEventPublisher)
+   public DeleteMsAdUserCommandHandler(
+      IDirectoryServiceConnector directoryServiceConnector,
+      IDomainEventPublisher domainEventPublisher,
+      DirectoryCache cache)
+      : base(domainEventPublisher, cache)
    {
       _directoryServiceConnector = directoryServiceConnector;
    }
@@ -35,7 +39,7 @@ public sealed class DeleteMsAdUserCommandHandler : LdapHandlerBase
    public Task<Result> Handle(DeleteMsAdUserCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-      return ExecuteAsync("DeleteMsAdUser", context,
+      return ExecuteMutationAsync("DeleteMsAdUser", context,
          () => _directoryServiceConnector.DeleteMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, cancellationToken),
          cancellationToken);
    }

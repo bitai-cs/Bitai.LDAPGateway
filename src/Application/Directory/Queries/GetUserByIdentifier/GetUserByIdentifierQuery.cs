@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -27,12 +28,15 @@ public sealed class GetUserByIdentifierQueryValidator : AbstractValidator<GetUse
 }
 
 /// <summary>Handles <see cref="GetUserByIdentifierQuery"/>.</summary>
-public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase
+public sealed class GetUserByIdentifierQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetUserByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+    public GetUserByIdentifierQueryHandler(
+       IDirectoryServiceConnector directoryServiceConnector,
+       IDomainEventPublisher domainEventPublisher,
+       DirectoryCache cache)
+       : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -41,8 +45,13 @@ public sealed class GetUserByIdentifierQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
-        var result = await ExecuteAsync("GetUserByIdentifier", context,
-           () => _directoryServiceConnector.GetUserAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
+        var result = await ExecuteCachedQueryAsync(
+           "GetUserByIdentifier",
+           context,
+           CacheKeys.User(request),
+           CachePolicies.Entry(),
+           cacheNullAsNotFound: true,
+           token => _directoryServiceConnector.GetUserAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, token),
            cancellationToken);
 
         if (!result.IsSuccess || (result.IsSuccess && result.Value != null))

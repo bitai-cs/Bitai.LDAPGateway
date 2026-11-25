@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -27,12 +28,15 @@ public sealed class GetDirectoryEntryByIdentifierQueryValidator : AbstractValida
 }
 
 /// <summary>Handles <see cref="GetDirectoryEntryByIdentifierQuery"/>.</summary>
-public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase
+public sealed class GetDirectoryEntryByIdentifierQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetDirectoryEntryByIdentifierQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-        : base(domainEventPublisher)
+    public GetDirectoryEntryByIdentifierQueryHandler(
+        IDirectoryServiceConnector directoryServiceConnector,
+        IDomainEventPublisher domainEventPublisher,
+        DirectoryCache cache)
+        : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -41,8 +45,13 @@ public sealed class GetDirectoryEntryByIdentifierQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
-        var result = await ExecuteAsync("GetDirectoryEntryByIdentifier", context,
-            () => _directoryServiceConnector.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, cancellationToken),
+        var result = await ExecuteCachedQueryAsync(
+            "GetDirectoryEntryByIdentifier",
+            context,
+            CacheKeys.Entry(request),
+            CachePolicies.Entry(),
+            cacheNullAsNotFound: true,
+            token => _directoryServiceConnector.GetDirectoryEntryAsync(context, request.IdentifierAttribute, request.Identifier, request.RequiredAttributeSet, token),
             cancellationToken);
 
         // If the result is not successful or if it is successful and the value is not null, return the result.

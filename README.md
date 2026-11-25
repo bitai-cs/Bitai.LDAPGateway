@@ -53,6 +53,54 @@ Untracked files such as `appsettings.Development.json` are ignored by git, but p
 
 Deployments that relied on the passwords committed in `appsettings.json` must now set the environment variables above before upgrading, otherwise the service will not start.
 
+## Caching
+
+Directory reads are cached with FusionCache: an in-process L1, a shared Redis L2 and a Redis Pub/Sub backplane that drops the L1 of the other instances after a mutation.
+
+### What is cached
+
+| Query | L1 | L2 |
+|---|---|---|
+| `SearchUsers`, `SearchGroups`, `SearchDirectory` | 30 s | 2 min |
+| `GetUserByIdentifier`, `GetGroupByIdentifier`, `GetDirectoryEntryByIdentifier` | 30 s | 2 min |
+| `GetUserParents`, `GetGroupParents` | 1 min | 5 min |
+| Not found (404, or `null` on the detail queries) | 10 s | 30 s |
+
+- Authentication, server profiles and catalog types are **not** cached (credentials/account state and in-memory configuration).
+- Filters on `userPassword` / `unicodePwd` bypass the cache.
+- Cache keys are deterministic and hashed (SHA-256); directory values never appear in Redis keys or logs. Search results larger than 200 entries stay in L1 only to bound Redis memory.
+- A successful create/disable/delete/set-password invalidates every cached read of its server profile before the response is sent.
+- LDAP failures (`5xx`/`502`) are never cached.
+
+### Staleness
+
+The invalidation is best-effort because the gateway has no local transaction/outbox: a crash between the LDAP write and the invalidation, or an unavailable Redis, leaves stale entries until the TTL expires. Changes made directly in Active Directory by another actor cannot be invalidated at all; the L2 TTL (2 min for directory lookups) is the upper bound. Across instances, a lost backplane notification is repaired by the reconciler (about 60 s) or bounded by the L1 duration.
+
+### Configuration
+
+The `Caching` section in `src/Api/appsettings.json` holds the non-secret settings (`Enabled`, `KeyPrefix`, `ChannelPrefix`, durations, timeouts). The Redis connection string is **required** when caching is enabled and must not be committed:
+
+```
+Caching__RedisConnectionString=<host>:6380,ssl=true,abortConnect=false
+```
+
+For local development:
+
+```
+dotnet user-secrets set "Caching:RedisConnectionString" "localhost:6379,abortConnect=false" --project src/Api
+```
+
+To run without Redis, set `Caching:Enabled` to `false`; the service then uses only the in-process cache. If Redis is unavailable at runtime (and caching is enabled), the service still starts and serves reads directly from LDAP with bounded timeouts.
+
+Health endpoints: `/health/ready` (includes the cache reconciler and stays out of rotation until the generation subscription exists) and `/health/live` (process only, never depends on Redis).
+
+### Redis security
+
+- Use TLS and an ACL user limited to the commands needed: `SUBSCRIBE`/`PUBLISH` on the backplane and generation channels, `INCR`/`GET` on the generation key, and the key patterns under `KeyPrefix`.
+- The physical L2 keys are prefixed by FusionCache with its protocol version: cached entries and tag markers look like `v2:<KeyPrefix>...`, while the generation key is `<ChannelPrefix>:cache:generation`. Grant both patterns. The backplane channel is `<ChannelPrefix>.Backplane:v2`; confirm the channel names with `PUBSUB CHANNELS` on the deployed version.
+- The `maxmemory-policy` must not evict the generation key: use a `volatile-*` policy (all cached entries have a TTL) or a dedicated Redis instance.
+- Use a distinct `KeyPrefix` and `ChannelPrefix` per service and environment; bump the prefix version (`v2:`) when a cached shape changes.
+
 ## Security follow-ups (manual)
 
 The previous passwords remain in the git history and must be treated as compromised:

@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -23,12 +24,15 @@ public sealed class DisableMsAdUserCommandValidator : AbstractValidator<DisableM
 }
 
 /// <summary>Handles <see cref="DisableMsAdUserCommand"/>.</summary>
-public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase
+public sealed class DisableMsAdUserCommandHandler : DirectoryLdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public DisableMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-      : base(domainEventPublisher)
+   public DisableMsAdUserCommandHandler(
+      IDirectoryServiceConnector directoryServiceConnector,
+      IDomainEventPublisher domainEventPublisher,
+      DirectoryCache cache)
+      : base(domainEventPublisher, cache)
    {
       _directoryServiceConnector = directoryServiceConnector;
    }
@@ -36,7 +40,7 @@ public sealed class DisableMsAdUserCommandHandler : LdapHandlerBase
    public Task<Result> Handle(DisableMsAdUserCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-      return ExecuteAsync("DisableMsAdUser", context,
+      return ExecuteMutationAsync("DisableMsAdUser", context,
          () => _directoryServiceConnector.DisableMsAdUserAsync(context, request.IdentifierAttribute, request.Identifier, request.Reason, cancellationToken),
          cancellationToken);
    }

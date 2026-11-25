@@ -10,6 +10,7 @@ nupkg/
 #.NET Json configurations
 appsettings.*.json
 !/src/Api/appsettings.Testing.json
+!/src/Api/appsettings.TestingStandard.json
 
 # Visual Studio Code
 .vscode
