@@ -7,7 +7,7 @@
 
 ## 1. Objetivo
 
-Cachear las consultas al directorio (las operaciones LDAP caras) usando FusionCache con Redis como L2 y un backplane para coordinar la L1 de las distintas réplicas. Las mutaciones deben invalidar el caché del perfil afectado inmediatamente después de completarse la escritura en LDAP.
+Cachear las consultas al directorio (las operaciones LDAP caras) usando FusionCache con Redis como L2 y un backplane para coordinar la L1 de las distintas réplicas. Las mutaciones que pueden alterar datos devueltos por las lecturas cacheadas (crear, deshabilitar y eliminar usuario) deben invalidar el caché del perfil afectado inmediatamente después de completarse la escritura en LDAP. Establecer contraseña no invalida (ver 6.6).
 
 ## 2. Preflight del repositorio
 
@@ -50,7 +50,8 @@ Estas ventanas quedan documentadas en el README y no se presentan como consisten
 | Escenario | Qué protege | Ventana residual |
 |---|---|---|
 | Lectura normal | L1 → L2 → LDAP | — |
-| Mutación a través del gateway | Invalidación del tag del perfil antes de responder | 0 para read-your-writes en réplicas conectadas |
+| Crear, deshabilitar o eliminar usuario a través del gateway | Invalidación del tag del perfil antes de responder | 0 para read-your-writes en réplicas conectadas |
+| Establecer contraseña a través del gateway | Sin invalidación (la contraseña no forma parte de ninguna lectura cacheada) | No aplica; ver riesgo sobre `userAccountControl` en 6.6 |
 | Notificación del backplane perdida | Reconciliador limpia la L1 local al detectar hueco | ≤ 2 × `ReconcileInterval` (60 s) |
 | Réplica desconectada y reconectada | `ConnectionRestored` → flush local | ≈ 1 s tras la reconexión |
 | Crash entre escritura LDAP e invalidación, o Redis caído | Ninguno (no hay outbox) | Hasta el TTL de L2 (2 min) |
@@ -107,7 +108,7 @@ La caché negativa se usa cuando el conector devuelve `Error.StatusCode == 404` 
 
 - **Componentes**: perfil normalizado a minúsculas, catálogo, operación, atributos, valores normalizados (`Trim()` + `ToLowerInvariant()` porque AD compara sin distinguir mayúsculas) y `RequiredAttributeSet` (cambia la forma del DTO), más `UserMustExists` / `GroupMustExist` / `UserMustExist` / `GroupMustExist` cuando aplica.
 - **Sin PII en claves ni tags**: identificadores y valores de filtro solo existen dentro del hash. Los tags llevan únicamente el id de perfil.
-- **Tag de invalidación**: `ldap:profile:{profileIdEnMinusculas}`. Un solo tag coarse por perfil: cualquier mutación invalida todas las lecturas de ese perfil (ambos catálogos), que es la estrategia correcta para listas de búsqueda.
+- **Tag de invalidación**: `ldap:profile:{profileIdEnMinusculas}`. Un solo tag coarse por perfil: cualquier mutación que invalida (crear, deshabilitar, eliminar) borra todas las lecturas de ese perfil (ambos catálogos), que es la estrategia correcta para listas de búsqueda.
 - **Límite de payload**: si una búsqueda devuelve más de 200 entradas, el resultado no se escribe en Redis: se mantiene solo en la L1 del nodo (`SkipDistributedCacheWrite`), para acotar la memoria de L2. El límite es la constante `CachePolicies.MaxEntriesToCache`; cambiarlo requiere recompilar.
 
 ### 6.4 Modelo cacheado
@@ -156,6 +157,7 @@ public abstract class DirectoryLdapHandlerBase : LdapHandlerBase
     protected Task<Result<T>> ExecuteCachedQueryAsync<T>(...);
     protected Task<Result<T>> ExecuteMutationAsync<T>(...);
     protected Task<Result> ExecuteMutationAsync(...);
+    protected Task<Result> ExecuteMutationWithoutInvalidationAsync(...);
 }
 ```
 
@@ -176,7 +178,13 @@ Comportamiento de `ExecuteCachedQueryAsync`:
 3. Si la invalidación falla, se registra `LogWarning` con perfil y operación (sin datos sensibles) y **no** se altera el resultado del comando.
 4. Publica el evento de operación completada.
 
-Handlers que pasan a `ExecuteMutationAsync`: `CreateMsAdUserCommandHandler`, `DisableMsAdUserCommandHandler`, `DeleteMsAdUserCommandHandler`, `SetMsAdUserPasswordCommandHandler`.
+Handlers que pasan a `ExecuteMutationAsync`: `CreateMsAdUserCommandHandler`, `DisableMsAdUserCommandHandler`, `DeleteMsAdUserCommandHandler`.
+
+**Excepción: `SetMsAdUserPasswordCommandHandler`** usa `ExecuteMutationWithoutInvalidationAsync`: ejecuta la operación y publica el evento, sin invalidar. Motivo: `LdapEntryDto` no expone `unicodePwd`, `pwdLastSet` ni `lockoutTime`, así que ninguna entrada cacheada puede quedar desactualizada por un cambio de contraseña.
+
+- **Riesgo aceptado**: `AccountManager.SetMsADUserAccountPassword` (paquete `Bitai.LDAPHelper`, fuera del repo) no se pudo inspeccionar. Se asume que solo escribe `unicodePwd` (y `pwdLastSet` con `MustChangeAtNextLogon`). Si además modificara `userAccountControl`, que el DTO sí devuelve, ese campo podría verse desactualizado hasta el TTL (L1 30 s, L2 2 min).
+
+**Decisión sobre `CreateMsAdUser`: se mantiene la invalidación completa.** Aunque el usuario nuevo no pudo estar cacheado como existente, sí puede haber respuestas 404 cacheadas (10 s L1 / 30 s L2) y búsquedas cacheadas (30 s L1 / 2 min L2) que no lo incluyan. Se evaluó una invalidación parcial con un segundo tag `ldap:profile:{p}:volatile` (búsquedas y not-found) y se descartó por complejidad y poco beneficio con creaciones esporádicas; es la opción a retomar si hay aprovisionamiento masivo.
 
 ### 6.7 Multi-instancia (opción A)
 
@@ -232,7 +240,7 @@ Handlers que pasan a `ExecuteMutationAsync`: `CreateMsAdUserCommandHandler`, `Di
 | `src/Application/Common/DirectoryLdapHandlerBase.cs` | Nueva base con lectura cacheada e invalidación. |
 | `src/Application/Common/LdapHandlerBase.cs` | Refactor menor: `PublishCompletedAsync` reutilizable. |
 | 8 archivos `.../Queries/*/*Query.cs` | Heredan de la nueva base; constructor recibe `DirectoryCache`; `Handle` usa `ExecuteCachedQueryAsync`. |
-| 4 archivos `.../Commands/*/*Command.cs` | Heredan de la nueva base; constructor recibe `DirectoryCache`; `Handle` usa `ExecuteMutationAsync`. |
+| 4 archivos `.../Commands/*/*Command.cs` | Heredan de la nueva base; constructor recibe `DirectoryCache`; `Handle` usa `ExecuteMutationAsync` (Create, Disable, Delete) o `ExecuteMutationWithoutInvalidationAsync` (SetPassword). |
 | `src/Application/Common/Models/LdapDtos.cs` | `LdapEntryDto`: arrays/`IEnumerable` → `IReadOnlyList`. |
 | `src/Application/Bitai.LDAPGateway.Application.csproj` | Referencia a FusionCache. |
 
@@ -321,7 +329,8 @@ y en desarrollo con `dotnet user-secrets set "Caching:RedisConnectionString" "..
 - Cache hit: dos llamadas iguales ejecutan el conector una sola vez.
 - Cache negativa: 404 o `null` se sirve desde caché dentro del TTL.
 - Fallo 502: no se cachea; la segunda llamada vuelve a invocar el conector.
-- Mutación exitosa: verifica `ICacheInvalidator.InvalidateAsync` con el tag del perfil y `CancellationToken.None`.
+- Mutación exitosa (Create, Disable, Delete): verifica `ICacheInvalidator.InvalidateAsync` con el tag del perfil y `CancellationToken.None`.
+- SetPassword exitoso: no invalida, y una búsqueda cacheada antes sigue sirviéndose del caché.
 - Mutación fallida: no invalida.
 - Fallo del invalidator: el comando sigue devolviendo éxito y se registra warning.
 - `GetCatalogTypes`, perfiles y autenticación: no tocan `IFusionCache`.
