@@ -1,6 +1,9 @@
 using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Models;
+using Bitai.LDAPGateway.Application.Directory.Commands.CreateMsAdUser;
 using Bitai.LDAPGateway.Application.Directory.Commands.DeleteMsAdUser;
+using Bitai.LDAPGateway.Application.Directory.Commands.DisableMsAdUser;
+using Bitai.LDAPGateway.Application.Directory.Commands.SetMsAdUserPassword;
 using Bitai.LDAPGateway.Application.Directory.Queries.GetUserByIdentifier;
 using Bitai.LDAPGateway.Application.Directory.Queries.SearchUsers;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -142,6 +145,72 @@ public sealed class DirectoryCachingTests
 
         Assert.False(result.IsSuccess);
         support.VerifyProfileNotInvalidated();
+    }
+
+    [Fact]
+    public async Task SetMsAdUserPassword_Success_DoesNotInvalidateTheCache_AndKeepsCachedReads()
+    {
+        var support = new DirectoryTestSupport();
+        SetupSearchUsers(support, Entries("jdoe"));
+        support.Connector
+            .Setup(c => c.SetMsAdUserPasswordAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var searchHandler = new SearchUsersQueryHandler(support.Connector.Object, support.Publisher.Object, support.Cache);
+        var passwordHandler = new SetMsAdUserPasswordCommandHandler(support.Connector.Object, support.Publisher.Object, support.Cache);
+        var query = SearchQuery("jdoe");
+
+        await searchHandler.Handle(query, CancellationToken.None);
+        var result = await passwordHandler.Handle(
+            new SetMsAdUserPasswordCommand(Profile, Catalog, IdAttr, "jdoe", "N3w-Secret!", false), CancellationToken.None);
+        await searchHandler.Handle(query, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        support.VerifyProfileNotInvalidated();
+        VerifySearchUsers(support, Times.Once());
+        support.VerifyEvent("SetMsAdUserPassword", true);
+    }
+
+    [Fact]
+    public async Task CreateMsAdUser_Success_InvalidatesTheProfileTag()
+    {
+        var support = new DirectoryTestSupport();
+        support.Connector
+            .Setup(c => c.CreateMsAdUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<CreateMsAdUserDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<LdapEntryDto>.Success(Entry()));
+
+        var handler = new CreateMsAdUserCommandHandler(support.Connector.Object, support.Publisher.Object, support.Cache);
+        var command = new CreateMsAdUserCommand(Profile, Catalog)
+        {
+            DistinguishedNameOfContainer = "OU=Users,DC=ie,DC=edu,DC=pe",
+            DistinguishedName = "CN=John,OU=Users,DC=ie,DC=edu,DC=pe",
+            Cn = "John",
+            DisplayName = "John Doe",
+            SAMAccountName = "jdoe",
+            ObjectClass = ["user"],
+            Password = "Secret-1!"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        support.VerifyProfileInvalidated();
+    }
+
+    [Fact]
+    public async Task DisableMsAdUser_Success_InvalidatesTheProfileTag()
+    {
+        var support = new DirectoryTestSupport();
+        support.Connector
+            .Setup(c => c.DisableMsAdUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var handler = new DisableMsAdUserCommandHandler(support.Connector.Object, support.Publisher.Object, support.Cache);
+
+        var result = await handler.Handle(new DisableMsAdUserCommand(Profile, Catalog, IdAttr, "jdoe", null), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        support.VerifyProfileInvalidated();
     }
 
     [Fact]

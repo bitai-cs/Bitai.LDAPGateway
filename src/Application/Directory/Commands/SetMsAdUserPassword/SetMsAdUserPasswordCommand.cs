@@ -50,7 +50,8 @@ public sealed class SetMsAdUserPasswordCommandHandler : DirectoryLdapHandlerBase
    public Task<Result> Handle(SetMsAdUserPasswordCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-      return ExecuteMutationAsync("SetMsAdUserPassword", context,
+      // No cache invalidation: the password is never returned by any cached read, so no entry can become stale.
+      return ExecuteMutationWithoutInvalidationAsync("SetMsAdUserPassword", context,
          () => _directoryServiceConnector.SetMsAdUserPasswordAsync(context, request.IdentifierAttribute, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
          cancellationToken);
    }

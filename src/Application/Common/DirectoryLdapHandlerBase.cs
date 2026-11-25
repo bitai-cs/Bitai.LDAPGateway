@@ -90,4 +90,24 @@ public abstract class DirectoryLdapHandlerBase : LdapHandlerBase
 
         return result;
     }
+
+    /// <summary>
+    /// Executes a directory mutation without a payload and leaves the cached reads untouched.
+    /// </summary>
+    /// <remarks>
+    /// Use it only when the mutation cannot alter any value returned by the cached reads
+    /// (for example a password change: the password is never part of a directory entry DTO).
+    /// </remarks>
+    protected async Task<Result> ExecuteMutationWithoutInvalidationAsync(
+        string operationName,
+        LdapRequestContext context,
+        Func<Task<Result>> operation,
+        CancellationToken cancellationToken)
+    {
+        var result = await operation();
+
+        await PublishCompletedAsync(operationName, context, result.IsSuccess, result, cancellationToken);
+
+        return result;
+    }
 }
