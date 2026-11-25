@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -54,12 +55,15 @@ public sealed class SearchUsersQueryValidator : AbstractValidator<SearchUsersQue
 }
 
 /// <summary>Handles <see cref="SearchUsersQuery"/>.</summary>
-public sealed class SearchUsersQueryHandler : LdapHandlerBase
+public sealed class SearchUsersQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public SearchUsersQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-        : base(domainEventPublisher)
+    public SearchUsersQueryHandler(
+        IDirectoryServiceConnector directoryServiceConnector,
+        IDomainEventPublisher domainEventPublisher,
+        DirectoryCache cache)
+        : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -67,8 +71,22 @@ public sealed class SearchUsersQueryHandler : LdapHandlerBase
     public Task<Result<IReadOnlyList<LdapEntryDto>>> Handle(SearchUsersQuery request, CancellationToken cancellationToken)
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-        return ExecuteAsync("SearchUsers", context,
-            () => _directoryServiceConnector.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
-        cancellationToken);
+
+        if (request.FilterAttribute is LdapEntryAttribute.userPassword or LdapEntryAttribute.unicodePwd)
+        {
+            return ExecuteAsync("SearchUsers", context,
+                () => _directoryServiceConnector.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, cancellationToken),
+                cancellationToken);
+        }
+
+        return ExecuteCachedQueryAsync(
+            "SearchUsers",
+            context,
+            CacheKeys.SearchUsers(request),
+            CachePolicies.Search(),
+            cacheNullAsNotFound: false,
+            token => _directoryServiceConnector.SearchUsersAsync(context, request.FilterAttribute, request.FilterValue, request.SecondFilterAttribute, request.SecondFilterValue, request.CombineFilters, request.RequiredAttributeSet, token),
+            cancellationToken,
+            allowDistributedCache: value => value.Count <= CachePolicies.MaxEntriesToCache);
     }
 }

@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -27,12 +28,15 @@ public sealed class GetUserParentsQueryValidator : AbstractValidator<GetUserPare
 }
 
 /// <summary>Handles <see cref="GetUserParentsQuery"/>.</summary>
-public sealed class GetUserParentsQueryHandler : LdapHandlerBase
+public sealed class GetUserParentsQueryHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public GetUserParentsQueryHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-        : base(domainEventPublisher)
+    public GetUserParentsQueryHandler(
+        IDirectoryServiceConnector directoryServiceConnector,
+        IDomainEventPublisher domainEventPublisher,
+        DirectoryCache cache)
+        : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -41,8 +45,13 @@ public sealed class GetUserParentsQueryHandler : LdapHandlerBase
     {
         var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
 
-        return ExecuteAsync("GetUserParents", context,
-            () => _directoryServiceConnector.GetUserParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, request.UserMustExist, cancellationToken),
+        return ExecuteCachedQueryAsync(
+            "GetUserParents",
+            context,
+            CacheKeys.UserParents(request),
+            CachePolicies.Parents(),
+            cacheNullAsNotFound: false,
+            token => _directoryServiceConnector.GetUserParentsAsync(context, request.Identifier, request.IdentifierAttribute, request.RequiredAttributeSet, request.UserMustExist, token),
             cancellationToken);
     }
 }

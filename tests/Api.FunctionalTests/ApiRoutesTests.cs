@@ -27,4 +27,20 @@ public sealed class ApiRoutesTests : IClassFixture<OAuthSecurityWebApplicationFa
 
       Assert.Equal(HttpStatusCode.OK, response.StatusCode);
    }
+
+   [Fact]
+   public async Task HealthLive_ShouldReturnOk()
+   {
+      var response = await _client.GetAsync("/health/live");
+
+      Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+   }
+
+   [Fact]
+   public async Task HealthReady_ShouldReturnOk_WhenCachingIsDisabled()
+   {
+      var response = await _client.GetAsync("/health/ready");
+
+      Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+   }
 }

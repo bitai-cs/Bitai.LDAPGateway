@@ -29,7 +29,7 @@ public sealed class DirectoryQueryHandlersTests
             LdapEntryAttribute.cn, "john*", LdapEntryAttribute.mail, "*@edu.pe", true, Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Success(Entries("jdoe")));
 
-      var result = await new SearchDirectoryQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchDirectoryQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchDirectoryQuery(Profile, Catalog, LdapEntryAttribute.cn, "john*", LdapEntryAttribute.mail, "*@edu.pe", true, Set),
          CancellationToken.None);
 
@@ -47,7 +47,7 @@ public sealed class DirectoryQueryHandlersTests
             It.IsAny<LdapEntryAttribute?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Failure(Failure));
 
-      var result = await new SearchDirectoryQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchDirectoryQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchDirectoryQuery(Profile, Catalog, LdapEntryAttribute.cn, "x", null, null, null, Set), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -63,7 +63,7 @@ public sealed class DirectoryQueryHandlersTests
             LdapEntryAttribute.cn, "john*", null, null, null, Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Success(Entries("jdoe", "jroe")));
 
-      var result = await new SearchUsersQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchUsersQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchUsersQuery(Profile, Catalog, LdapEntryAttribute.cn, "john*", null, null, null, Set), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -80,7 +80,7 @@ public sealed class DirectoryQueryHandlersTests
             It.IsAny<LdapEntryAttribute?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Failure(Failure));
 
-      var result = await new SearchUsersQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchUsersQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchUsersQuery(Profile, Catalog, LdapEntryAttribute.cn, "x", null, null, null, Set), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -96,7 +96,7 @@ public sealed class DirectoryQueryHandlersTests
             LdapEntryAttribute.cn, "admins*", null, null, null, Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Success(Entries("admins")));
 
-      var result = await new SearchGroupsQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchGroupsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchGroupsQuery(Profile, Catalog, LdapEntryAttribute.cn, "admins*", null, null, null, Set), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -112,7 +112,7 @@ public sealed class DirectoryQueryHandlersTests
             It.IsAny<LdapEntryAttribute?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Failure(Failure));
 
-      var result = await new SearchGroupsQueryHandler(s.Connector.Object, s.Publisher.Object).Handle(
+      var result = await new SearchGroupsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache).Handle(
          new SearchGroupsQuery(Profile, Catalog, LdapEntryAttribute.cn, "x", null, null, null, Set), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -150,7 +150,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetUserAsync(It.Is<LdapRequestContext>(x => IsContext(x)), IdAttr, "jdoe", Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(Entry()));
 
-      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetUserByIdentifierQuery(Profile, Catalog, IdAttr, "jdoe", Set, true), CancellationToken.None);
 
       Assert.Equal("jdoe", result.Value!.samAccountName);
@@ -167,7 +167,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(null));
 
-      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetUserByIdentifierQuery(Profile, Catalog, IdAttr, "ghost", Set, mustExist), CancellationToken.None);
 
       Assert.Equal(expectedSuccess, result.IsSuccess);
@@ -189,7 +189,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetGroupAsync(It.Is<LdapRequestContext>(x => IsContext(x)), IdAttr, "admins", Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(Entry("admins")));
 
-      var result = await new GetGroupByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetGroupByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetGroupByIdentifierQuery(Profile, Catalog, IdAttr, "admins", Set, true), CancellationToken.None);
 
       Assert.Equal("admins", result.Value!.samAccountName);
@@ -206,7 +206,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetGroupAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(null));
 
-      var result = await new GetGroupByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetGroupByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetGroupByIdentifierQuery(Profile, Catalog, IdAttr, "ghost", Set, mustExist), CancellationToken.None);
 
       Assert.Equal(expectedSuccess, result.IsSuccess);
@@ -221,7 +221,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetDirectoryEntryAsync(It.Is<LdapRequestContext>(x => IsContext(x)), IdAttr, "jdoe", Set, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(Entry()));
 
-      var result = await new GetDirectoryEntryByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetDirectoryEntryByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetDirectoryEntryByIdentifierQuery(Profile, Catalog, "jdoe", IdAttr, Set, true), CancellationToken.None);
 
       Assert.Equal("jdoe", result.Value!.samAccountName);
@@ -238,7 +238,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetDirectoryEntryAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Success(null));
 
-      var result = await new GetDirectoryEntryByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetDirectoryEntryByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetDirectoryEntryByIdentifierQuery(Profile, Catalog, "ghost", IdAttr, Set, mustExist), CancellationToken.None);
 
       Assert.Equal(expectedSuccess, result.IsSuccess);
@@ -253,7 +253,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto?>.Failure(Failure));
 
-      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetUserByIdentifierQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetUserByIdentifierQuery(Profile, Catalog, IdAttr, "jdoe", Set, true), CancellationToken.None);
 
       Assert.Equal("bad_gateway", result.Error!.Code);
@@ -270,7 +270,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetUserParentsAsync(It.Is<LdapRequestContext>(x => IsContext(x)), "jdoe", IdAttr, Set, true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Success(Entries("staff")));
 
-      var result = await new GetUserParentsQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetUserParentsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetUserParentsQuery(Profile, Catalog, "jdoe", IdAttr, Set, true), CancellationToken.None);
 
       Assert.Single(result.Value!);
@@ -285,7 +285,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetUserParentsAsync(It.IsAny<LdapRequestContext>(), It.IsAny<string>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Failure(Error.NotFound("user not found")));
 
-      var result = await new GetUserParentsQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetUserParentsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetUserParentsQuery(Profile, Catalog, "ghost", IdAttr, Set, true), CancellationToken.None);
 
       Assert.Equal("not_found", result.Error!.Code);
@@ -300,7 +300,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetGroupParentsAsync(It.Is<LdapRequestContext>(x => IsContext(x)), "admins", IdAttr, Set, false, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Success(Entries("all-staff")));
 
-      var result = await new GetGroupParentsQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetGroupParentsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetGroupParentsQuery(Profile, Catalog, "admins", IdAttr, Set, false), CancellationToken.None);
 
       Assert.Single(result.Value!);
@@ -315,7 +315,7 @@ public sealed class DirectoryQueryHandlersTests
          .Setup(c => c.GetGroupParentsAsync(It.IsAny<LdapRequestContext>(), It.IsAny<string>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<LdapEntryAttributeSet>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<IReadOnlyList<LdapEntryDto>>.Failure(Failure));
 
-      var result = await new GetGroupParentsQueryHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new GetGroupParentsQueryHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new GetGroupParentsQuery(Profile, Catalog, "admins", IdAttr, Set, true), CancellationToken.None);
 
       Assert.False(result.IsSuccess);

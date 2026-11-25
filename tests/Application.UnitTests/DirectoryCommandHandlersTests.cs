@@ -37,7 +37,7 @@ public sealed class DirectoryCommandHandlersTests
             It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto>.Success(Entry()));
 
-      var result = await new CreateMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new CreateMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(NewCreateCommand(), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -52,7 +52,7 @@ public sealed class DirectoryCommandHandlersTests
          .Setup(c => c.CreateMsAdUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<CreateMsAdUserDto>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result<LdapEntryDto>.Failure(Failure));
 
-      var result = await new CreateMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new CreateMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(NewCreateCommand(), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -81,7 +81,7 @@ public sealed class DirectoryCommandHandlersTests
             LdapIdentifierAttribute.SAMAccountName, "jdoe", Secret, true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Success());
 
-      var result = await new SetMsAdUserPasswordCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new SetMsAdUserPasswordCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new SetMsAdUserPasswordCommand(Profile, Catalog, LdapIdentifierAttribute.SAMAccountName, "jdoe", Secret, true), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -97,7 +97,7 @@ public sealed class DirectoryCommandHandlersTests
             It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Failure(Failure));
 
-      var result = await new SetMsAdUserPasswordCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new SetMsAdUserPasswordCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new SetMsAdUserPasswordCommand(Profile, Catalog, LdapIdentifierAttribute.SAMAccountName, "jdoe", Secret, false), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -128,7 +128,7 @@ public sealed class DirectoryCommandHandlersTests
             LdapIdentifierAttribute.DistinguishedName, "CN=John", "left company", It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Success());
 
-      var result = await new DisableMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new DisableMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new DisableMsAdUserCommand(Profile, Catalog, LdapIdentifierAttribute.DistinguishedName, "CN=John", "left company"), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -144,7 +144,7 @@ public sealed class DirectoryCommandHandlersTests
             It.IsAny<string?>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Failure(Failure));
 
-      var result = await new DisableMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new DisableMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new DisableMsAdUserCommand(Profile, Catalog, LdapIdentifierAttribute.SAMAccountName, "jdoe", null), CancellationToken.None);
 
       Assert.False(result.IsSuccess);
@@ -172,7 +172,7 @@ public sealed class DirectoryCommandHandlersTests
             LdapIdentifierAttribute.SAMAccountName, "jdoe", It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Success());
 
-      var result = await new DeleteMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new DeleteMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new DeleteMsAdUserCommand(Profile, Catalog, LdapIdentifierAttribute.SAMAccountName, "jdoe"), CancellationToken.None);
 
       Assert.True(result.IsSuccess);
@@ -187,7 +187,7 @@ public sealed class DirectoryCommandHandlersTests
          .Setup(c => c.DeleteMsAdUserAsync(It.IsAny<LdapRequestContext>(), It.IsAny<LdapIdentifierAttribute>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(Result.Failure(Failure));
 
-      var result = await new DeleteMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object)
+      var result = await new DeleteMsAdUserCommandHandler(s.Connector.Object, s.Publisher.Object, s.Cache)
          .Handle(new DeleteMsAdUserCommand(Profile, Catalog, LdapIdentifierAttribute.SAMAccountName, "jdoe"), CancellationToken.None);
 
       Assert.False(result.IsSuccess);

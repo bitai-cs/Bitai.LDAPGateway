@@ -21,15 +21,7 @@ public abstract class LdapHandlerBase
     {
         var result = await operation();
 
-        await _domainEventPublisher.PublishAsync(
-            new OperationCompletedDomainEvent(
-                operationName,
-                context.ServerProfile,
-                context.CatalogType,
-                result.IsSuccess,
-                result.IsSuccess ? "Operation completed" : result.Error?.Message ?? "Operation failed",
-                DateTime.UtcNow),
-            cancellationToken);
+        await PublishCompletedAsync(operationName, context, result.IsSuccess, result, cancellationToken);
 
         return result;
     }
@@ -64,16 +56,48 @@ public abstract class LdapHandlerBase
     {
         var result = await operation();
 
-        await _domainEventPublisher.PublishAsync(
+        await PublishCompletedAsync(operationName, context, result.IsSuccess, result, cancellationToken);
+
+        return result;
+    }
+
+    /// <summary>Publishes the operation-completed domain event for the current request.</summary>
+    protected Task PublishCompletedAsync<T>(
+        string operationName,
+        LdapRequestContext context,
+        bool isSuccess,
+        Result<T> result,
+        CancellationToken cancellationToken,
+        string? successMessage = null)
+    {
+        return _domainEventPublisher.PublishAsync(
             new OperationCompletedDomainEvent(
                 operationName,
                 context.ServerProfile,
                 context.CatalogType,
-                result.IsSuccess,
-                result.IsSuccess ? "Operation completed" : result.Error?.Message ?? "Operation failed",
+                isSuccess,
+                isSuccess ? successMessage ?? "Operation completed" : result.Error?.Message ?? "Operation failed",
                 DateTime.UtcNow),
             cancellationToken);
+    }
 
-        return result;
+    /// <summary>Publishes the operation-completed domain event for a non-generic result.</summary>
+    protected Task PublishCompletedAsync(
+        string operationName,
+        LdapRequestContext context,
+        bool isSuccess,
+        Result result,
+        CancellationToken cancellationToken,
+        string? successMessage = null)
+    {
+        return _domainEventPublisher.PublishAsync(
+            new OperationCompletedDomainEvent(
+                operationName,
+                context.ServerProfile,
+                context.CatalogType,
+                isSuccess,
+                isSuccess ? successMessage ?? "Operation completed" : result.Error?.Message ?? "Operation failed",
+                DateTime.UtcNow),
+            cancellationToken);
     }
 }

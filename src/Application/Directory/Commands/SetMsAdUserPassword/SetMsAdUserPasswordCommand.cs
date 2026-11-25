@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -33,12 +34,15 @@ public sealed class SetMsAdUserPasswordCommandValidator : AbstractValidator<SetM
 }
 
 /// <summary>Handles <see cref="SetMsAdUserPasswordCommand"/>.</summary>
-public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase
+public sealed class SetMsAdUserPasswordCommandHandler : DirectoryLdapHandlerBase
 {
    private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-   public SetMsAdUserPasswordCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-      : base(domainEventPublisher)
+   public SetMsAdUserPasswordCommandHandler(
+      IDirectoryServiceConnector directoryServiceConnector,
+      IDomainEventPublisher domainEventPublisher,
+      DirectoryCache cache)
+      : base(domainEventPublisher, cache)
    {
       _directoryServiceConnector = directoryServiceConnector;
    }
@@ -46,7 +50,7 @@ public sealed class SetMsAdUserPasswordCommandHandler : LdapHandlerBase
    public Task<Result> Handle(SetMsAdUserPasswordCommand request, CancellationToken cancellationToken)
    {
       var context = new LdapRequestContext(request.ServerProfile, request.CatalogType);
-      return ExecuteAsync("SetMsAdUserPassword", context,
+      return ExecuteMutationAsync("SetMsAdUserPassword", context,
          () => _directoryServiceConnector.SetMsAdUserPasswordAsync(context, request.IdentifierAttribute, request.Identifier, request.NewPassword, request.MustChangeAtNextLogon, cancellationToken),
          cancellationToken);
    }

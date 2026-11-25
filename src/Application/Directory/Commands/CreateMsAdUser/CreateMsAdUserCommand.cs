@@ -1,4 +1,5 @@
 using Bitai.LDAPGateway.Application.Common;
+using Bitai.LDAPGateway.Application.Common.Caching;
 using Bitai.LDAPGateway.Application.Common.Interfaces;
 using Bitai.LDAPGateway.Application.Common.Models;
 using Bitai.LDAPGateway.Domain.Enums;
@@ -35,12 +36,15 @@ public sealed class CreateMsAdUserCommandValidator : AbstractValidator<CreateMsA
 }
 
 /// <summary>Handles <see cref="CreateMsAdUserCommand"/>.</summary>
-public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase
+public sealed class CreateMsAdUserCommandHandler : DirectoryLdapHandlerBase
 {
     private readonly IDirectoryServiceConnector _directoryServiceConnector;
 
-    public CreateMsAdUserCommandHandler(IDirectoryServiceConnector directoryServiceConnector, IDomainEventPublisher domainEventPublisher)
-       : base(domainEventPublisher)
+    public CreateMsAdUserCommandHandler(
+       IDirectoryServiceConnector directoryServiceConnector,
+       IDomainEventPublisher domainEventPublisher,
+       DirectoryCache cache)
+       : base(domainEventPublisher, cache)
     {
         _directoryServiceConnector = directoryServiceConnector;
     }
@@ -66,7 +70,7 @@ public sealed class CreateMsAdUserCommandHandler : LdapHandlerBase
            request.Mail,
            request.Password);
 
-        return ExecuteAsync("CreateMsAdUser", context,
+        return ExecuteMutationAsync("CreateMsAdUser", context,
            () => _directoryServiceConnector.CreateMsAdUserAsync(context, payload, cancellationToken),
            cancellationToken);
     }

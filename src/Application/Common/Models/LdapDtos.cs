@@ -18,12 +18,12 @@ public sealed record LdapEntryDto
     public DateTime? lastLogon { get; init; }
     public string? mail { get; init; }
     public string? manager { get; init; }
-    public string[]? member { get; init; }
-    public string[]? memberOf { get; init; }
-    public IEnumerable<LdapEntryDto>? memberOfEntries { get; init; }
+    public IReadOnlyList<string>? member { get; init; }
+    public IReadOnlyList<string>? memberOf { get; init; }
+    public IReadOnlyList<LdapEntryDto>? memberOfEntries { get; init; }
     public string? name { get; init; }
     public string? objectCategory { get; init; }
-    public string[]? objectClass { get; init; }
+    public IReadOnlyList<string>? objectClass { get; init; }
     public string? samAccountName { get; init; }
     public string? samAccountType { get; init; }
     public string? sn { get; init; }

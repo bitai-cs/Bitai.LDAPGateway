@@ -79,4 +79,13 @@ public sealed class OAuthSecurityTests : IClassFixture<OAuthSecurityWebApplicati
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task HealthEndpoints_AreAnonymous_WhenSecurityIsEnabled()
+    {
+        using var client = _factory.WithStandardSecurity().CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
+    }
 }
