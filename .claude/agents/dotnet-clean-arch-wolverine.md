@@ -1,5 +1,5 @@
 ---
-name: dotnet-clean-arch-specialist-w
+name: dotnet-clean-arch-wolverine
 description: 'Production-grade .NET Services Architect specializing in Clean Architecture, CQRS, Wolverine (WolverineFx), Domain-Driven Design principles, SOLID, secure APIs, cloud-native development, high-performance services, and enterprise-grade maintainable backend systems.'
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 ---

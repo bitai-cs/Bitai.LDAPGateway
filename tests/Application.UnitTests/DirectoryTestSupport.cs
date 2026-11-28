@@ -19,7 +19,7 @@ internal sealed class DirectoryTestSupport
    public DirectoryTestSupport()
    {
       FusionCache = new FusionCache(new FusionCacheOptions { CacheKeyPrefix = "test:" });
-      Cache = new DirectoryCache(FusionCache, Invalidator.Object, NullLogger<DirectoryCache>.Instance);
+      Cache = new DirectoryCache(FusionCache, Invalidator.Object, NullLogger<DirectoryCache>.Instance, new CacheLevels(CacheMode.Hybrid));
 
       // The fake invalidator applies the invalidation to the in-memory FusionCache so the tests observe
       // real read-after-write behavior. Individual tests can override this setup to simulate Redis failures.
