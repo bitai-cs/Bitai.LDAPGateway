@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Bitai.LDAPGateway.Application.Common.Caching;
 
 namespace Bitai.LDAPGateway.Infrastructure.Caching;
 
@@ -9,10 +10,23 @@ public sealed class CachingOptions : IValidatableObject
 {
     public const string SectionName = "Caching";
 
+    /// <summary>Enables the in-process memory cache (L1).</summary>
+    public bool MemoryCacheEnabled { get; set; } = true;
+
     /// <summary>
-    /// Enables the Redis L2 and the cross-node backplane. When disabled the cache lives in process memory only.
+    /// Enables the shared Redis cache (L2). Together with <see cref="MemoryCacheEnabled"/> it also enables
+    /// the cross-node backplane and the reconciler.
     /// </summary>
-    public bool Enabled { get; set; } = true;
+    public bool DistributedCacheEnabled { get; set; } = true;
+
+    /// <summary>The cache mode resulting from the two level flags.</summary>
+    public CacheMode Mode => (MemoryCacheEnabled, DistributedCacheEnabled) switch
+    {
+        (true, true) => CacheMode.Hybrid,
+        (true, false) => CacheMode.MemoryOnly,
+        (false, true) => CacheMode.DistributedOnly,
+        _ => CacheMode.None
+    };
 
     /// <summary>
     /// StackExchange.Redis connection string. It must not be committed: supply it through configuration,
@@ -67,31 +81,31 @@ public sealed class CachingOptions : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Enabled)
+        if (DistributedCacheEnabled)
         {
             if (string.IsNullOrWhiteSpace(RedisConnectionString))
             {
                 yield return new ValidationResult(
-                    "RedisConnectionString is required when caching is enabled.",
+                    "RedisConnectionString is required when DistributedCacheEnabled is true.",
                     [nameof(RedisConnectionString)]);
             }
 
             if (string.IsNullOrWhiteSpace(KeyPrefix) || !KeyPrefix.EndsWith(':'))
             {
                 yield return new ValidationResult(
-                    "KeyPrefix is required when caching is enabled and must end with ':'.",
+                    "KeyPrefix is required when DistributedCacheEnabled is true and must end with ':'.",
                     [nameof(KeyPrefix)]);
             }
 
             if (string.IsNullOrWhiteSpace(ChannelPrefix))
             {
                 yield return new ValidationResult(
-                    "ChannelPrefix is required when caching is enabled.",
+                    "ChannelPrefix is required when DistributedCacheEnabled is true.",
                     [nameof(ChannelPrefix)]);
             }
         }
 
-        if (MemoryCacheDuration > Duration)
+        if (MemoryCacheEnabled && DistributedCacheEnabled && MemoryCacheDuration > Duration)
         {
             yield return new ValidationResult(
                 "MemoryCacheDuration (L1) must not exceed Duration (L2).",

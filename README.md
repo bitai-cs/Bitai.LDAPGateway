@@ -68,7 +68,7 @@ Directory reads are cached with FusionCache: an in-process L1, a shared Redis L2
 
 - Authentication, server profiles and catalog types are **not** cached (credentials/account state and in-memory configuration).
 - Filters on `userPassword` / `unicodePwd` bypass the cache.
-- Cache keys are deterministic and hashed (SHA-256); directory values never appear in Redis keys or logs. Search results larger than 200 entries stay in L1 only to bound Redis memory.
+- Cache keys are deterministic and hashed (SHA-256); directory values never appear in Redis keys or logs. Search results larger than 200 entries stay in L1 only to bound Redis memory (in L2-only mode they are not cached).
 - A successful create/disable/delete/set-password invalidates every cached read of its server profile before the response is sent.
 - LDAP failures (`5xx`/`502`) are never cached.
 
@@ -78,7 +78,7 @@ The invalidation is best-effort because the gateway has no local transaction/out
 
 ### Configuration
 
-The `Caching` section in `src/Api/appsettings.json` holds the non-secret settings (`Enabled`, `KeyPrefix`, `ChannelPrefix`, durations, timeouts). The Redis connection string is **required** when caching is enabled and must not be committed:
+The `Caching` section in `src/Api/appsettings.json` holds the non-secret settings (`MemoryCacheEnabled`, `DistributedCacheEnabled`, `KeyPrefix`, `ChannelPrefix`, durations, timeouts). The Redis connection string is **required** when `DistributedCacheEnabled` is `true` and must not be committed:
 
 ```
 Caching__RedisConnectionString=<host>:6380,ssl=true,abortConnect=false
@@ -90,7 +90,22 @@ For local development:
 dotnet user-secrets set "Caching:RedisConnectionString" "localhost:6379,abortConnect=false" --project src/Api
 ```
 
-To run without Redis, set `Caching:Enabled` to `false`; the service then uses only the in-process cache. If Redis is unavailable at runtime (and caching is enabled), the service still starts and serves reads directly from LDAP with bounded timeouts.
+#### Cache levels
+
+L1 and L2 are enabled independently:
+
+| `MemoryCacheEnabled` (L1) | `DistributedCacheEnabled` (L2) | Mode | Redis | Invalidation |
+|---|---|---|---|---|
+| `true` | `true` | L1 + L2 (default) | required | Redis generation + backplane + reconciler (all nodes) |
+| `true` | `false` | L1 only | not used | local to the node; other nodes converge by TTL |
+| `false` | `true` | L2 only | required | Redis is the single source of truth; no backplane or reconciler |
+| `false` | `false` | No cache | not used | nothing to invalidate; every read goes to LDAP |
+
+Environment variables: `Caching__MemoryCacheEnabled`, `Caching__DistributedCacheEnabled`. `MemoryCacheDuration` must not exceed `Duration` only when both levels are enabled. The reconciler and the `/health/ready` cache check exist only in the L1 + L2 mode.
+
+**Breaking change:** `Caching:Enabled` was removed. Deployments that set it (`Caching__Enabled`) must switch to the two flags above: the old key is ignored and both levels default to `true`, which requires Redis.
+
+If Redis is unavailable at runtime (and L2 is enabled), the service still starts and serves reads directly from LDAP with bounded timeouts.
 
 Health endpoints: `/health/ready` (includes the cache reconciler and stays out of rotation until the generation subscription exists) and `/health/live` (process only, never depends on Redis).
 

@@ -8,7 +8,8 @@ namespace Bitai.LDAPGateway.Application.Common.Caching;
 /// Cache façade used by the directory query and command handlers.
 /// </summary>
 /// <remarks>
-/// Reads go through FusionCache (L1 + Redis L2 + backplane). Writes invalidate the coarse profile tag
+/// Reads go through FusionCache (L1 and/or Redis L2 + backplane, depending on <see cref="ICacheLevels"/>);
+/// with no active level they go straight to the directory. Writes invalidate the coarse profile tag
 /// after the LDAP operation succeeded. Infrastructure failures are never cached.
 /// </remarks>
 public sealed class DirectoryCache
@@ -16,12 +17,43 @@ public sealed class DirectoryCache
     private readonly IFusionCache _cache;
     private readonly ICacheInvalidator _invalidator;
     private readonly ILogger<DirectoryCache> _logger;
+    private readonly CacheMode _mode;
 
-    public DirectoryCache(IFusionCache cache, ICacheInvalidator invalidator, ILogger<DirectoryCache> logger)
+    public DirectoryCache(
+        IFusionCache cache,
+        ICacheInvalidator invalidator,
+        ILogger<DirectoryCache> logger,
+        ICacheLevels? levels = null)
     {
         _cache = cache;
         _invalidator = invalidator;
         _logger = logger;
+        _mode = levels?.Mode ?? CacheMode.Hybrid;
+    }
+
+    /// <summary>
+    /// Applies the active cache levels to a copy of the policy: the levels that are off are skipped per entry.
+    /// </summary>
+    private FusionCacheEntryOptions ApplyLevels(FusionCacheEntryOptions entryOptions)
+    {
+        if (_mode == CacheMode.Hybrid)
+        {
+            return entryOptions;
+        }
+
+        var options = entryOptions.Duplicate();
+        if (_mode == CacheMode.DistributedOnly)
+        {
+            options.SkipMemoryCacheRead = true;
+            options.SkipMemoryCacheWrite = true;
+        }
+        else if (_mode == CacheMode.MemoryOnly)
+        {
+            options.SkipDistributedCacheRead = true;
+            options.SkipDistributedCacheWrite = true;
+        }
+
+        return options;
     }
 
     /// <summary>
@@ -47,6 +79,11 @@ public sealed class DirectoryCache
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
         ArgumentNullException.ThrowIfNull(entryOptions);
         ArgumentNullException.ThrowIfNull(operation);
+
+        if (_mode == CacheMode.None)
+        {
+            return new CachedQueryResult<T>(await operation(cancellationToken), ServedFromCache: false);
+        }
 
         var servedFromCache = true;
 
@@ -85,7 +122,7 @@ public sealed class DirectoryCache
                     // Infrastructure failures must not be cached: leave the factory without a value.
                     throw new CacheBypassException(error);
                 },
-                options: entryOptions,
+                options: ApplyLevels(entryOptions),
                 tags: [CacheTags.Profile(serverProfile)],
                 token: cancellationToken);
         }
