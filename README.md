@@ -107,7 +107,12 @@ Environment variables: `Caching__MemoryCacheEnabled`, `Caching__DistributedCache
 
 If Redis is unavailable at runtime (and L2 is enabled), the service still starts and serves reads directly from LDAP with bounded timeouts.
 
-Health endpoints: `/health/ready` (includes the cache reconciler and stays out of rotation until the generation subscription exists) and `/health/live` (process only, never depends on Redis).
+Health endpoints: `/health/ready` and `/health/live` (process only, never depends on Redis). The cache check of `/health/ready` depends on the cache mode:
+
+| Mode | Cache check in `/health/ready` |
+|---|---|
+| L1 + L2 | `cache-reconciler`: the node stays out of rotation until the generation subscription exists, and reports degraded while Redis is unavailable or a local flush is pending |
+| L2 only, L1 only, no cache | none (no reconciler is registered); the endpoint reports only the other registered checks |
 
 ### Redis security
 
