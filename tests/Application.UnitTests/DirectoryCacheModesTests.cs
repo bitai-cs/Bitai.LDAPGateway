@@ -13,8 +13,44 @@ namespace Bitai.LDAPGateway.Application.UnitTests;
 /// <summary>Behavior of <see cref="DirectoryCache"/> for each active cache mode. The shared L2 is a MemoryDistributedCache.</summary>
 public sealed class DirectoryCacheModesTests
 {
-    private static IDistributedCache NewL2() =>
-        new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+    private static SwitchableL2 NewL2() =>
+        new(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
+
+    /// <summary>
+    /// A distributed cache that can be "cut" mid-test: while disabled every read is a miss and writes are dropped.
+    /// It lets a test tell an L1 hit from an L2 hit.
+    /// </summary>
+    private sealed class SwitchableL2 : IDistributedCache
+    {
+        private readonly IDistributedCache _inner;
+
+        public SwitchableL2(IDistributedCache inner) => _inner = inner;
+
+        public bool Enabled { get; set; } = true;
+
+        public byte[]? Get(string key) => Enabled ? _inner.Get(key) : null;
+
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+            => Enabled ? _inner.GetAsync(key, token) : Task.FromResult<byte[]?>(null);
+
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+        {
+            if (Enabled) _inner.Set(key, value, options);
+        }
+
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+            => Enabled ? _inner.SetAsync(key, value, options, token) : Task.CompletedTask;
+
+        public void Refresh(string key) { if (Enabled) _inner.Refresh(key); }
+
+        public Task RefreshAsync(string key, CancellationToken token = default)
+            => Enabled ? _inner.RefreshAsync(key, token) : Task.CompletedTask;
+
+        public void Remove(string key) { if (Enabled) _inner.Remove(key); }
+
+        public Task RemoveAsync(string key, CancellationToken token = default)
+            => Enabled ? _inner.RemoveAsync(key, token) : Task.CompletedTask;
+    }
 
     private static DirectoryCache NewNode(IDistributedCache l2, CacheMode mode)
     {
@@ -90,6 +126,21 @@ public sealed class DirectoryCacheModesTests
     }
 
     [Fact]
+    public async Task MemoryOnly_DoesNotWriteToL2()
+    {
+        var l2 = NewL2();
+        var nodeA = NewNode(l2, CacheMode.MemoryOnly);
+        var hybridReader = NewNode(l2, CacheMode.Hybrid);
+        var counter = new Counter();
+
+        await Read(nodeA, counter);
+        var onOtherNode = await Read(hybridReader, counter);
+
+        Assert.False(onOtherNode.ServedFromCache);
+        Assert.Equal(2, counter.Calls);
+    }
+
+    [Fact]
     public async Task DistributedOnly_IsSharedAcrossNodes()
     {
         var l2 = NewL2();
@@ -121,7 +172,22 @@ public sealed class DirectoryCacheModesTests
     }
 
     [Fact]
-    public async Task Hybrid_IsSharedAcrossNodes_AndCachesLocally()
+    public async Task Hybrid_ServesFromL1_EvenWhenL2IsUnavailable()
+    {
+        var l2 = NewL2();
+        var node = NewNode(l2, CacheMode.Hybrid);
+        var counter = new Counter();
+
+        await Read(node, counter);
+        l2.Enabled = false;
+        var second = await Read(node, counter);
+
+        Assert.True(second.ServedFromCache);
+        Assert.Equal(1, counter.Calls);
+    }
+
+    [Fact]
+    public async Task Hybrid_SharesThroughL2_WithAnotherNode()
     {
         var l2 = NewL2();
         var nodeA = NewNode(l2, CacheMode.Hybrid);
@@ -129,11 +195,25 @@ public sealed class DirectoryCacheModesTests
         var counter = new Counter();
 
         await Read(nodeA, counter);
-        await Read(nodeA, counter);
         var onB = await Read(nodeB, counter);
 
         Assert.True(onB.ServedFromCache);
         Assert.Equal(1, counter.Calls);
+    }
+
+    [Fact]
+    public async Task DistributedOnly_DoesNotUseL1_WhenL2IsUnavailable()
+    {
+        var l2 = NewL2();
+        var node = NewNode(l2, CacheMode.DistributedOnly);
+        var counter = new Counter();
+
+        await Read(node, counter);
+        l2.Enabled = false;
+        var second = await Read(node, counter);
+
+        Assert.False(second.ServedFromCache);
+        Assert.Equal(2, counter.Calls);
     }
 
     [Fact]

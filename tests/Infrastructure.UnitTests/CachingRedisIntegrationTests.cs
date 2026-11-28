@@ -173,6 +173,51 @@ public sealed class CachingRedisIntegrationTests
     }
 
     [RedisFact]
+    public Task DistributedOnly_ReadInFlightDuringMutation_DoesNotLeaveAStaleEntry()
+        => AssertNoStaleFillAsync(readerMemory: false, mutatorMemory: false);
+
+    [RedisFact]
+    public Task Hybrid_ReadInFlightDuringMutation_DoesNotLeaveAStaleEntry()
+        => AssertNoStaleFillAsync(readerMemory: true, mutatorMemory: true);
+
+    [RedisFact]
+    public Task MixedFleet_ReadInFlightDuringMutation_DoesNotLeaveAStaleEntry()
+        => AssertNoStaleFillAsync(readerMemory: false, mutatorMemory: true);
+
+    /// <summary>
+    /// A read starts (cache miss), a mutation on another node invalidates the profile, then the read finishes with
+    /// its pre-mutation value. That value must not be served to later reads.
+    /// </summary>
+    private static async Task AssertNoStaleFillAsync(bool readerMemory, bool mutatorMemory)
+    {
+        var runId = Guid.NewGuid().ToString("N");
+        await using var reader = await Node.StartAsync(readerMemory, runId);
+        await using var mutator = await Node.StartAsync(mutatorMemory, runId);
+
+        var started = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+
+        var slowRead = reader.Cache.GetOrSetAsync<string>("k", "EDU", CachePolicies.Entry(), false, async _ =>
+        {
+            started.SetResult();
+            await release.Task;
+            return Result<string>.Success("old");
+        }, CancellationToken.None);
+
+        await started.Task;
+        await mutator.Cache.InvalidateProfileAsync("test", "EDU");
+        release.SetResult();
+        await slowRead;
+
+        var counter = new Counter();
+        var visible = await WaitUntilAsync(async () => (await Read(mutator, counter)).Result.Value == "v1", TimeSpan.FromSeconds(5));
+        Assert.True(visible, "A pre-mutation fill was served after the profile was invalidated.");
+
+        var onReader = await Read(reader, counter);
+        Assert.NotEqual("old", onReader.Result.Value);
+    }
+
+    [RedisFact]
     public async Task MixedFleet_HybridNodeMutation_IsSeenByTheDistributedOnlyNode()
     {
         var runId = Guid.NewGuid().ToString("N");
