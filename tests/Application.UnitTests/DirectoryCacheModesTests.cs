@@ -137,15 +137,11 @@ public sealed class DirectoryCacheModesTests
     }
 
     [Fact]
-    public async Task WithoutCacheLevels_DefaultsToHybrid()
+    public void WithoutCacheLevels_IsRejected()
     {
         var fusion = new FusionCache(new FusionCacheOptions());
-        var cache = new DirectoryCache(fusion, Mock.Of<ICacheInvalidator>(), NullLogger<DirectoryCache>.Instance);
-        var counter = new Counter();
 
-        await Read(cache, counter);
-        await Read(cache, counter);
-
-        Assert.Equal(1, counter.Calls);
+        Assert.Throws<ArgumentNullException>(() =>
+            new DirectoryCache(fusion, Mock.Of<ICacheInvalidator>(), NullLogger<DirectoryCache>.Instance, null!));
     }
 }

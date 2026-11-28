@@ -14,6 +14,7 @@ namespace Internal.Generated.WolverineHandlers
     public sealed class SearchGroupsQueryHandler1075069319 : Wolverine.Runtime.Handlers.MessageHandler
     {
         private readonly Bitai.LDAPGateway.Application.Common.Caching.ICacheInvalidator _cacheInvalidator;
+        private readonly Bitai.LDAPGateway.Application.Common.Caching.ICacheLevels _cacheLevels;
         private readonly FluentValidation.IValidator<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> _validatorOfSearchGroupsQuery;
         private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Common.Caching.DirectoryCache> _loggerOfDirectoryCache;
         private readonly Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> _loggerForMessage;
@@ -25,9 +26,10 @@ namespace Internal.Generated.WolverineHandlers
         private readonly Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> _failureActionOfSearchGroupsQuery;
         private readonly ZiggyCreatures.Caching.Fusion.IFusionCache _fusionCache;
 
-        public SearchGroupsQueryHandler1075069319(Bitai.LDAPGateway.Application.Common.Caching.ICacheInvalidator cacheInvalidator, FluentValidation.IValidator<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> validatorOfSearchGroupsQuery, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Common.Caching.DirectoryCache> loggerOfDirectoryCache, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> loggerForMessage, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.BitaiLdapHelperProvider> loggerOfBitaiLdapHelperProvider, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> loggerOfWolverineDomainEventPublisher, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.LdapData.MockLdapDataSeeder> loggerOfMockLdapDataSeeder, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter> loggerOfMockLdapPersistentConnectionFactoryAdapter, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions, Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> failureActionOfSearchGroupsQuery, ZiggyCreatures.Caching.Fusion.IFusionCache fusionCache)
+        public SearchGroupsQueryHandler1075069319(Bitai.LDAPGateway.Application.Common.Caching.ICacheInvalidator cacheInvalidator, Bitai.LDAPGateway.Application.Common.Caching.ICacheLevels cacheLevels, FluentValidation.IValidator<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> validatorOfSearchGroupsQuery, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Common.Caching.DirectoryCache> loggerOfDirectoryCache, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> loggerForMessage, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.BitaiLdapHelperProvider> loggerOfBitaiLdapHelperProvider, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher> loggerOfWolverineDomainEventPublisher, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.LdapData.MockLdapDataSeeder> loggerOfMockLdapDataSeeder, Microsoft.Extensions.Logging.ILogger<Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter> loggerOfMockLdapPersistentConnectionFactoryAdapter, Microsoft.Extensions.Options.IOptionsMonitor<Bitai.LDAPGateway.Infrastructure.Options.LdapServerProfilesOptions> optionsMonitorOfLdapServerProfilesOptions, Wolverine.FluentValidation.IFailureAction<Bitai.LDAPGateway.Application.Directory.Queries.SearchGroups.SearchGroupsQuery> failureActionOfSearchGroupsQuery, ZiggyCreatures.Caching.Fusion.IFusionCache fusionCache)
         {
             _cacheInvalidator = cacheInvalidator;
+            _cacheLevels = cacheLevels;
             _validatorOfSearchGroupsQuery = validatorOfSearchGroupsQuery;
             _loggerOfDirectoryCache = loggerOfDirectoryCache;
             _loggerForMessage = loggerForMessage;
@@ -46,7 +48,7 @@ namespace Internal.Generated.WolverineHandlers
         {
             var mockLdapPersistentConnectionFactoryAdapter = new Bitai.LDAPHelper.LdapAdapters.LdapHelperMock.MockLdapPersistentConnectionFactoryAdapter(_loggerOfMockLdapPersistentConnectionFactoryAdapter, _loggerOfMockLdapDataSeeder);
             var bitaiLdapHelperProvider = new Bitai.LDAPGateway.Infrastructure.Services.BitaiLdapHelperProvider(_loggerOfBitaiLdapHelperProvider, mockLdapPersistentConnectionFactoryAdapter);
-            var directoryCache = new Bitai.LDAPGateway.Application.Common.Caching.DirectoryCache(_fusionCache, _cacheInvalidator, _loggerOfDirectoryCache);
+            var directoryCache = new Bitai.LDAPGateway.Application.Common.Caching.DirectoryCache(_fusionCache, _cacheInvalidator, _loggerOfDirectoryCache, _cacheLevels);
             var wolverineDomainEventPublisher = new Bitai.LDAPGateway.Infrastructure.Services.WolverineDomainEventPublisher(context, _loggerOfWolverineDomainEventPublisher);
             var directoryServiceConnector = new Bitai.LDAPGateway.Infrastructure.Services.DirectoryServiceConnector(_optionsMonitorOfLdapServerProfilesOptions, bitaiLdapHelperProvider);
             // The actual message body

@@ -23,12 +23,14 @@ public sealed class DirectoryCache
         IFusionCache cache,
         ICacheInvalidator invalidator,
         ILogger<DirectoryCache> logger,
-        ICacheLevels? levels = null)
+        ICacheLevels levels)
     {
+        ArgumentNullException.ThrowIfNull(levels);
+
         _cache = cache;
         _invalidator = invalidator;
         _logger = logger;
-        _mode = levels?.Mode ?? CacheMode.Hybrid;
+        _mode = levels.Mode;
     }
 
     /// <summary>
