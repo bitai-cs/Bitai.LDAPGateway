@@ -96,7 +96,7 @@ public sealed class CachingLevelsTests
     [Theory]
     [InlineData(false, false, "NoOpCacheInvalidator", false, false)]
     [InlineData(true, false, "LocalCacheInvalidator", false, false)]
-    [InlineData(false, true, "DistributedCacheInvalidator", true, false)]
+    [InlineData(false, true, "FusionCacheInvalidator", true, false)]
     [InlineData(true, true, "FusionCacheInvalidator", true, true)]
     public void Registration_MatchesTheMode(bool memory, bool distributed, string invalidator, bool redis, bool reconciler)
     {

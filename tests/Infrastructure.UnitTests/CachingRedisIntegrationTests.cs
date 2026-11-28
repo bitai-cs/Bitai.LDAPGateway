@@ -152,4 +152,40 @@ public sealed class CachingRedisIntegrationTests
 
         Assert.True(reloaded, "Node B kept serving the invalidated entry from its L1.");
     }
+
+    [RedisFact]
+    public async Task MixedFleet_DistributedOnlyNodeMutation_InvalidatesTheHybridNodesL1()
+    {
+        var runId = Guid.NewGuid().ToString("N");
+        await using var hybrid = await Node.StartAsync(memory: true, runId);
+        await using var distributedOnly = await Node.StartAsync(memory: false, runId);
+        var counter = new Counter();
+
+        await Read(hybrid, counter);
+        await Read(hybrid, counter);
+        Assert.Equal(1, counter.Calls);
+
+        await distributedOnly.Cache.InvalidateProfileAsync("test", "EDU");
+
+        var reloaded = await WaitUntilAsync(async () => !(await Read(hybrid, counter)).ServedFromCache, TimeSpan.FromSeconds(5));
+
+        Assert.True(reloaded, "The hybrid node kept serving an entry invalidated by a distributed-only node.");
+    }
+
+    [RedisFact]
+    public async Task MixedFleet_HybridNodeMutation_IsSeenByTheDistributedOnlyNode()
+    {
+        var runId = Guid.NewGuid().ToString("N");
+        await using var hybrid = await Node.StartAsync(memory: true, runId);
+        await using var distributedOnly = await Node.StartAsync(memory: false, runId);
+        var counter = new Counter();
+
+        await Read(distributedOnly, counter);
+        Assert.True((await Read(distributedOnly, counter)).ServedFromCache);
+
+        await hybrid.Cache.InvalidateProfileAsync("test", "EDU");
+
+        var afterInvalidation = await Read(distributedOnly, counter);
+        Assert.False(afterInvalidation.ServedFromCache);
+    }
 }

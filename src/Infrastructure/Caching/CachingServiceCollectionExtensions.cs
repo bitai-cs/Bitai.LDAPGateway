@@ -105,10 +105,7 @@ public static class CachingServiceCollectionExtensions
                 ConfigureFusionOptions(fusionOptions, serviceProvider.GetRequiredService<IOptions<CachingOptions>>().Value, distributedOnly: false))
             .WithSerializer(new FusionCacheSystemTextJsonSerializer())
             .WithRegisteredDistributedCache()
-            .WithBackplane(serviceProvider => new RedisBackplane(Microsoft.Extensions.Options.Options.Create(new RedisBackplaneOptions
-            {
-                ConnectionMultiplexerFactory = () => Task.FromResult(serviceProvider.GetRequiredService<IConnectionMultiplexer>())
-            })));
+            .WithRedisBackplane();
 
         services.AddSingleton<ICacheInvalidator, FusionCacheInvalidator>();
 
@@ -119,7 +116,10 @@ public static class CachingServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Redis L2 only: no L1, no backplane and no reconciler. Redis is the single source of truth.</summary>
+    /// <summary>
+    /// Redis L2 only: no L1 and no reconciler. It still joins the backplane and the generation protocol so that
+    /// hybrid nodes sharing the same prefix drop their L1 entries when this node mutates the directory.
+    /// </summary>
     private static IServiceCollection AddDistributedOnlyCaching(this IServiceCollection services)
     {
         services.AddRedisL2();
@@ -129,12 +129,20 @@ public static class CachingServiceCollectionExtensions
             .WithOptions((serviceProvider, fusionOptions) =>
                 ConfigureFusionOptions(fusionOptions, serviceProvider.GetRequiredService<IOptions<CachingOptions>>().Value, distributedOnly: true))
             .WithSerializer(new FusionCacheSystemTextJsonSerializer())
-            .WithRegisteredDistributedCache();
+            .WithRegisteredDistributedCache()
+            .WithRedisBackplane();
 
-        services.AddSingleton<ICacheInvalidator, DistributedCacheInvalidator>();
+        services.AddSingleton<ICacheInvalidator, FusionCacheInvalidator>();
 
         return services;
     }
+
+    /// <summary>Redis backplane over the shared multiplexer.</summary>
+    private static IFusionCacheBuilder WithRedisBackplane(this IFusionCacheBuilder builder)
+        => builder.WithBackplane(serviceProvider => new RedisBackplane(Microsoft.Extensions.Options.Options.Create(new RedisBackplaneOptions
+        {
+            ConnectionMultiplexerFactory = () => Task.FromResult(serviceProvider.GetRequiredService<IConnectionMultiplexer>())
+        })));
 
     /// <summary>
     /// In-process cache only (or no cache at all, in which case <paramref name="invalidator"/> is a no-op).

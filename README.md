@@ -98,7 +98,7 @@ L1 and L2 are enabled independently:
 |---|---|---|---|---|
 | `true` | `true` | L1 + L2 (default) | required | Redis generation + backplane + reconciler (all nodes) |
 | `true` | `false` | L1 only | not used | local to the node; other nodes converge by TTL |
-| `false` | `true` | L2 only | required | Redis is the single source of truth; no backplane or reconciler |
+| `false` | `true` | L2 only | required | Redis is the single source of truth; it still publishes the generation and backplane notification so L1+L2 nodes sharing the prefix stay coherent. No reconciler (there is no L1 to repair) |
 | `false` | `false` | No cache | not used | nothing to invalidate; every read goes to LDAP |
 
 Environment variables: `Caching__MemoryCacheEnabled`, `Caching__DistributedCacheEnabled`. `MemoryCacheDuration` must not exceed `Duration` only when both levels are enabled. The reconciler and the `/health/ready` cache check exist only in the L1 + L2 mode.

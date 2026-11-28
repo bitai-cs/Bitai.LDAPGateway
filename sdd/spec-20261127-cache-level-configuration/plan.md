@@ -33,7 +33,7 @@ FusionCache no tiene un "apagar L1" global; se logra con flags por entrada (`Ski
 ### Registro DI (`CachingServiceCollectionExtensions.AddCaching`)
 - `None`: `AddFusionCache()` mínimo (para no romper DI) + `NoOpCacheInvalidator`; sin Redis.
 - `MemoryOnly`: ruta actual `AddDisabledCaching` (renombrar a `AddMemoryOnlyCaching`) + `LocalCacheInvalidator`.
-- `DistributedOnly` (**requisito validado por el spike**): configurar `FusionCacheOptions.TagsDefaultEntryOptions` con `SkipMemoryCacheRead/Write = true`. Sin esto, el nodo B guarda en memoria los metadatos del tag y sigue sirviendo datos viejos tras un `RemoveByTag` en el nodo A (no hay backplane). Además: multiplexer + `AddStackExchangeRedisCache` + serializer + `WithRegisteredDistributedCache()`, **sin** `WithBackplane`, sin `CacheReconciler`/health check; nuevo `DistributedCacheInvalidator` (Remove/RemoveByTag, sin INCR de generación ni pub/sub).
+- `DistributedOnly` (**requisito validado por el spike**): configurar `FusionCacheOptions.TagsDefaultEntryOptions` con `SkipMemoryCacheRead/Write = true`. Sin esto, el nodo B guarda en memoria los metadatos del tag y sigue sirviendo datos viejos tras un `RemoveByTag` en el nodo A (no hay backplane). Además: multiplexer + `AddStackExchangeRedisCache` + serializer + `WithRegisteredDistributedCache()`, **con backplane y `FusionCacheInvalidator` (generación + pub/sub) para que los nodos L1+L2 que comparten prefijo invaliden su L1 cuando muta un nodo solo-L2; sin `CacheReconciler`/health check (no hay L1 que reparar). _(Corregido tras revisión: la versión inicial sin backplane dejaba obsoleta la L1 de nodos híbridos en una flota mixta.)_
 - `Hybrid`: sin cambios.
 
 ### `DirectoryCache` (`src/Application/Common/Caching/DirectoryCache.cs`)
@@ -51,7 +51,7 @@ Verificado contra las referencias actuales: `Infrastructure → Application → 
 
 ## 4. Archivos
 - **Modificar:** `CachingOptions.cs`, `CachingServiceCollectionExtensions.cs`, `DirectoryCache.cs`, `Application/DependencyInjection.cs` (si hace falta registrar el modo), `CachePolicies.cs` (comentarios).
-- **Nuevos:** `Infrastructure/Caching/DistributedCacheInvalidator.cs`, `Infrastructure/Caching/NoOpCacheInvalidator.cs`, `CacheMode` + abstracción en Application.
+- **Nuevos:** `Infrastructure/Caching/NoOpCacheInvalidator.cs`, `CacheMode` + abstracción en Application.
 - **Config:** `src/Api/appsettings.json`, `appsettings.Development.json`, `appsettings.Testing.json`, `appsettings.TestingStandard.json` (usar `MemoryCacheEnabled` / `DistributedCacheEnabled`; en tests `DistributedCacheEnabled=false`).
 - **Docs:** `README.md` sección Caching (matriz de modos, variables `Caching__MemoryCacheEnabled` y `Caching__DistributedCacheEnabled`, nota de que `Caching__Enabled` fue eliminada).
 
@@ -71,11 +71,11 @@ Verificado contra las referencias actuales: `Infrastructure → Application → 
 
 ## 7. Decisiones asumidas
 - `Caching:Enabled` se elimina sin compatibilidad hacia atrás (confirmado por el usuario: los despliegues existentes deben actualizarse).
-- En `DistributedOnly` no hay backplane/reconciler; la coherencia multi-nodo viene de Redis como única fuente.
+- En `DistributedOnly` no hay reconciler, pero sí backplane y generación: Redis es la fuente de verdad y los nodos híbridos del mismo prefijo siguen coherentes.
 - Nombres de claves: `MemoryCacheEnabled` / `DistributedCacheEnabled`.
 
 ## 8. Estado de ejecución
 - ✅ Pasos 1–6 implementados. Suite completa en verde (Application 91, Domain 1, Api.Functional 33, Infrastructure 22 con 2 omitidos sin Redis).
 - ✅ **Verificación con Redis real** (`tests/Infrastructure.UnitTests/CachingRedisIntegrationTests.cs`, opt-in con la variable `BITAI_IT_REDIS`): dos nodos con el DI real de `AddCaching` sobre el mismo Redis. Solo L2: comparten entradas y la invalidación llega al otro nodo de inmediato. L1+L2: comparten entradas y el backplane invalida la L1 del otro nodo (espera acotada de 5 s).
 - Pendiente fuera de alcance: abstraer el caché detrás de una interfaz propia (ver "Reglas de capas").
-
+- ✅ Revisión posterior: `ICacheLevels` pasó a ser obligatorio en `DirectoryCache` y se regeneraron los handlers de Wolverine (estaban construyendo `DirectoryCache` sin el modo). Flota mixta L2-solo + híbrido verificada contra Redis real en ambos sentidos.
